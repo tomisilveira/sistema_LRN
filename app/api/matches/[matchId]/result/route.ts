@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { computeMatchOutcome } from "@/lib/match-logic";
 import { advanceWinner } from "@/lib/bracket-actions";
+import { assertMatchBelongsToCourt, JudgeAuthError } from "@/lib/judge-auth";
+import { maybeAdvanceCompetitionPhase } from "@/lib/advance-competition-phase";
 import type { Competition, Match } from "@/lib/database.types";
 
 // Endpoint que usa el juez de cancha (sin sesión de Supabase Auth) para
@@ -22,30 +24,15 @@ export async function POST(request: Request, { params }: { params: Promise<{ mat
     scoreB?: number | null;
     winnerId?: string | null;
   };
-  if (!courtToken) {
-    return NextResponse.json({ error: "Falta el token de cancha." }, { status: 401 });
-  }
 
   const supabase = createAdminClient();
 
-  const { data: court } = await supabase
-    .from("courts")
-    .select("id")
-    .eq("access_token", courtToken)
-    .maybeSingle();
-  if (!court) {
-    return NextResponse.json({ error: "Link de cancha inválido." }, { status: 401 });
-  }
-
-  const { data: match } = await supabase.from("matches").select("*").eq("id", matchId).maybeSingle<Match>();
-  if (!match) {
-    return NextResponse.json({ error: "Partido no encontrado." }, { status: 404 });
-  }
-  if (match.court_id !== court.id) {
-    return NextResponse.json(
-      { error: "Este partido no está asignado a tu cancha." },
-      { status: 403 }
-    );
+  let match: Match;
+  try {
+    match = await assertMatchBelongsToCourt(supabase, matchId, courtToken);
+  } catch (e) {
+    if (e instanceof JudgeAuthError) return NextResponse.json({ error: e.message }, { status: e.status });
+    throw e;
   }
   if (!match.team_a_id || !match.team_b_id) {
     return NextResponse.json({ error: "Todavía no están definidos los dos equipos." }, { status: 400 });
@@ -92,6 +79,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ mat
   if (updated.phase === "bracket") {
     await advanceWinner(supabase, updated);
   }
+  await maybeAdvanceCompetitionPhase(supabase, updated.competition_id);
 
   return NextResponse.json({ ok: true });
 }

@@ -1,4 +1,4 @@
-// Tipos manuales que reflejan supabase/migrations/0001_init.sql.
+// Tipos manuales que reflejan supabase/migrations/0001_init.sql y 0002_features.sql.
 // Si el schema cambia, actualizar este archivo a mano (no se generó con
 // `supabase gen types` porque el proyecto Supabase todavía no existe).
 
@@ -51,6 +51,7 @@ export interface Competition {
   points_loss: number;
   qualifiers_per_group: number;
   status: CompetitionStatus;
+  registration_open: boolean;
   created_at: string;
 }
 
@@ -59,6 +60,10 @@ export interface Team {
   competition_id: string;
   name: string;
   institution: string | null;
+  mentor_name: string | null;
+  mentor_contact: string | null;
+  member_count: number | null;
+  notes: string | null;
   created_at: string;
 }
 
@@ -108,6 +113,7 @@ export interface Match {
   score_a: number | null;
   score_b: number | null;
   winner_id: string | null;
+  started_at: string | null;
   created_at: string;
   updated_at: string;
 }

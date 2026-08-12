@@ -6,7 +6,7 @@ export default function LoginPage() {
       <div className="max-w-sm w-full space-y-6">
         <div>
           <h1 className="text-xl font-bold">Panel de administración</h1>
-          <p className="text-sm text-neutral-400 mt-1">Liga Robótica Neuquina</p>
+          <p className="text-sm panel-label mt-1">Liga Robótica Neuquina</p>
         </div>
         <LoginForm />
       </div>

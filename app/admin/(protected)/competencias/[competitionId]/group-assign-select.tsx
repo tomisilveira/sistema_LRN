@@ -26,7 +26,7 @@ export function GroupAssignSelect({
           assignTeamToGroup(competitionId, teamId, value);
         });
       }}
-      className="text-xs rounded-md bg-neutral-900 border border-neutral-700 px-2 py-1 disabled:opacity-50"
+      className="text-xs rounded-md panel-input px-2 py-1 disabled:opacity-50"
     >
       <option value="">Sin grupo</option>
       {groups.map((g) => (

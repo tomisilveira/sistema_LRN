@@ -3,14 +3,61 @@
 import { revalidatePath } from "next/cache";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { generateRoundRobinPairs } from "@/lib/round-robin";
-import { buildSeedOrder, generateBracketRounds } from "@/lib/bracket";
-import { persistBracket, advanceWinner } from "@/lib/bracket-actions";
+import { advanceWinner } from "@/lib/bracket-actions";
 import { computeMatchOutcome } from "@/lib/match-logic";
-import type { Competition, GroupStandingRow, Match } from "@/lib/database.types";
+import { generateBracketForCompetition } from "@/lib/generate-bracket-for-competition";
+import { maybeAdvanceCompetitionPhase } from "@/lib/advance-competition-phase";
+import type { Competition, Match } from "@/lib/database.types";
 
 function revalidateCompetition(competitionId: string) {
   revalidatePath(`/admin/competencias/${competitionId}`);
   revalidatePath(`/publico`);
+}
+
+export async function updateCompetitionFormat(competitionId: string, formData: FormData) {
+  const supabase = await createServerSupabaseClient();
+
+  const { data: competition } = await supabase
+    .from("competitions")
+    .select("status")
+    .eq("id", competitionId)
+    .single<Competition>();
+  if (!competition) throw new Error("Competencia no encontrada.");
+  if (competition.status !== "setup") {
+    throw new Error("Ya se generaron los partidos de grupo; no se puede cambiar el formato ahora.");
+  }
+
+  const formatType = String(formData.get("format_type") ?? "groups_only");
+  const allowDraws = formData.get("allow_draws") === "on";
+  const pointsWin = Number(formData.get("points_win") ?? 3);
+  const pointsDraw = Number(formData.get("points_draw") ?? 1);
+  const pointsLoss = Number(formData.get("points_loss") ?? 0);
+  const qualifiersPerGroup = Number(formData.get("qualifiers_per_group") ?? 2);
+
+  const { error } = await supabase
+    .from("competitions")
+    .update({
+      format_type: formatType,
+      allow_draws: allowDraws,
+      points_win: pointsWin,
+      points_draw: pointsDraw,
+      points_loss: pointsLoss,
+      qualifiers_per_group: qualifiersPerGroup,
+    })
+    .eq("id", competitionId);
+  if (error) throw new Error(error.message);
+
+  revalidateCompetition(competitionId);
+}
+
+export async function setRegistrationOpen(competitionId: string, open: boolean) {
+  const supabase = await createServerSupabaseClient();
+  const { error } = await supabase
+    .from("competitions")
+    .update({ registration_open: open })
+    .eq("id", competitionId);
+  if (error) throw new Error(error.message);
+  revalidateCompetition(competitionId);
 }
 
 export async function addTeam(competitionId: string, formData: FormData) {
@@ -234,6 +281,7 @@ export async function submitResult(competitionId: string, matchId: string, formD
   if (updated.phase === "bracket") {
     await advanceWinner(supabase, updated);
   }
+  await maybeAdvanceCompetitionPhase(supabase, competitionId);
 
   revalidateCompetition(competitionId);
 }
@@ -261,16 +309,6 @@ export async function setManualRankOverride(
 export async function generateBracket(competitionId: string) {
   const supabase = await createServerSupabaseClient();
 
-  const { data: competition } = await supabase
-    .from("competitions")
-    .select("*")
-    .eq("id", competitionId)
-    .single<Competition>();
-  if (!competition) throw new Error("Competencia no encontrada.");
-  if (competition.format_type !== "single_elimination") {
-    throw new Error("Esta competencia no tiene eliminatoria simple configurada.");
-  }
-
   const { count: existingBracketMatches } = await supabase
     .from("matches")
     .select("id", { count: "exact", head: true })
@@ -280,37 +318,7 @@ export async function generateBracket(competitionId: string) {
     throw new Error("El cuadro eliminatorio ya fue generado para esta competencia.");
   }
 
-  const { data: groups } = await supabase
-    .from("groups")
-    .select("id, name")
-    .eq("competition_id", competitionId)
-    .order("sort_order");
-  if (!groups || groups.length === 0) throw new Error("No hay grupos cargados.");
-
-  const qualifiersByGroup = [];
-  for (const g of groups) {
-    const { data: standings, error } = await supabase.rpc("get_group_standings", { p_group_id: g.id });
-    if (error) throw new Error(error.message);
-    const rows = (standings ?? []) as GroupStandingRow[];
-    qualifiersByGroup.push({
-      groupName: g.name,
-      teams: rows.slice(0, competition.qualifiers_per_group).map((r, i) => ({
-        teamId: r.team_id,
-        teamName: r.team_name,
-        rank: i + 1,
-      })),
-    });
-  }
-
-  const seedTeams = buildSeedOrder(qualifiersByGroup);
-  if (seedTeams.length < 2) {
-    throw new Error("No hay suficientes equipos clasificados para armar un cuadro.");
-  }
-
-  const rounds = generateBracketRounds(seedTeams);
-  await persistBracket(supabase, competitionId, null, rounds);
-
-  await supabase.from("competitions").update({ status: "bracket_in_progress" }).eq("id", competitionId);
+  await generateBracketForCompetition(supabase, competitionId);
 
   revalidateCompetition(competitionId);
 }

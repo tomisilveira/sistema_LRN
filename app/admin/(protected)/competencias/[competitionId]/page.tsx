@@ -20,11 +20,15 @@ import {
   assignSchedule,
   submitResult,
   generateBracket,
+  setRegistrationOpen,
 } from "./actions";
 import { GroupAssignSelect } from "./group-assign-select";
 import { StandingsTable } from "./standings-table";
 import { BracketView, type BracketDisplayMatch } from "./bracket-view";
 import { RealtimeRefresh } from "./realtime-refresh";
+import { CopyLinkButton } from "@/app/components/copy-link-button";
+import { FormatAdvisory } from "./format-advisory";
+import { EditFormatForm } from "./edit-format-form";
 
 export default async function CompetitionPage({
   params,
@@ -99,6 +103,7 @@ export default async function CompetitionPage({
   const assignScheduleAction = assignSchedule.bind(null, competitionId);
   const submitResultAction = submitResult.bind(null, competitionId);
   const generateBracketAction = generateBracket.bind(null, competitionId);
+  const setRegistrationOpenAction = setRegistrationOpen.bind(null, competitionId);
 
   const bracketDisplayMatches: BracketDisplayMatch[] = (bracketMatches ?? []).map((m: Match) => ({
     ...m,
@@ -114,23 +119,69 @@ export default async function CompetitionPage({
         <h1 className="text-lg font-semibold">
           {discipline?.name} — {category?.name}
         </h1>
-        <p className="text-sm text-neutral-500">
+        <p className="text-sm panel-label">
           {event?.name} · {competition.status}
         </p>
       </div>
 
+      {/* Formato del torneo */}
+      <section className="panel-card rounded-lg p-4 space-y-4">
+        <h2 className="font-medium">Formato del torneo</h2>
+        <FormatAdvisory teamCount={(teams ?? []).length} courtCount={(courts ?? []).length} />
+        {competition.status === "setup" ? (
+          <EditFormatForm competitionId={competitionId} competition={competition} />
+        ) : (
+          <p className="text-xs panel-label">
+            Ya se generaron los partidos de grupo, así que el formato quedó fijo para este
+            torneo.
+          </p>
+        )}
+      </section>
+
+      {/* Inscripción pública */}
+      <section className="panel-card rounded-lg p-4 flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h2 className="font-medium">Inscripción pública de equipos</h2>
+          <p className="text-xs panel-label mt-0.5">
+            {competition.registration_open
+              ? "Abierta — compartí el link para que los equipos se carguen solos."
+              : "Cerrada — los equipos no pueden auto-registrarse."}
+          </p>
+        </div>
+        <div className="flex items-center gap-2">
+          {competition.registration_open && (
+            <CopyLinkButton path={`/inscripcion/${competitionId}`} label="Copiar link de inscripción" />
+          )}
+          <form action={setRegistrationOpenAction.bind(null, !competition.registration_open)}>
+            <button
+              type="submit"
+              className={`text-xs rounded-full px-3 py-1.5 transition-colors ${
+                competition.registration_open ? "panel-chip" : "panel-button-primary"
+              }`}
+            >
+              {competition.registration_open ? "Cerrar inscripción" : "Abrir inscripción"}
+            </button>
+          </form>
+        </div>
+      </section>
+
       {/* Equipos */}
-      <section className="rounded-lg border border-neutral-800 p-4 space-y-3">
+      <section className="panel-card rounded-lg p-4 space-y-3">
         <h2 className="font-medium">Equipos ({(teams ?? []).length})</h2>
         <div className="grid sm:grid-cols-2 gap-2">
           {(teams ?? []).map((t: Team) => (
             <div
               key={t.id}
-              className="flex items-center justify-between rounded-md bg-neutral-900 px-3 py-2 text-sm"
+              className="panel-surface flex items-center justify-between rounded-md px-3 py-2 text-sm"
             >
               <div>
                 <p>{t.name}</p>
-                {t.institution && <p className="text-xs text-neutral-500">{t.institution}</p>}
+                {t.institution && <p className="text-xs panel-label">{t.institution}</p>}
+                {t.mentor_name && (
+                  <p className="text-xs panel-label opacity-80">
+                    {t.mentor_name} · {t.mentor_contact}
+                  </p>
+                )}
               </div>
               <div className="flex items-center gap-2">
                 {groupsList.length > 0 && (
@@ -155,73 +206,64 @@ export default async function CompetitionPage({
             name="name"
             required
             placeholder="Nombre del equipo"
-            className="flex-1 min-w-[150px] rounded-md bg-neutral-900 border border-neutral-700 px-3 py-2 text-sm"
+            className="flex-1 min-w-[150px] rounded-md panel-input px-3 py-2 text-sm"
           />
           <input
             name="institution"
             placeholder="Institución (opcional)"
-            className="flex-1 min-w-[150px] rounded-md bg-neutral-900 border border-neutral-700 px-3 py-2 text-sm"
+            className="flex-1 min-w-[150px] rounded-md panel-input px-3 py-2 text-sm"
           />
-          <button
-            type="submit"
-            className="rounded-md bg-neutral-100 text-neutral-900 font-medium px-4 py-2 text-sm hover:bg-white transition-colors"
-          >
+          <button type="submit" className="rounded-md panel-button-primary font-medium px-4 py-2 text-sm">
             Agregar
           </button>
         </form>
       </section>
 
       {/* Grupos */}
-      <section className="rounded-lg border border-neutral-800 p-4 space-y-3">
+      <section className="panel-card rounded-lg p-4 space-y-3">
         <h2 className="font-medium">Grupos</h2>
         <div className="flex flex-wrap gap-2">
           {groupsList.map((g) => (
-            <span key={g.id} className="text-xs rounded-full px-3 py-1 bg-neutral-800">
+            <span key={g.id} className="panel-chip text-xs rounded-full px-3 py-1">
               {g.name}
             </span>
           ))}
-          {groupsList.length === 0 && <p className="text-sm text-neutral-500">Sin grupos todavía.</p>}
+          {groupsList.length === 0 && <p className="text-sm panel-label">Sin grupos todavía.</p>}
         </div>
-        <div className="flex flex-wrap gap-4 pt-2 border-t border-neutral-800">
+        <div className="flex flex-wrap gap-4 pt-2 border-t border-neutral-200 dark:border-neutral-800">
           <form action={createGroupAction} className="flex gap-2">
             <input
               name="name"
               placeholder="Grupo C"
               required
-              className="rounded-md bg-neutral-900 border border-neutral-700 px-3 py-2 text-sm w-32"
+              className="rounded-md panel-input px-3 py-2 text-sm w-32"
             />
-            <button
-              type="submit"
-              className="rounded-md border border-neutral-700 px-3 py-2 text-sm hover:bg-neutral-800"
-            >
+            <button type="submit" className="rounded-md panel-button-secondary px-3 py-2 text-sm">
               + Grupo manual
             </button>
           </form>
           <form action={randomDrawAction} className="flex gap-2 items-center">
-            <label className="text-sm text-neutral-400">Sorteo aleatorio en</label>
+            <label className="text-sm panel-label">Sorteo aleatorio en</label>
             <input
               name="num_groups"
               type="number"
               min={1}
               defaultValue={2}
-              className="rounded-md bg-neutral-900 border border-neutral-700 px-2 py-2 text-sm w-16"
+              className="rounded-md panel-input px-2 py-2 text-sm w-16"
             />
-            <button
-              type="submit"
-              className="rounded-md border border-neutral-700 px-3 py-2 text-sm hover:bg-neutral-800"
-            >
+            <button type="submit" className="rounded-md panel-button-secondary px-3 py-2 text-sm">
               grupos
             </button>
           </form>
         </div>
-        <p className="text-xs text-neutral-600">
+        <p className="text-xs panel-label opacity-80">
           El sorteo aleatorio borra y vuelve a repartir todas las asignaciones actuales.
         </p>
       </section>
 
       {/* Posiciones */}
       {standingsByGroup.length > 0 && (
-        <section className="rounded-lg border border-neutral-800 p-4 space-y-6">
+        <section className="panel-card rounded-lg p-4 space-y-6">
           <h2 className="font-medium">Tabla de posiciones</h2>
           {standingsByGroup.map(({ group, rows }) => (
             <StandingsTable
@@ -237,21 +279,18 @@ export default async function CompetitionPage({
       )}
 
       {/* Fixture / cronograma / resultados de grupo */}
-      <section className="rounded-lg border border-neutral-800 p-4 space-y-3">
+      <section className="panel-card rounded-lg p-4 space-y-3">
         <div className="flex items-center justify-between">
           <h2 className="font-medium">Partidos de fase de grupos</h2>
           <form action={generateMatchesAction}>
-            <button
-              type="submit"
-              className="text-xs rounded-md border border-neutral-700 px-3 py-1.5 hover:bg-neutral-800"
-            >
+            <button type="submit" className="text-xs rounded-md panel-button-secondary px-3 py-1.5">
               Generar todos-contra-todos
             </button>
           </form>
         </div>
         <div className="space-y-2">
           {(groupMatches ?? []).length === 0 && (
-            <p className="text-sm text-neutral-500">Todavía no se generaron partidos.</p>
+            <p className="text-sm panel-label">Todavía no se generaron partidos.</p>
           )}
           {(groupMatches ?? []).map((m: Match) => (
             <MatchRow
@@ -269,14 +308,14 @@ export default async function CompetitionPage({
 
       {/* Cuadro eliminatorio */}
       {competition.format_type === "single_elimination" && (
-        <section className="rounded-lg border border-neutral-800 p-4 space-y-4">
+        <section className="panel-card rounded-lg p-4 space-y-4">
           <div className="flex items-center justify-between">
             <h2 className="font-medium">Cuadro de eliminatoria simple</h2>
             {bracketDisplayMatches.length === 0 && (
               <form action={generateBracketAction}>
                 <button
                   type="submit"
-                  className="text-xs rounded-md bg-neutral-100 text-neutral-900 px-3 py-1.5 font-medium hover:bg-white"
+                  className="text-xs rounded-md panel-button-primary px-3 py-1.5 font-medium"
                 >
                   Generar cuadro desde posiciones
                 </button>
@@ -284,7 +323,7 @@ export default async function CompetitionPage({
             )}
           </div>
           {bracketDisplayMatches.length === 0 ? (
-            <p className="text-sm text-neutral-500">
+            <p className="text-sm panel-label">
               Se genera con los clasificados de cada grupo ({competition.qualifiers_per_group} por grupo)
               una vez que la fase de grupos esté cerrada.
             </p>
@@ -313,13 +352,16 @@ function MatchRow({
   onResult: (formData: FormData) => Promise<void>;
 }) {
   return (
-    <div className="rounded-md bg-neutral-900 px-3 py-2 flex flex-wrap items-center gap-3 text-sm">
+    <div className="panel-surface rounded-md px-3 py-2 flex flex-wrap items-center gap-3 text-sm">
       <div className="min-w-[180px] flex-1">
         <span className={match.winner_id === match.team_a_id ? "font-semibold" : ""}>{teamAName}</span>
         {" vs "}
         <span className={match.winner_id === match.team_b_id ? "font-semibold" : ""}>{teamBName}</span>
         {match.status === "completed" && match.score_a !== null && match.score_b !== null && (
-          <span className="text-neutral-500"> · {match.score_a}-{match.score_b}</span>
+          <span className="panel-label"> · {match.score_a}-{match.score_b}</span>
+        )}
+        {match.status === "in_progress" && (
+          <span className="text-amber-600 dark:text-amber-400"> · en curso</span>
         )}
       </div>
 
@@ -329,7 +371,7 @@ function MatchRow({
             <select
               name="court_id"
               defaultValue={match.court_id ?? ""}
-              className="rounded bg-neutral-950 border border-neutral-700 px-1.5 py-1 text-xs"
+              className="rounded panel-input px-1.5 py-1 text-xs"
             >
               <option value="">Sin cancha</option>
               {courts.map((c) => (
@@ -343,9 +385,9 @@ function MatchRow({
               type="number"
               placeholder="Turno"
               defaultValue={match.turno ?? ""}
-              className="w-16 rounded bg-neutral-950 border border-neutral-700 px-1.5 py-1 text-xs"
+              className="w-16 rounded panel-input px-1.5 py-1 text-xs"
             />
-            <button type="submit" className="text-xs text-neutral-400 hover:text-neutral-100">
+            <button type="submit" className="text-xs panel-label hover:opacity-80">
               Guardar
             </button>
           </form>
@@ -355,24 +397,24 @@ function MatchRow({
               name="score_a"
               type="number"
               placeholder="A"
-              className="w-12 rounded bg-neutral-950 border border-neutral-700 px-1.5 py-1 text-xs"
+              className="w-12 rounded panel-input px-1.5 py-1 text-xs"
             />
             <input
               name="score_b"
               type="number"
               placeholder="B"
-              className="w-12 rounded bg-neutral-950 border border-neutral-700 px-1.5 py-1 text-xs"
+              className="w-12 rounded panel-input px-1.5 py-1 text-xs"
             />
             <select
               name="winner_id"
               defaultValue=""
-              className="rounded bg-neutral-950 border border-neutral-700 px-1.5 py-1 text-xs"
+              className="rounded panel-input px-1.5 py-1 text-xs"
             >
               <option value="">(o ganador directo)</option>
               <option value={match.team_a_id ?? ""}>{teamAName}</option>
               <option value={match.team_b_id ?? ""}>{teamBName}</option>
             </select>
-            <button type="submit" className="text-xs rounded bg-neutral-100 text-neutral-900 px-2 py-1">
+            <button type="submit" className="text-xs rounded panel-button-primary px-2 py-1">
               Cargar resultado
             </button>
           </form>

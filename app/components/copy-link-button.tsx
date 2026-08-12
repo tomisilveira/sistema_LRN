@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 
-export function CopyLinkButton({ path }: { path: string }) {
+export function CopyLinkButton({ path, label = "Copiar link" }: { path: string; label?: string }) {
   const [copied, setCopied] = useState(false);
 
   async function handleCopy() {
@@ -19,9 +19,9 @@ export function CopyLinkButton({ path }: { path: string }) {
   return (
     <button
       onClick={handleCopy}
-      className="text-xs rounded-md border border-neutral-700 px-2 py-1 hover:bg-neutral-800 transition-colors whitespace-nowrap"
+      className="text-xs rounded-md panel-button-secondary px-2 py-1 transition-colors whitespace-nowrap"
     >
-      {copied ? "¡Copiado!" : "Copiar link de juez"}
+      {copied ? "¡Copiado!" : label}
     </button>
   );
 }

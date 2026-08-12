@@ -37,11 +37,11 @@ export function BracketView({
         <div key={round} className="flex flex-col justify-around gap-4 min-w-[220px]">
           <p className="text-xs text-neutral-500 uppercase tracking-wide">{roundName(round)}</p>
           {ms.map((m) => (
-            <div key={m.id} className="rounded-lg border border-neutral-800 bg-neutral-900 p-3 space-y-2">
+            <div key={m.id} className="rounded-lg panel-card panel-surface p-3 space-y-2">
               <TeamLine name={m.team_a_name} won={m.winner_id === m.team_a_id} score={m.score_a} />
               <TeamLine name={m.team_b_name} won={m.winner_id === m.team_b_id} score={m.score_b} />
               {m.status === "completed" ? (
-                <p className="text-[10px] text-neutral-500">Jugado</p>
+                <p className="text-[10px] panel-label">Jugado</p>
               ) : m.team_a_name && m.team_b_name ? (
                 <form action={submit.bind(null, m.id)} className="flex flex-col gap-1.5 pt-1">
                   <div className="flex gap-1">
@@ -49,33 +49,30 @@ export function BracketView({
                       name="score_a"
                       type="number"
                       placeholder="A"
-                      className="w-full rounded bg-neutral-950 border border-neutral-700 px-1.5 py-1 text-xs"
+                      className="w-full rounded panel-input px-1.5 py-1 text-xs"
                     />
                     <input
                       name="score_b"
                       type="number"
                       placeholder="B"
-                      className="w-full rounded bg-neutral-950 border border-neutral-700 px-1.5 py-1 text-xs"
+                      className="w-full rounded panel-input px-1.5 py-1 text-xs"
                     />
                   </div>
                   <select
                     name="winner_id"
-                    className="w-full rounded bg-neutral-950 border border-neutral-700 px-1.5 py-1 text-xs"
+                    className="w-full rounded panel-input px-1.5 py-1 text-xs"
                     defaultValue=""
                   >
                     <option value="">(o elegir ganador directo)</option>
                     <option value={m.team_a_id ?? ""}>{m.team_a_name}</option>
                     <option value={m.team_b_id ?? ""}>{m.team_b_name}</option>
                   </select>
-                  <button
-                    type="submit"
-                    className="text-xs rounded bg-neutral-100 text-neutral-900 py-1 hover:bg-white transition-colors"
-                  >
+                  <button type="submit" className="text-xs rounded panel-button-primary py-1 transition-colors">
                     Guardar resultado
                   </button>
                 </form>
               ) : (
-                <p className="text-[10px] text-neutral-600">Esperando clasificados</p>
+                <p className="text-[10px] panel-label opacity-70">Esperando clasificados</p>
               )}
             </div>
           ))}
@@ -87,7 +84,7 @@ export function BracketView({
 
 function TeamLine({ name, won, score }: { name: string | null; won: boolean; score: number | null }) {
   return (
-    <div className={`flex items-center justify-between text-sm ${won ? "font-semibold" : "text-neutral-400"}`}>
+    <div className={`flex items-center justify-between text-sm ${won ? "font-semibold" : "panel-label"}`}>
       <span>{name ?? "Por definir"}</span>
       {score !== null && <span>{score}</span>}
     </div>

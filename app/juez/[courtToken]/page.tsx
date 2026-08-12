@@ -2,6 +2,8 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import type { Match } from "@/lib/database.types";
 import { ResultForm } from "./result-form";
 import { JudgeRealtime } from "./judge-realtime";
+import { StartMatchButton } from "./start-match-button";
+import { MatchTimer } from "./match-timer";
 
 export const dynamic = "force-dynamic";
 
@@ -67,18 +69,25 @@ export default async function JudgePage({ params }: { params: Promise<{ courtTok
             {teamName.get(current.team_a_id ?? "") ?? "?"} vs{" "}
             {teamName.get(current.team_b_id ?? "") ?? "?"}
           </p>
-          {current.team_a_id && current.team_b_id ? (
-            <ResultForm
-              courtToken={courtToken}
-              matchId={current.id}
-              teamAId={current.team_a_id}
-              teamBId={current.team_b_id}
-              teamAName={teamName.get(current.team_a_id) ?? "Equipo A"}
-              teamBName={teamName.get(current.team_b_id) ?? "Equipo B"}
-              allowDraws={allowDraws}
-            />
-          ) : (
+          {!current.team_a_id || !current.team_b_id ? (
             <p className="text-sm text-neutral-500">Todavía no están definidos los dos equipos.</p>
+          ) : current.status === "scheduled" ? (
+            <StartMatchButton courtToken={courtToken} matchId={current.id} />
+          ) : (
+            <>
+              {current.started_at && (
+                <MatchTimer courtToken={courtToken} matchId={current.id} startedAt={current.started_at} />
+              )}
+              <ResultForm
+                courtToken={courtToken}
+                matchId={current.id}
+                teamAId={current.team_a_id}
+                teamBId={current.team_b_id}
+                teamAName={teamName.get(current.team_a_id) ?? "Equipo A"}
+                teamBName={teamName.get(current.team_b_id) ?? "Equipo B"}
+                allowDraws={allowDraws}
+              />
+            </>
           )}
         </section>
       ) : (

@@ -30,12 +30,37 @@ export async function createCompetition(eventId: string, formData: FormData) {
   const pointsDraw = Number(formData.get("points_draw") ?? 1);
   const pointsLoss = Number(formData.get("points_loss") ?? 0);
   const qualifiersPerGroup = Number(formData.get("qualifiers_per_group") ?? 2);
+  const courtCountRaw = formData.get("court_count");
 
   if (!disciplineId || !categoryId) {
     throw new Error("Elegí disciplina y categoría.");
   }
 
   const supabase = await createServerSupabaseClient();
+
+  // Las canchas son del evento (se comparten entre disciplinas), pero recién
+  // se piden acá, al crear el primer torneo — que es cuando ya sabés cuántas
+  // hacen falta. Si el evento todavía no tiene ninguna, esta misma acción
+  // las crea antes de crear el torneo.
+  const { count: existingCourts } = await supabase
+    .from("courts")
+    .select("id", { count: "exact", head: true })
+    .eq("event_id", eventId);
+
+  if (!existingCourts) {
+    const courtCount = Math.max(1, Math.min(20, Number(courtCountRaw ?? 0)));
+    if (!courtCount) {
+      throw new Error("Ingresá cuántas canchas hay disponibles hoy.");
+    }
+    const courtRows = Array.from({ length: courtCount }, (_, i) => ({
+      event_id: eventId,
+      name: `Cancha ${i + 1}`,
+      sort_order: i,
+    }));
+    const { error: courtsError } = await supabase.from("courts").insert(courtRows);
+    if (courtsError) throw new Error(courtsError.message);
+  }
+
   const { error } = await supabase.from("competitions").insert({
     event_id: eventId,
     discipline_id: disciplineId,

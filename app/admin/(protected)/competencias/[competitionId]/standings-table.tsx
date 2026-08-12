@@ -36,7 +36,7 @@ export function StandingsTable({
           </thead>
           <tbody>
             {rows.map((r, i) => (
-              <tr key={r.team_id} className="border-t border-neutral-800">
+              <tr key={r.team_id} className="border-t border-neutral-200 dark:border-neutral-800">
                 <td className="py-1.5 pr-2 text-neutral-500">{i + 1}</td>
                 <td className="py-1.5 pr-2 font-medium">{r.team_name}</td>
                 <td className="text-center py-1.5 px-1">{r.played}</td>
@@ -54,9 +54,9 @@ export function StandingsTable({
                         min={1}
                         defaultValue={r.manual_rank_override ?? ""}
                         placeholder="-"
-                        className="w-12 rounded bg-neutral-900 border border-neutral-700 px-1 py-0.5 text-xs text-center"
+                        className="w-12 rounded panel-input px-1 py-0.5 text-xs text-center"
                       />
-                      <button type="submit" className="text-xs text-neutral-500 hover:text-neutral-200">
+                      <button type="submit" className="text-xs panel-label hover:opacity-80">
                         OK
                       </button>
                     </form>

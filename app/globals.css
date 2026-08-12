@@ -1,5 +1,11 @@
 @import "tailwindcss";
 
+/* Modo claro/oscuro del panel admin, activado por una clase .dark en un
+   ancestro (ver app/admin/layout.tsx) — no depende de prefers-color-scheme,
+   así el toggle manual del usuario manda. El resto del sitio (público, juez)
+   se queda con su look oscuro fijo de siempre. */
+@custom-variant dark (&:where(.dark, .dark *));
+
 :root {
   --background: #ffffff;
   --foreground: #171717;
@@ -23,4 +29,48 @@ body {
   background: var(--background);
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
+}
+
+/* ==========================================================================
+   Panel admin: clases semánticas de tema (modo claro/oscuro por .dark)
+   ========================================================================== */
+
+.panel-page {
+  @apply bg-neutral-50 text-neutral-900 dark:bg-neutral-950 dark:text-neutral-100;
+}
+
+.panel-card {
+  @apply border border-neutral-200 dark:border-neutral-800;
+}
+
+.panel-surface {
+  @apply bg-neutral-100 dark:bg-neutral-900;
+}
+
+.panel-input {
+  @apply bg-white border border-neutral-300 text-neutral-900 placeholder-neutral-400 dark:bg-neutral-900 dark:border-neutral-700 dark:text-neutral-100 dark:placeholder-neutral-500;
+}
+
+.panel-label {
+  @apply text-neutral-600 dark:text-neutral-400;
+}
+
+.panel-button-primary {
+  @apply bg-neutral-900 text-neutral-100 hover:bg-neutral-700 dark:bg-neutral-100 dark:text-neutral-900 dark:hover:bg-white;
+}
+
+.panel-button-secondary {
+  @apply border border-neutral-300 text-neutral-700 hover:bg-neutral-100 dark:border-neutral-700 dark:text-neutral-300 dark:hover:bg-neutral-800;
+}
+
+.panel-chip {
+  @apply bg-neutral-200 text-neutral-700 dark:bg-neutral-800 dark:text-neutral-300;
+}
+
+.panel-link-card {
+  @apply bg-neutral-100 hover:bg-neutral-200 dark:bg-neutral-900 dark:hover:bg-neutral-800;
+}
+
+.panel-nav {
+  @apply border-neutral-200 dark:border-neutral-800;
 }

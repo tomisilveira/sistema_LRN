@@ -28,25 +28,23 @@ export default async function AdminDashboardPage() {
             <Link
               key={ev.id}
               href={`/admin/eventos/${ev.id}`}
-              className="flex items-center justify-between rounded-lg border border-neutral-800 px-4 py-3 hover:border-neutral-600 transition-colors"
+              className="panel-link-card flex items-center justify-between rounded-lg px-4 py-3 transition-colors"
             >
               <div>
                 <p className="font-medium">{ev.name}</p>
-                <p className="text-sm text-neutral-500">{ev.event_date}</p>
+                <p className="text-sm panel-label">{ev.event_date}</p>
               </div>
-              <span className="text-xs rounded-full px-2 py-1 bg-neutral-800 text-neutral-300">
-                {statusLabel[ev.status]}
-              </span>
+              <span className="panel-chip text-xs rounded-full px-2 py-1">{statusLabel[ev.status]}</span>
             </Link>
           ))}
         </div>
       </section>
 
-      <section className="rounded-lg border border-neutral-800 p-4">
+      <section className="panel-card rounded-lg p-4">
         <h2 className="font-medium mb-3">Crear evento (jornada)</h2>
         <form action={createEvent} className="flex flex-wrap gap-3 items-end">
           <div className="flex-1 min-w-[200px]">
-            <label className="block text-sm text-neutral-400 mb-1" htmlFor="name">
+            <label className="block text-sm panel-label mb-1" htmlFor="name">
               Nombre
             </label>
             <input
@@ -54,11 +52,11 @@ export default async function AdminDashboardPage() {
               name="name"
               required
               placeholder="Regional Confluencia"
-              className="w-full rounded-md bg-neutral-900 border border-neutral-700 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-neutral-400"
+              className="w-full rounded-md panel-input px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-neutral-400"
             />
           </div>
           <div>
-            <label className="block text-sm text-neutral-400 mb-1" htmlFor="event_date">
+            <label className="block text-sm panel-label mb-1" htmlFor="event_date">
               Fecha
             </label>
             <input
@@ -66,13 +64,10 @@ export default async function AdminDashboardPage() {
               name="event_date"
               type="date"
               required
-              className="rounded-md bg-neutral-900 border border-neutral-700 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-neutral-400"
+              className="rounded-md panel-input px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-neutral-400"
             />
           </div>
-          <button
-            type="submit"
-            className="rounded-md bg-neutral-100 text-neutral-900 font-medium px-4 py-2 text-sm hover:bg-white transition-colors"
-          >
+          <button type="submit" className="rounded-md panel-button-primary font-medium px-4 py-2 text-sm">
             Crear
           </button>
         </form>
