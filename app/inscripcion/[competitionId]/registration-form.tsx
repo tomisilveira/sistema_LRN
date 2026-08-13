@@ -28,8 +28,8 @@ export function RegistrationForm({ competitionId }: { competitionId: string }) {
 
   if (submitted) {
     return (
-      <div className="rounded-lg border border-emerald-800 bg-emerald-950/30 p-4 space-y-3">
-        <p className="font-semibold">¡{submitted} está inscripto! 🎉</p>
+      <div className="rounded-lg border border-brand-green/50 bg-brand-green/10 p-4 space-y-3">
+        <p className="font-semibold text-brand-green">¡{submitted} está inscripto! 🎉</p>
         <p className="text-sm text-neutral-400">
           Nos vemos en la jornada. Si necesitás cambiar algo, contactá a la organización.
         </p>
@@ -53,7 +53,7 @@ export function RegistrationForm({ competitionId }: { competitionId: string }) {
           id="name"
           name="name"
           required
-          className="w-full rounded-md bg-neutral-900 border border-neutral-700 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-neutral-400"
+          className="w-full rounded-md bg-neutral-900 border border-neutral-700 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-teal focus:border-brand-teal"
         />
       </div>
       <div>
@@ -63,7 +63,7 @@ export function RegistrationForm({ competitionId }: { competitionId: string }) {
         <input
           id="institution"
           name="institution"
-          className="w-full rounded-md bg-neutral-900 border border-neutral-700 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-neutral-400"
+          className="w-full rounded-md bg-neutral-900 border border-neutral-700 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-teal focus:border-brand-teal"
         />
       </div>
       <div className="grid sm:grid-cols-2 gap-4">
@@ -75,7 +75,7 @@ export function RegistrationForm({ competitionId }: { competitionId: string }) {
             id="mentor_name"
             name="mentor_name"
             required
-            className="w-full rounded-md bg-neutral-900 border border-neutral-700 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-neutral-400"
+            className="w-full rounded-md bg-neutral-900 border border-neutral-700 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-teal focus:border-brand-teal"
           />
         </div>
         <div>
@@ -86,7 +86,7 @@ export function RegistrationForm({ competitionId }: { competitionId: string }) {
             id="mentor_contact"
             name="mentor_contact"
             required
-            className="w-full rounded-md bg-neutral-900 border border-neutral-700 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-neutral-400"
+            className="w-full rounded-md bg-neutral-900 border border-neutral-700 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-teal focus:border-brand-teal"
           />
         </div>
       </div>
@@ -99,7 +99,7 @@ export function RegistrationForm({ competitionId }: { competitionId: string }) {
           name="member_count"
           type="number"
           min={1}
-          className="w-32 rounded-md bg-neutral-900 border border-neutral-700 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-neutral-400"
+          className="w-32 rounded-md bg-neutral-900 border border-neutral-700 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-teal focus:border-brand-teal"
         />
       </div>
       <div>
@@ -110,14 +110,14 @@ export function RegistrationForm({ competitionId }: { competitionId: string }) {
           id="notes"
           name="notes"
           rows={2}
-          className="w-full rounded-md bg-neutral-900 border border-neutral-700 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-neutral-400"
+          className="w-full rounded-md bg-neutral-900 border border-neutral-700 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-teal focus:border-brand-teal"
         />
       </div>
       {error && <p className="text-sm text-red-400">{error}</p>}
       <button
         type="submit"
         disabled={pending}
-        className="w-full rounded-md bg-neutral-100 text-neutral-900 font-medium py-2.5 hover:bg-white transition-colors disabled:opacity-50"
+        className="w-full rounded-md bg-brand-teal text-white font-medium py-2.5 transition hover:brightness-90 disabled:opacity-50 disabled:hover:brightness-100"
       >
         {pending ? "Enviando..." : "Inscribir equipo"}
       </button>

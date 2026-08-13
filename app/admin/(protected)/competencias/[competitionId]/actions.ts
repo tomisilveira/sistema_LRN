@@ -112,6 +112,15 @@ export async function assignTeamToGroup(competitionId: string, teamId: string, g
   }
 
   if (groupId) {
+    const { data: team } = await supabase
+      .from("teams")
+      .select("accredited, homologated")
+      .eq("id", teamId)
+      .single();
+    if (!team?.accredited || !team?.homologated) {
+      throw new Error("Este equipo todavía no está acreditado y homologado — no puede entrar a un grupo.");
+    }
+
     const { error } = await supabase.from("group_teams").insert({ group_id: groupId, team_id: teamId });
     if (error) throw new Error(error.message);
   }
@@ -123,8 +132,15 @@ export async function randomDraw(competitionId: string, formData: FormData) {
   const numGroups = Math.max(1, Number(formData.get("num_groups") ?? 1));
   const supabase = await createServerSupabaseClient();
 
-  const { data: teams } = await supabase.from("teams").select("id").eq("competition_id", competitionId);
-  if (!teams || teams.length < 2) throw new Error("Cargá al menos 2 equipos antes de sortear.");
+  const { data: teams } = await supabase
+    .from("teams")
+    .select("id")
+    .eq("competition_id", competitionId)
+    .eq("accredited", true)
+    .eq("homologated", true);
+  if (!teams || teams.length < 2) {
+    throw new Error("Cargá al menos 2 equipos acreditados y homologados antes de sortear.");
+  }
 
   const { data: existingGroups } = await supabase
     .from("groups")

@@ -27,6 +27,8 @@ import { StandingsTable } from "./standings-table";
 import { BracketView, type BracketDisplayMatch } from "./bracket-view";
 import { RealtimeRefresh } from "./realtime-refresh";
 import { CopyLinkButton } from "@/app/components/copy-link-button";
+import { Breadcrumbs } from "@/app/components/breadcrumbs";
+import { competitionStatusLabel, competitionStatusChipClass } from "@/lib/labels";
 import { FormatAdvisory } from "./format-advisory";
 import { EditFormatForm } from "./edit-format-form";
 
@@ -116,16 +118,27 @@ export default async function CompetitionPage({
       <RealtimeRefresh competitionId={competitionId} />
 
       <div>
-        <h1 className="text-lg font-semibold">
-          {discipline?.name} — {category?.name}
-        </h1>
-        <p className="text-sm panel-label">
-          {event?.name} · {competition.status}
-        </p>
+        <Breadcrumbs
+          items={[
+            { label: "Eventos", href: "/admin" },
+            { label: event?.name ?? "", href: event ? `/admin/eventos/${event.id}` : undefined },
+            { label: `${discipline?.name} — ${category?.name}` },
+          ]}
+        />
+        <div className="flex items-center gap-2">
+          <h1 className="text-lg font-semibold">
+            {discipline?.name} — {category?.name}
+          </h1>
+          <span
+            className={`text-xs rounded-full px-2 py-0.5 font-medium ${competitionStatusChipClass[competition.status]}`}
+          >
+            {competitionStatusLabel[competition.status]}
+          </span>
+        </div>
       </div>
 
       {/* Formato del torneo */}
-      <section className="panel-card rounded-lg p-4 space-y-4">
+      <section className="panel-card rounded-xl p-4 space-y-4">
         <h2 className="font-medium">Formato del torneo</h2>
         <FormatAdvisory teamCount={(teams ?? []).length} courtCount={(courts ?? []).length} />
         {competition.status === "setup" ? (
@@ -139,7 +152,7 @@ export default async function CompetitionPage({
       </section>
 
       {/* Inscripción pública */}
-      <section className="panel-card rounded-lg p-4 flex flex-wrap items-center justify-between gap-3">
+      <section className="panel-card rounded-xl p-4 flex flex-wrap items-center justify-between gap-3">
         <div>
           <h2 className="font-medium">Inscripción pública de equipos</h2>
           <p className="text-xs panel-label mt-0.5">
@@ -166,40 +179,50 @@ export default async function CompetitionPage({
       </section>
 
       {/* Equipos */}
-      <section className="panel-card rounded-lg p-4 space-y-3">
+      <section className="panel-card rounded-xl p-4 space-y-3">
         <h2 className="font-medium">Equipos ({(teams ?? []).length})</h2>
         <div className="grid sm:grid-cols-2 gap-2">
-          {(teams ?? []).map((t: Team) => (
-            <div
-              key={t.id}
-              className="panel-surface flex items-center justify-between rounded-md px-3 py-2 text-sm"
-            >
-              <div>
-                <p>{t.name}</p>
-                {t.institution && <p className="text-xs panel-label">{t.institution}</p>}
-                {t.mentor_name && (
-                  <p className="text-xs panel-label opacity-80">
-                    {t.mentor_name} · {t.mentor_contact}
-                  </p>
-                )}
+          {(teams ?? []).map((t: Team) => {
+            const ready = t.accredited && t.homologated;
+            return (
+              <div
+                key={t.id}
+                className="panel-surface flex items-center justify-between rounded-md px-3 py-2 text-sm"
+              >
+                <div>
+                  <p>{t.name}</p>
+                  {t.institution && <p className="text-xs panel-label">{t.institution}</p>}
+                  {t.mentor_name && (
+                    <p className="text-xs panel-label opacity-80">
+                      {t.mentor_name} · {t.mentor_contact}
+                    </p>
+                  )}
+                  <span
+                    className={`inline-block mt-1 text-xs rounded-full px-2 py-0.5 font-medium ${
+                      ready ? "panel-chip-success" : "panel-chip-warning"
+                    }`}
+                  >
+                    {ready ? "✅ Acreditado y homologado" : "⏳ Falta acreditar/homologar"}
+                  </span>
+                </div>
+                <div className="flex items-center gap-2">
+                  {groupsList.length > 0 && ready && (
+                    <GroupAssignSelect
+                      competitionId={competitionId}
+                      teamId={t.id}
+                      groups={groupsList}
+                      currentGroupId={groupIdByTeamId.get(t.id) ?? null}
+                    />
+                  )}
+                  <form action={removeTeam.bind(null, competitionId, t.id)}>
+                    <button type="submit" className="text-xs panel-button-danger">
+                      Quitar
+                    </button>
+                  </form>
+                </div>
               </div>
-              <div className="flex items-center gap-2">
-                {groupsList.length > 0 && (
-                  <GroupAssignSelect
-                    competitionId={competitionId}
-                    teamId={t.id}
-                    groups={groupsList}
-                    currentGroupId={groupIdByTeamId.get(t.id) ?? null}
-                  />
-                )}
-                <form action={removeTeam.bind(null, competitionId, t.id)}>
-                  <button type="submit" className="text-xs text-red-400 hover:text-red-300">
-                    Quitar
-                  </button>
-                </form>
-              </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
         <form action={addTeamAction} className="flex flex-wrap gap-2">
           <input
@@ -220,7 +243,7 @@ export default async function CompetitionPage({
       </section>
 
       {/* Grupos */}
-      <section className="panel-card rounded-lg p-4 space-y-3">
+      <section className="panel-card rounded-xl p-4 space-y-3">
         <h2 className="font-medium">Grupos</h2>
         <div className="flex flex-wrap gap-2">
           {groupsList.map((g) => (
@@ -257,13 +280,14 @@ export default async function CompetitionPage({
           </form>
         </div>
         <p className="text-xs panel-label opacity-80">
-          El sorteo aleatorio borra y vuelve a repartir todas las asignaciones actuales.
+          El sorteo aleatorio borra y vuelve a repartir todas las asignaciones actuales. Solo
+          participan los equipos ya acreditados y homologados.
         </p>
       </section>
 
       {/* Posiciones */}
       {standingsByGroup.length > 0 && (
-        <section className="panel-card rounded-lg p-4 space-y-6">
+        <section className="panel-card rounded-xl p-4 space-y-6">
           <h2 className="font-medium">Tabla de posiciones</h2>
           {standingsByGroup.map(({ group, rows }) => (
             <StandingsTable
@@ -279,7 +303,7 @@ export default async function CompetitionPage({
       )}
 
       {/* Fixture / cronograma / resultados de grupo */}
-      <section className="panel-card rounded-lg p-4 space-y-3">
+      <section className="panel-card rounded-xl p-4 space-y-3">
         <div className="flex items-center justify-between">
           <h2 className="font-medium">Partidos de fase de grupos</h2>
           <form action={generateMatchesAction}>
@@ -308,14 +332,14 @@ export default async function CompetitionPage({
 
       {/* Cuadro eliminatorio */}
       {competition.format_type === "single_elimination" && (
-        <section className="panel-card rounded-lg p-4 space-y-4">
+        <section className="panel-card rounded-xl p-4 space-y-4">
           <div className="flex items-center justify-between">
             <h2 className="font-medium">Cuadro de eliminatoria simple</h2>
             {bracketDisplayMatches.length === 0 && (
               <form action={generateBracketAction}>
                 <button
                   type="submit"
-                  className="text-xs rounded-md panel-button-primary px-3 py-1.5 font-medium"
+                  className="text-xs rounded-md panel-button-accent px-3 py-1.5 font-medium"
                 >
                   Generar cuadro desde posiciones
                 </button>
@@ -361,7 +385,7 @@ function MatchRow({
           <span className="panel-label"> · {match.score_a}-{match.score_b}</span>
         )}
         {match.status === "in_progress" && (
-          <span className="text-amber-600 dark:text-amber-400"> · en curso</span>
+          <span className="text-brand-orange font-medium"> · en curso</span>
         )}
       </div>
 

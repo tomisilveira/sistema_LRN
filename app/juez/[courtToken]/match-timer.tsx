@@ -45,10 +45,10 @@ export function MatchTimer({
   const elapsed = now - new Date(startedAt).getTime();
 
   return (
-    <div className="flex items-center justify-between rounded-lg bg-neutral-900 px-4 py-3">
+    <div className="flex items-center justify-between rounded-lg bg-neutral-900 border border-brand-orange/30 px-4 py-3">
       <div>
         <p className="text-xs text-neutral-500 uppercase tracking-wide">En curso</p>
-        <p className="text-2xl font-mono font-bold tabular-nums">{formatElapsed(elapsed)}</p>
+        <p className="text-2xl font-mono font-bold tabular-nums text-brand-orange">{formatElapsed(elapsed)}</p>
       </div>
       <button
         onClick={handleCancel}

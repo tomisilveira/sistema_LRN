@@ -11,6 +11,17 @@
   --foreground: #171717;
 }
 
+/* Paleta de marca de la Liga Robótica Neuquina — genera solas las utilities
+   bg-brand-*, text-brand-*, border-brand-*, ring-brand-* (Tailwind v4). Se
+   usan en todo el sitio, no solo en el panel admin. */
+@theme {
+  --color-brand-teal: #09aeb5;
+  --color-brand-teal-dark: #134853;
+  --color-brand-orange: #f99f1b;
+  --color-brand-green: #5eb046;
+  --color-brand-pink: #ec008c;
+}
+
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
@@ -32,7 +43,8 @@ body {
 }
 
 /* ==========================================================================
-   Panel admin: clases semánticas de tema (modo claro/oscuro por .dark)
+   Panel admin: clases semánticas de tema (modo claro/oscuro por .dark) +
+   paleta de marca.
    ========================================================================== */
 
 .panel-page {
@@ -40,7 +52,7 @@ body {
 }
 
 .panel-card {
-  @apply border border-neutral-200 dark:border-neutral-800;
+  @apply border border-neutral-200 shadow-sm dark:border-neutral-800 dark:shadow-none;
 }
 
 .panel-surface {
@@ -48,7 +60,9 @@ body {
 }
 
 .panel-input {
-  @apply bg-white border border-neutral-300 text-neutral-900 placeholder-neutral-400 dark:bg-neutral-900 dark:border-neutral-700 dark:text-neutral-100 dark:placeholder-neutral-500;
+  @apply bg-white border border-neutral-300 text-neutral-900 placeholder-neutral-400 outline-none transition
+    focus:ring-2 focus:ring-brand-teal focus:border-brand-teal
+    dark:bg-neutral-900 dark:border-neutral-700 dark:text-neutral-100 dark:placeholder-neutral-500;
 }
 
 .panel-label {
@@ -56,19 +70,41 @@ body {
 }
 
 .panel-button-primary {
-  @apply bg-neutral-900 text-neutral-100 hover:bg-neutral-700 dark:bg-neutral-100 dark:text-neutral-900 dark:hover:bg-white;
+  @apply bg-brand-teal text-white transition hover:brightness-90 disabled:opacity-50 disabled:hover:brightness-100;
+}
+
+.panel-button-accent {
+  @apply bg-brand-orange text-neutral-900 transition hover:brightness-90 disabled:opacity-50 disabled:hover:brightness-100;
 }
 
 .panel-button-secondary {
-  @apply border border-neutral-300 text-neutral-700 hover:bg-neutral-100 dark:border-neutral-700 dark:text-neutral-300 dark:hover:bg-neutral-800;
+  @apply border border-brand-teal/40 text-brand-teal-dark hover:bg-brand-teal/10 transition
+    dark:text-brand-teal dark:border-brand-teal/50 dark:hover:bg-brand-teal/10;
+}
+
+.panel-button-danger {
+  @apply text-red-500 hover:text-red-600 dark:text-red-400 dark:hover:text-red-300 transition;
 }
 
 .panel-chip {
   @apply bg-neutral-200 text-neutral-700 dark:bg-neutral-800 dark:text-neutral-300;
 }
 
+.panel-chip-success {
+  @apply bg-brand-green/15 text-brand-green;
+}
+
+.panel-chip-warning {
+  @apply bg-brand-orange/15 text-brand-orange;
+}
+
+.panel-chip-brand {
+  @apply bg-brand-teal/15 text-brand-teal;
+}
+
 .panel-link-card {
-  @apply bg-neutral-100 hover:bg-neutral-200 dark:bg-neutral-900 dark:hover:bg-neutral-800;
+  @apply bg-neutral-100 hover:bg-neutral-200 dark:bg-neutral-900 dark:hover:bg-neutral-800
+    border-l-2 border-transparent hover:border-l-brand-teal transition;
 }
 
 .panel-nav {

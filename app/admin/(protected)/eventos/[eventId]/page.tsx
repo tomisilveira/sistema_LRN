@@ -4,12 +4,8 @@ import { createServerSupabaseClient } from "@/lib/supabase/server";
 import type { Competition, Court, Discipline, Category, EventRow } from "@/lib/database.types";
 import { addCourt, createCompetition, setEventStatusAction } from "./actions";
 import { CopyLinkButton } from "@/app/components/copy-link-button";
-
-const formatLabel: Record<Competition["format_type"], string> = {
-  groups_only: "Solo fase de grupos",
-  single_elimination: "Grupos + eliminatoria simple",
-  gold_silver: "Grupos + oro/plata (próximamente)",
-};
+import { Breadcrumbs } from "@/app/components/breadcrumbs";
+import { formatLabel, competitionStatusLabel, competitionStatusChipClass } from "@/lib/labels";
 
 export default async function EventPage({ params }: { params: Promise<{ eventId: string }> }) {
   const { eventId } = await params;
@@ -43,18 +39,27 @@ export default async function EventPage({ params }: { params: Promise<{ eventId:
     <div className="max-w-4xl mx-auto space-y-8">
       <div className="flex items-center justify-between">
         <div>
+          <Breadcrumbs items={[{ label: "Eventos", href: "/admin" }, { label: event.name }]} />
           <h1 className="text-lg font-semibold">{event.name}</h1>
           <p className="text-sm panel-label">{event.event_date}</p>
         </div>
-        <form action={setStatus.bind(null, event.status === "active" ? "finished" : "active")}>
-          <button type="submit" className="panel-chip text-xs rounded-full px-3 py-1.5 transition-colors">
-            {event.status === "active" ? "Marcar finalizado" : "Marcar activo"}
-          </button>
-        </form>
+        <div className="flex items-center gap-2">
+          {event.accreditation_token && (
+            <CopyLinkButton
+              path={`/acreditacion/${event.accreditation_token}`}
+              label="Copiar link de acreditación"
+            />
+          )}
+          <form action={setStatus.bind(null, event.status === "active" ? "finished" : "active")}>
+            <button type="submit" className="panel-chip text-xs rounded-full px-3 py-1.5 transition-colors">
+              {event.status === "active" ? "Marcar finalizado" : "Marcar activo"}
+            </button>
+          </form>
+        </div>
       </div>
 
       {/* Canchas */}
-      <section className="panel-card rounded-lg p-4 space-y-4">
+      <section className="panel-card rounded-xl p-4 space-y-4">
         <h2 className="font-medium">Canchas</h2>
         {hasCourts ? (
           <>
@@ -74,7 +79,7 @@ export default async function EventPage({ params }: { params: Promise<{ eventId:
                 name="name"
                 required
                 placeholder="Cancha extra"
-                className="flex-1 rounded-md panel-input px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-neutral-400"
+                className="flex-1 rounded-md panel-input px-3 py-2 text-sm"
               />
               <button
                 type="submit"
@@ -93,7 +98,7 @@ export default async function EventPage({ params }: { params: Promise<{ eventId:
       </section>
 
       {/* Competencias */}
-      <section className="panel-card rounded-lg p-4 space-y-4">
+      <section className="panel-card rounded-xl p-4 space-y-4">
         <h2 className="font-medium">Torneos (disciplina × categoría)</h2>
         <div className="space-y-2">
           {(competitions ?? []).length === 0 && (
@@ -114,7 +119,9 @@ export default async function EventPage({ params }: { params: Promise<{ eventId:
                   </p>
                   <p className="text-xs panel-label">{formatLabel[c.format_type]}</p>
                 </div>
-                <span className="text-xs panel-label">{c.status}</span>
+                <span className={`text-xs rounded-full px-2 py-0.5 font-medium ${competitionStatusChipClass[c.status]}`}>
+                  {competitionStatusLabel[c.status]}
+                </span>
               </Link>
             )
           )}
@@ -125,7 +132,7 @@ export default async function EventPage({ params }: { params: Promise<{ eventId:
           className="space-y-3 border-t border-neutral-200 dark:border-neutral-800 pt-4"
         >
           {!hasCourts && (
-            <div className="rounded-md border border-amber-600/50 bg-amber-500/10 dark:border-amber-700/50 dark:bg-amber-950/20 p-3 space-y-2">
+            <div className="rounded-md border border-brand-orange/40 bg-brand-orange/10 p-3 space-y-2">
               <label className="block text-sm font-medium">¿Cuántas canchas hay hoy?</label>
               <p className="text-xs panel-label">
                 Se comparten entre todas las disciplinas del evento — se cargan una sola vez, acá,
@@ -138,7 +145,7 @@ export default async function EventPage({ params }: { params: Promise<{ eventId:
                 max={20}
                 required
                 placeholder="Ej: 3"
-                className="w-24 rounded-md panel-input px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-neutral-400"
+                className="w-24 rounded-md panel-input px-3 py-2 text-sm"
               />
             </div>
           )}

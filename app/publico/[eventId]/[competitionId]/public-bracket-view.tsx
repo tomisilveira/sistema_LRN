@@ -26,7 +26,7 @@ export function PublicBracketView({ matches }: { matches: BracketDisplayMatch[] 
     <div className="flex gap-6 overflow-x-auto pb-2">
       {rounds.map(([round, ms]) => (
         <div key={round} className="flex flex-col justify-around gap-4 min-w-[200px]">
-          <p className="text-xs text-neutral-500 uppercase tracking-wide">{roundName(round)}</p>
+          <p className="text-xs text-brand-teal font-semibold uppercase tracking-wide">{roundName(round)}</p>
           {ms.map((m) => (
             <div key={m.id} className="rounded-lg border border-neutral-800 bg-neutral-900 p-3 space-y-2">
               <TeamLine name={m.team_a_name} won={m.winner_id === m.team_a_id} score={m.score_a} />
@@ -42,7 +42,7 @@ export function PublicBracketView({ matches }: { matches: BracketDisplayMatch[] 
 function TeamLine({ name, won, score }: { name: string | null; won: boolean; score: number | null }) {
   return (
     <div
-      className={`flex items-center justify-between text-sm ${won ? "font-semibold text-neutral-100" : "text-neutral-400"}`}
+      className={`flex items-center justify-between text-sm ${won ? "font-semibold text-brand-green" : "text-neutral-400"}`}
     >
       <span>{name ?? "Por definir"}</span>
       {score !== null && <span>{score}</span>}

@@ -38,6 +38,12 @@ funcionando en tiempo real, más:
   mientras el torneo esté en `setup`).
 - **Modo claro/oscuro** del panel admin (toggle en el header, no afecta la
   vista pública ni la del juez).
+- **Acreditación + homologación técnica**: link único del evento (sin
+  login, como el de cancha) donde la mesa de acreditación marca cada
+  equipo como acreditado y homologado, y carga cuántos participantes se
+  presentaron (solo cantidad, sin nombres — para saber cuántos premios
+  entregar). Un equipo que no esté acreditado **y** homologado no puede
+  entrar al sorteo de grupos ni asignarse a mano.
 
 El modelo de datos ya soporta las 10 combinaciones disciplina×categoría y
 tiene reservado el formato "oro/plata" (`gold_silver`), pero **su UI y
@@ -80,9 +86,13 @@ En el SQL Editor del proyecto Supabase, pegá y ejecutá, **en orden**:
 2. [`supabase/migrations/0002_features.sql`](supabase/migrations/0002_features.sql) —
    cronómetro de partido, inscripción pública (agrega columnas, no rompe
    datos existentes).
+3. [`supabase/migrations/0003_accreditation.sql`](supabase/migrations/0003_accreditation.sql) —
+   acreditación + homologación técnica, link de acreditación del evento
+   (agrega columnas y ajusta el grant público de `events` para no exponer
+   el token nuevo — no rompe datos existentes).
 
 (Si preferís la CLI de Supabase: `supabase link` y después `supabase db
-push` aplica ambas migraciones en orden.)
+push` aplica las tres migraciones en orden.)
 
 ## 3. Crear tu usuario admin
 
@@ -137,17 +147,23 @@ a la vista pública.
    torneo por cada disciplina/categoría que corre ese día.
 2. En cada torneo: revisar la sugerencia de formato, cargar equipos a mano
    o (recomendado) activar "Inscripción pública" y compartir ese link con
-   los mentores para que se auto-registren. Cuando estén todos, armar los
-   grupos (manual o sorteo), generar los partidos de todos-contra-todos y
-   asignarles cancha + turno.
-3. Compartir el link de cada cancha (botón "Copiar link de juez" en la
+   los mentores para que se auto-registren.
+3. El día del evento, compartir el link de acreditación (botón "Copiar
+   link de acreditación" junto al título del evento) con la mesa de
+   acreditación — ahí marcan cada equipo como acreditado y homologado, y
+   cargan cuántos participantes se presentaron. Un equipo que no esté
+   acreditado y homologado no aparece disponible para sortear/asignar a
+   grupo.
+4. Con los equipos ya acreditados: armar los grupos (manual o sorteo),
+   generar los partidos de todos-contra-todos y asignarles cancha + turno.
+5. Compartir el link de cada cancha (botón "Copiar link de juez" en la
    página del evento) con el juez correspondiente — lo abre en su celular,
    sin login. El juez abre cada partido cuando los equipos están listos
    (arranca el cronómetro) y carga el resultado al terminar.
-4. Compartir el link de `/publico/[eventId]/[competitionId]` de cada
+6. Compartir el link de `/publico/[eventId]/[competitionId]` de cada
    torneo para proyectar en pantalla o que la gente lo abra desde su
    celular.
-5. A medida que los jueces cargan resultados, las tablas de posiciones se
+7. A medida que los jueces cargan resultados, las tablas de posiciones se
    actualizan solas en el admin y en la vista pública. Cuando termina la
    fase de grupos de un torneo, el cuadro eliminatorio se genera solo (si
    el torneo es "grupos + eliminatoria"); si es "solo grupos", el torneo
@@ -161,6 +177,7 @@ app/
   juez/[courtToken] panel del juez de cancha (sin login, token por cancha, cronómetro)
   publico/          vista pública en vivo (sin login)
   inscripcion/[competitionId]  auto-registro público de equipos (sin login)
+  acreditacion/[eventToken]    check-in de acreditación + homologación técnica (sin login, token por evento)
   api/matches/[matchId]/result   endpoint que usa el juez para cargar resultados
   api/matches/[matchId]/start    endpoint que usa el juez para abrir/cancelar un partido
 lib/
@@ -173,6 +190,6 @@ lib/
   judge-auth.ts                     validación del token de cancha (compartida por los 2 endpoints del juez)
   round-robin.ts                    generación de partidos todos-contra-todos
   supabase/                         clientes de Supabase (browser, server, admin/service-role)
-supabase/migrations/  schema SQL + RLS + seeds (0001 init, 0002 features)
+supabase/migrations/  schema SQL + RLS + seeds (0001 init, 0002 features, 0003 acreditación)
 scripts/seed-demo.ts  datos de prueba
 ```

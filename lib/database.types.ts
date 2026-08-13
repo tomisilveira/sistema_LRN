@@ -1,4 +1,5 @@
-// Tipos manuales que reflejan supabase/migrations/0001_init.sql y 0002_features.sql.
+// Tipos manuales que reflejan supabase/migrations/0001_init.sql, 0002_features.sql
+// y 0003_accreditation.sql.
 // Si el schema cambia, actualizar este archivo a mano (no se generó con
 // `supabase gen types` porque el proyecto Supabase todavía no existe).
 
@@ -37,6 +38,10 @@ export interface EventRow {
   event_date: string;
   status: EventStatus;
   created_at: string;
+  // Solo viene en la respuesta cuando se consulta con sesión de admin o con
+  // la service-role key — `anon` no tiene grant de esta columna (ver
+  // 0003_accreditation.sql), así que en las páginas públicas viene undefined.
+  accreditation_token?: string;
 }
 
 export interface Competition {
@@ -64,6 +69,11 @@ export interface Team {
   mentor_contact: string | null;
   member_count: number | null;
   notes: string | null;
+  accredited: boolean;
+  accredited_at: string | null;
+  homologated: boolean;
+  homologated_at: string | null;
+  participants_present: number | null;
   created_at: string;
 }
 

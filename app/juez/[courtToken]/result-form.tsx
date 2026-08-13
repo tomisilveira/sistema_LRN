@@ -85,7 +85,7 @@ export function ResultForm({
           <button
             onClick={handleConfirm}
             disabled={submitting}
-            className="flex-1 rounded-md bg-neutral-100 text-neutral-900 font-medium py-2.5 text-sm disabled:opacity-50"
+            className="flex-1 rounded-md bg-brand-teal text-white font-medium py-2.5 text-sm transition hover:brightness-90 disabled:opacity-50 disabled:hover:brightness-100"
           >
             {submitting ? "Enviando..." : "Confirmar"}
           </button>
@@ -101,16 +101,16 @@ export function ResultForm({
       <div className="flex gap-2 text-xs">
         <button
           onClick={() => setMode("score")}
-          className={`flex-1 rounded-md py-1.5 border ${
-            mode === "score" ? "bg-neutral-100 text-neutral-900 border-neutral-100" : "border-neutral-700"
+          className={`flex-1 rounded-md py-1.5 border transition ${
+            mode === "score" ? "bg-brand-teal text-white border-brand-teal" : "border-neutral-700"
           }`}
         >
           Marcador
         </button>
         <button
           onClick={() => setMode("winner")}
-          className={`flex-1 rounded-md py-1.5 border ${
-            mode === "winner" ? "bg-neutral-100 text-neutral-900 border-neutral-100" : "border-neutral-700"
+          className={`flex-1 rounded-md py-1.5 border transition ${
+            mode === "winner" ? "bg-brand-teal text-white border-brand-teal" : "border-neutral-700"
           }`}
         >
           Ganó / perdió
@@ -127,7 +127,7 @@ export function ResultForm({
               min={0}
               value={scoreA}
               onChange={(e) => setScoreA(e.target.value)}
-              className="w-full text-center text-2xl rounded-lg bg-neutral-900 border border-neutral-700 py-3"
+              className="w-full text-center text-2xl rounded-lg bg-neutral-900 border border-neutral-700 py-3 outline-none focus:ring-2 focus:ring-brand-teal focus:border-brand-teal"
             />
           </div>
           <span className="text-neutral-600">—</span>
@@ -139,7 +139,7 @@ export function ResultForm({
               min={0}
               value={scoreB}
               onChange={(e) => setScoreB(e.target.value)}
-              className="w-full text-center text-2xl rounded-lg bg-neutral-900 border border-neutral-700 py-3"
+              className="w-full text-center text-2xl rounded-lg bg-neutral-900 border border-neutral-700 py-3 outline-none focus:ring-2 focus:ring-brand-teal focus:border-brand-teal"
             />
           </div>
         </div>
@@ -147,16 +147,16 @@ export function ResultForm({
         <div className="grid grid-cols-2 gap-2">
           <button
             onClick={() => setWinnerId(teamAId)}
-            className={`rounded-lg py-4 text-sm font-medium border ${
-              winnerId === teamAId ? "bg-neutral-100 text-neutral-900 border-neutral-100" : "border-neutral-700"
+            className={`rounded-lg py-4 text-sm font-medium border transition ${
+              winnerId === teamAId ? "bg-brand-teal text-white border-brand-teal" : "border-neutral-700"
             }`}
           >
             Ganó {teamAName}
           </button>
           <button
             onClick={() => setWinnerId(teamBId)}
-            className={`rounded-lg py-4 text-sm font-medium border ${
-              winnerId === teamBId ? "bg-neutral-100 text-neutral-900 border-neutral-100" : "border-neutral-700"
+            className={`rounded-lg py-4 text-sm font-medium border transition ${
+              winnerId === teamBId ? "bg-brand-teal text-white border-brand-teal" : "border-neutral-700"
             }`}
           >
             Ganó {teamBName}
@@ -173,7 +173,7 @@ export function ResultForm({
         disabled={
           !canSubmit || (mode === "score" && !allowDraws && scoreA !== "" && scoreB !== "" && scoreA === scoreB)
         }
-        className="w-full rounded-md bg-neutral-100 text-neutral-900 font-medium py-3 disabled:opacity-40"
+        className="w-full rounded-md bg-brand-teal text-white font-medium py-3 transition hover:brightness-90 disabled:opacity-40 disabled:hover:brightness-100"
       >
         Cargar resultado
       </button>

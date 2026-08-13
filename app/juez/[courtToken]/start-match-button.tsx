@@ -37,7 +37,7 @@ export function StartMatchButton({ courtToken, matchId }: { courtToken: string; 
       <button
         onClick={handleStart}
         disabled={loading}
-        className="w-full rounded-md bg-neutral-100 text-neutral-900 font-semibold py-3 disabled:opacity-50"
+        className="w-full rounded-md bg-brand-orange text-neutral-900 font-semibold py-3 transition hover:brightness-90 disabled:opacity-50 disabled:hover:brightness-100"
       >
         {loading ? "Abriendo..." : "Iniciar partido"}
       </button>

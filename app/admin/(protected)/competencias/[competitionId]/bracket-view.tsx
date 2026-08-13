@@ -37,7 +37,7 @@ export function BracketView({
         <div key={round} className="flex flex-col justify-around gap-4 min-w-[220px]">
           <p className="text-xs text-neutral-500 uppercase tracking-wide">{roundName(round)}</p>
           {ms.map((m) => (
-            <div key={m.id} className="rounded-lg panel-card panel-surface p-3 space-y-2">
+            <div key={m.id} className="rounded-xl panel-card panel-surface p-3 space-y-2">
               <TeamLine name={m.team_a_name} won={m.winner_id === m.team_a_id} score={m.score_a} />
               <TeamLine name={m.team_b_name} won={m.winner_id === m.team_b_id} score={m.score_b} />
               {m.status === "completed" ? (
@@ -84,7 +84,7 @@ export function BracketView({
 
 function TeamLine({ name, won, score }: { name: string | null; won: boolean; score: number | null }) {
   return (
-    <div className={`flex items-center justify-between text-sm ${won ? "font-semibold" : "panel-label"}`}>
+    <div className={`flex items-center justify-between text-sm ${won ? "font-semibold text-brand-green" : "panel-label"}`}>
       <span>{name ?? "Por definir"}</span>
       {score !== null && <span>{score}</span>}
     </div>
