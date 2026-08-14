@@ -2,7 +2,8 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import type { Competition, Court, Discipline, Category, EventRow } from "@/lib/database.types";
-import { addCourt, createCompetition, setCourtDiscipline, setEventStatusAction } from "./actions";
+import { addCourt, createCompetition, setEventStatusAction } from "./actions";
+import { CourtDisciplineSelect } from "./court-discipline-select";
 import { CopyLinkButton } from "@/app/components/copy-link-button";
 import { Breadcrumbs } from "@/app/components/breadcrumbs";
 import { TabbedLayout, type TabItem } from "@/app/components/tabbed-layout";
@@ -90,7 +91,6 @@ export default async function EventPage({ params }: { params: Promise<{ eventId:
               {(courts ?? []).map((court: Court) => {
                 const discipline = court.discipline_id ? disciplinesById.get(court.discipline_id) : null;
                 const colors = disciplineColor(discipline);
-                const setDisciplineAction = setCourtDiscipline.bind(null, eventId, court.id);
                 return (
                   <div
                     key={court.id}
@@ -100,24 +100,15 @@ export default async function EventPage({ params }: { params: Promise<{ eventId:
                       <span className="text-sm font-medium">{court.name}</span>
                       <CopyLinkButton path={`/juez/${court.access_token}`} label="Link de juez" />
                     </div>
-                    <form action={setDisciplineAction} className="flex items-center gap-1.5">
+                    <div className="flex items-center gap-1.5">
                       <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${colors.dot}`} aria-hidden="true" />
-                      <select
-                        name="discipline_id"
-                        defaultValue={court.discipline_id ?? ""}
-                        className="flex-1 rounded panel-input px-1.5 py-1 text-xs"
-                      >
-                        <option value="">Sin disciplina asignada</option>
-                        {(disciplines ?? []).map((d: Discipline) => (
-                          <option key={d.id} value={d.id}>
-                            {d.name}
-                          </option>
-                        ))}
-                      </select>
-                      <button type="submit" className="text-xs panel-label hover:opacity-80 shrink-0">
-                        Guardar
-                      </button>
-                    </form>
+                      <CourtDisciplineSelect
+                        eventId={eventId}
+                        courtId={court.id}
+                        disciplineId={court.discipline_id}
+                        disciplines={disciplines ?? []}
+                      />
+                    </div>
                   </div>
                 );
               })}

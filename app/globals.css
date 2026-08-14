@@ -90,7 +90,8 @@ body {
 }
 
 .panel-chip {
-  @apply bg-neutral-200 text-neutral-700 dark:bg-neutral-800 dark:text-neutral-300;
+  @apply bg-neutral-200 border border-neutral-300 text-neutral-700
+    dark:bg-neutral-800 dark:border-neutral-700 dark:text-neutral-300;
 }
 
 .panel-chip-success {

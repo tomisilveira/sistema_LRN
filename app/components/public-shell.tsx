@@ -17,7 +17,7 @@ export function PublicShell({ children }: { children: React.ReactNode }) {
         {"try{if(localStorage.getItem('lrn-public-theme')==='dark'){document.getElementById('public-theme-root').classList.add('dark');}}catch(e){}"}
       </Script>
 
-      <header className="panel-nav panel-page border-b sticky top-0 z-20">
+      <header className="panel-nav panel-page border-b shadow-sm sticky top-0 z-20">
         <div className="max-w-4xl mx-auto flex flex-wrap items-center justify-between gap-3 px-4 sm:px-6 py-3">
           <Link href="/" className="flex items-center gap-2">
             <span className="flex gap-1" aria-hidden="true">
