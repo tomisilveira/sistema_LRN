@@ -16,7 +16,8 @@ import {
   removeTeam,
   createGroup,
   randomDraw,
-  generateGroupMatches,
+  startTournament,
+  restartTournament,
   assignSchedule,
   submitResult,
   generateBracket,
@@ -136,7 +137,8 @@ export default async function CompetitionPage({
   const addTeamAction = addTeam.bind(null, competitionId);
   const createGroupAction = createGroup.bind(null, competitionId);
   const randomDrawAction = randomDraw.bind(null, competitionId);
-  const generateMatchesAction = generateGroupMatches.bind(null, competitionId);
+  const startTournamentAction = startTournament.bind(null, competitionId);
+  const restartTournamentAction = restartTournament.bind(null, competitionId);
   const assignScheduleAction = assignSchedule.bind(null, competitionId);
   const submitResultAction = submitResult.bind(null, competitionId);
   const generateBracketAction = generateBracket.bind(null, competitionId);
@@ -475,17 +477,35 @@ export default async function CompetitionPage({
     badge: (groupMatches ?? []).length || undefined,
     content: (
       <section className="panel-card rounded-xl p-4 space-y-3">
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between gap-3">
           <h2 className="font-medium">Partidos de fase de grupos</h2>
-          <form action={generateMatchesAction}>
-            <button type="submit" className="text-xs rounded-md panel-button-secondary px-3 py-1.5">
-              Generar todos-contra-todos
-            </button>
-          </form>
+          {(groupMatches ?? []).length === 0 ? (
+            <form action={startTournamentAction}>
+              <button
+                type="submit"
+                className="text-sm rounded-md panel-button-primary font-medium px-4 py-2 whitespace-nowrap"
+              >
+                ▶️ Iniciar torneo
+              </button>
+            </form>
+          ) : (
+            <form action={restartTournamentAction}>
+              <ConfirmSubmitButton
+                confirmMessage="Esto borra TODOS los partidos y resultados de este torneo (grupos y cuadro) y vuelve a 'Armando'. Los equipos y grupos no se tocan. ¿Reiniciar?"
+                className="text-xs rounded-md panel-button-danger px-3 py-1.5 whitespace-nowrap"
+              >
+                🔄 Reiniciar torneo
+              </ConfirmSubmitButton>
+            </form>
+          )}
         </div>
         <div className="space-y-2">
           {(groupMatches ?? []).length === 0 && (
-            <p className="text-sm panel-label">Todavía no se generaron partidos.</p>
+            <p className="text-sm panel-label">
+              Todavía no se generaron partidos. &ldquo;Iniciar torneo&rdquo; arma el
+              todos-contra-todos de cada grupo y le asigna cancha y turno a cada partido
+              automáticamente.
+            </p>
           )}
           {(groupMatches ?? []).map((m: Match) => (
             <MatchRow
@@ -605,7 +625,10 @@ function MatchRow({
 
       {match.status !== "completed" && (
         <>
-          <form action={onSchedule} className="flex items-center gap-1">
+          {/* Cancha y turno se asignan solos al iniciar el torneo — esto es
+              solo para pisar esa asignación a mano si hace falta (ej. una
+              cancha se rompe a mitad de la jornada). */}
+          <form action={onSchedule} className="flex items-center gap-1" title="Reasignar cancha/turno a mano">
             <select
               name="court_id"
               defaultValue={match.court_id ?? ""}
@@ -632,7 +655,7 @@ function MatchRow({
               defaultValue={match.turno ?? ""}
               className="w-16 rounded panel-input px-1.5 py-1 text-xs"
             />
-            <button type="submit" className="text-xs panel-label hover:opacity-80">
+            <button type="submit" className="text-xs panel-label hover:opacity-80" title="Reasignar">
               Guardar
             </button>
           </form>

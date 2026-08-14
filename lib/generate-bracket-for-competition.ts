@@ -2,6 +2,8 @@ import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { buildSeedOrder, generateBracketRounds } from "./bracket";
 import { persistBracket } from "./bracket-actions";
+import { autoScheduleAndPersist } from "./apply-auto-schedule";
+import type { SchedulableMatch } from "./auto-schedule";
 import type { Competition, GroupStandingRow } from "./database.types";
 
 /**
@@ -55,6 +57,22 @@ export async function generateBracketForCompetition(
 
   const rounds = generateBracketRounds(seedTeams);
   await persistBracket(supabase, competitionId, null, rounds);
+
+  // Asignación automática de cancha + turno para los partidos del cuadro
+  // que sí se van a jugar (los "bye" de la ronda 1 ya quedaron completed,
+  // sin partido real que jugar, no se les asigna cancha).
+  const { data: bracketMatches } = await supabase
+    .from("matches")
+    .select("id, team_a_id, team_b_id")
+    .eq("competition_id", competitionId)
+    .eq("phase", "bracket")
+    .neq("status", "completed");
+  await autoScheduleAndPersist(
+    supabase,
+    competition.event_id,
+    competition.discipline_id,
+    (bracketMatches ?? []) as SchedulableMatch[]
+  );
 
   await supabase.from("competitions").update({ status: "bracket_in_progress" }).eq("id", competitionId);
 }

@@ -7,6 +7,8 @@ import { advanceWinner } from "@/lib/bracket-actions";
 import { computeMatchOutcome } from "@/lib/match-logic";
 import { generateBracketForCompetition } from "@/lib/generate-bracket-for-competition";
 import { maybeAdvanceCompetitionPhase } from "@/lib/advance-competition-phase";
+import { autoScheduleAndPersist } from "@/lib/apply-auto-schedule";
+import type { SchedulableMatch } from "@/lib/auto-schedule";
 import type { Competition, Match } from "@/lib/database.types";
 
 function revalidateCompetition(competitionId: string) {
@@ -176,8 +178,30 @@ export async function randomDraw(competitionId: string, formData: FormData) {
   revalidateCompetition(competitionId);
 }
 
-export async function generateGroupMatches(competitionId: string) {
+/**
+ * Arranca el torneo: genera todos-contra-todos de cada grupo y le asigna
+ * cancha + turno a cada partido automáticamente (ver lib/auto-schedule.ts)
+ * — nada para asignar a mano. Solo se puede llamar una vez (mientras no
+ * haya partidos ya generados); para volver a armar el fixture hay que
+ * reiniciar el torneo primero.
+ */
+export async function startTournament(competitionId: string) {
   const supabase = await createServerSupabaseClient();
+
+  const { data: competition } = await supabase
+    .from("competitions")
+    .select("*")
+    .eq("id", competitionId)
+    .single<Competition>();
+  if (!competition) throw new Error("Competencia no encontrada.");
+
+  const { count: existingMatches } = await supabase
+    .from("matches")
+    .select("id", { count: "exact", head: true })
+    .eq("competition_id", competitionId);
+  if (existingMatches) {
+    throw new Error("Este torneo ya tiene partidos generados — reiniciá el torneo antes de volver a armarlo.");
+  }
 
   const { data: groups } = await supabase
     .from("groups")
@@ -203,10 +227,38 @@ export async function generateGroupMatches(competitionId: string) {
   }
   if (rows.length === 0) throw new Error("Ningún grupo tiene equipos suficientes todavía.");
 
-  const { error } = await supabase.from("matches").insert(rows);
+  const { data: inserted, error } = await supabase.from("matches").insert(rows).select("id, team_a_id, team_b_id");
   if (error) throw new Error(error.message);
 
+  await autoScheduleAndPersist(
+    supabase,
+    competition.event_id,
+    competition.discipline_id,
+    (inserted ?? []) as SchedulableMatch[]
+  );
+
   await supabase.from("competitions").update({ status: "groups_in_progress" }).eq("id", competitionId);
+
+  revalidateCompetition(competitionId);
+}
+
+/**
+ * Reinicia el torneo: borra TODOS sus partidos (grupo y cuadro, con sus
+ * resultados) y vuelve el estado a "setup". No toca equipos ni grupos —
+ * solo lo que dependía de "Iniciar torneo" para atrás, para poder
+ * corregir algo y volver a arrancar sin perder la inscripción/sorteo.
+ */
+export async function restartTournament(competitionId: string) {
+  const supabase = await createServerSupabaseClient();
+
+  const { error } = await supabase.from("matches").delete().eq("competition_id", competitionId);
+  if (error) throw new Error(error.message);
+
+  const { error: statusError } = await supabase
+    .from("competitions")
+    .update({ status: "setup" })
+    .eq("id", competitionId);
+  if (statusError) throw new Error(statusError.message);
 
   revalidateCompetition(competitionId);
 }
