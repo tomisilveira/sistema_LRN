@@ -32,12 +32,12 @@
   --font-mono: var(--font-geist-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
-}
+/* Antes había acá un @media (prefers-color-scheme: dark) que oscurecía
+   --background/--foreground según el SO — se sacó porque cada sección del
+   sitio ya decide su propio tema explícitamente (admin y el inicio público
+   con su toggle manual, público/juez con su oscuro fijo); dejarlo activo
+   podía asomar un fondo oscuro por los bordes del body en un SO con tema
+   oscuro, sin relación con el toggle de la página. */
 
 body {
   background: var(--background);
@@ -55,11 +55,11 @@ body {
 }
 
 .panel-card {
-  @apply border border-neutral-200 shadow-sm dark:border-neutral-800 dark:shadow-none;
+  @apply bg-white border border-neutral-200 shadow-sm dark:bg-neutral-900 dark:border-neutral-800 dark:shadow-none;
 }
 
 .panel-surface {
-  @apply bg-neutral-100 dark:bg-neutral-900;
+  @apply bg-neutral-100 border border-neutral-200 dark:bg-neutral-950 dark:border-neutral-800;
 }
 
 .panel-input {

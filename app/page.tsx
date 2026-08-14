@@ -1,14 +1,25 @@
 import Link from "next/link";
+import Script from "next/script";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import type { Competition, EventRow, Group, GroupStandingRow, Match, Team } from "@/lib/database.types";
-import { PublicRealtime } from "@/app/publico/[eventId]/[competitionId]/public-realtime";
-import { PublicStandingsTable } from "@/app/publico/[eventId]/[competitionId]/public-standings-table";
-import { PublicBracketView, type BracketDisplayMatch } from "@/app/publico/[eventId]/[competitionId]/public-bracket-view";
+import { disciplineColor } from "@/lib/discipline-colors";
+import { competitionStatusLabel, competitionStatusChipClass } from "@/lib/labels";
+import { HomeThemeToggle } from "./home-theme-toggle";
+import { HomeDisciplineMenu, type DisciplineTabItem } from "./home-discipline-menu";
+import { HomeStandingsTable } from "./home-standings-table";
+import { HomeBracketView, type BracketDisplayMatch } from "./home-bracket-view";
+import { HomeRealtime } from "./home-realtime";
 
 export const revalidate = 0;
 
+// Consulta anónima (sin login): `anon` solo tiene grant de columnas
+// puntuales sobre `events` (ver 0003_accreditation.sql) — pedir "*"
+// incluiría accreditation_token, sin grant, y la query entera falla con
+// "permission denied for table events".
+const EVENT_PUBLIC_COLUMNS = "id, name, event_date, status, created_at";
+
 type CompetitionWithNames = Competition & {
-  disciplines: { name: string } | null;
+  disciplines: { name: string; sort_order: number } | null;
   categories: { name: string } | null;
 };
 
@@ -16,12 +27,6 @@ const LIVE_STATUSES = ["groups_in_progress", "bracket_in_progress"];
 
 export default async function Home() {
   const supabase = await createServerSupabaseClient();
-
-  // Consulta anónima (sin login): `anon` solo tiene grant de columnas
-  // puntuales sobre `events` (ver 0003_accreditation.sql) — pedir "*"
-  // incluiría accreditation_token, sin grant, y la query entera falla con
-  // "permission denied for table events".
-  const EVENT_PUBLIC_COLUMNS = "id, name, event_date, status, created_at";
 
   // La jornada de hoy: como mucho un evento debería estar "activo" a la vez.
   const { data: activeEvents } = await supabase
@@ -36,13 +41,11 @@ export default async function Home() {
   if (activeEvent) {
     const { data } = await supabase
       .from("competitions")
-      .select("*, disciplines(name), categories(name)")
+      .select("*, disciplines(name, sort_order), categories(name)")
       .eq("event_id", activeEvent.id)
       .order("created_at");
     competitions = (data ?? []) as CompetitionWithNames[];
   }
-  const liveCompetitions = competitions.filter((c) => LIVE_STATUSES.includes(c.status));
-  const featured = liveCompetitions[0];
 
   let upcomingEvents: EventRow[] = [];
   if (!activeEvent) {
@@ -55,56 +58,75 @@ export default async function Home() {
     upcomingEvents = (data ?? []) as EventRow[];
   }
 
+  const tabItems = await Promise.all(competitions.map((c) => buildTabItem(supabase, c)));
+  const liveIndex = tabItems.findIndex((t) => t.isLive);
+  const defaultId = tabItems[liveIndex >= 0 ? liveIndex : 0]?.id;
+
   return (
-    <main className="min-h-screen bg-neutral-950 text-neutral-100">
-      <header className="flex items-center justify-between px-4 sm:px-6 py-4 border-b border-neutral-800">
-        <Link href="/" className="flex items-center gap-2">
-          <span className="flex gap-1" aria-hidden="true">
-            <span className="w-2 h-2 rounded-full bg-brand-teal" />
-            <span className="w-2 h-2 rounded-full bg-brand-orange" />
-            <span className="w-2 h-2 rounded-full bg-brand-pink" />
-            <span className="w-2 h-2 rounded-full bg-brand-green" />
-          </span>
-          <span className="font-semibold">Liga Robótica Neuquina</span>
-        </Link>
-        <Link
-          href="/admin/login"
-          className="text-xs rounded-full border border-neutral-700 text-neutral-300 px-3 py-1.5 hover:border-brand-teal hover:text-brand-teal transition-colors"
-        >
-          Ingresar como administrador
-        </Link>
+    <div id="home-theme-root" className="panel-page min-h-screen" suppressHydrationWarning>
+      {/* Arranca en claro; si el usuario ya había elegido oscuro, este script
+          lo aplica antes del primer paint (mismo patrón que el toggle del
+          admin, invertido: acá el default es claro). */}
+      <Script id="home-theme-init" strategy="beforeInteractive">
+        {"try{if(localStorage.getItem('lrn-public-theme')==='dark'){document.getElementById('home-theme-root').classList.add('dark');}}catch(e){}"}
+      </Script>
+
+      <header className="panel-nav border-b sticky top-0 z-20 panel-page">
+        <div className="max-w-4xl mx-auto flex flex-wrap items-center justify-between gap-3 px-4 sm:px-6 py-3">
+          <Link href="/" className="flex items-center gap-2">
+            <span className="flex gap-1" aria-hidden="true">
+              <span className="w-2 h-2 rounded-full bg-brand-teal" />
+              <span className="w-2 h-2 rounded-full bg-brand-orange" />
+              <span className="w-2 h-2 rounded-full bg-brand-pink" />
+              <span className="w-2 h-2 rounded-full bg-brand-green" />
+            </span>
+            <span className="font-semibold">Liga Robótica Neuquina</span>
+          </Link>
+          <nav className="flex flex-wrap items-center gap-2">
+            <Link href="/publico" className="text-xs rounded-full panel-chip px-3 py-1.5 hover:opacity-80 transition-opacity whitespace-nowrap">
+              Todos los eventos
+            </Link>
+            <HomeThemeToggle />
+            <Link
+              href="/admin/login"
+              className="text-xs rounded-full panel-button-primary px-3 py-1.5 whitespace-nowrap transition"
+            >
+              Ingresar como administrador
+            </Link>
+          </nav>
+        </div>
       </header>
 
-      <div className="max-w-4xl mx-auto p-6">
-        {featured ? (
-          <FeaturedCompetition event={activeEvent!} competition={featured} others={liveCompetitions.slice(1)} />
+      <main className="max-w-4xl mx-auto p-4 sm:p-6">
+        {activeEvent && tabItems.length > 0 ? (
+          <div className="space-y-6">
+            <HomeRealtime eventId={activeEvent.id} />
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-wide text-brand-teal-dark dark:text-brand-teal">
+                Jornada de hoy
+              </p>
+              <h1 className="text-xl sm:text-2xl font-bold mt-0.5">{activeEvent.name}</h1>
+              <p className="panel-label text-sm">{activeEvent.event_date}</p>
+            </div>
+            <HomeDisciplineMenu items={tabItems} defaultId={defaultId} />
+          </div>
         ) : activeEvent ? (
-          <ActiveEventNoLiveMatch event={activeEvent} competitions={competitions} />
+          <div className="space-y-2">
+            <h1 className="text-xl sm:text-2xl font-bold">{activeEvent.name}</h1>
+            <p className="panel-label text-sm">Todavía no hay torneos cargados en esta jornada.</p>
+          </div>
         ) : (
           <UpcomingEvents events={upcomingEvents} />
         )}
-
-        <p className="text-center text-xs text-neutral-600 mt-10">
-          <Link href="/publico" className="hover:text-neutral-400 transition-colors">
-            Ver todas las jornadas →
-          </Link>
-        </p>
-      </div>
-    </main>
+      </main>
+    </div>
   );
 }
 
-async function FeaturedCompetition({
-  event,
-  competition,
-  others,
-}: {
-  event: EventRow;
-  competition: CompetitionWithNames;
-  others: CompetitionWithNames[];
-}) {
-  const supabase = await createServerSupabaseClient();
-
+async function buildTabItem(
+  supabase: Awaited<ReturnType<typeof createServerSupabaseClient>>,
+  competition: CompetitionWithNames
+): Promise<DisciplineTabItem> {
   const [{ data: teams }, { data: groups }, { data: bracketMatches }] = await Promise.all([
     supabase.from("teams").select("*").eq("competition_id", competition.id),
     supabase.from("groups").select("*").eq("competition_id", competition.id).order("sort_order"),
@@ -138,123 +160,78 @@ async function FeaturedCompetition({
     team_b_name: m.team_b_id ? teamsById.get(m.team_b_id)?.name ?? null : null,
   }));
 
-  return (
-    <div className="space-y-8">
-      <PublicRealtime competitionId={competition.id} />
-      <div>
-        <p className="text-xs text-brand-orange font-semibold uppercase tracking-wide flex items-center gap-1.5">
-          <span className="w-1.5 h-1.5 rounded-full bg-brand-orange animate-pulse" aria-hidden="true" />
-          En vivo · {event.name}
-        </p>
-        <h1 className="text-2xl font-bold mt-1">
+  const colors = disciplineColor(competition.disciplines);
+  const isLive = LIVE_STATUSES.includes(competition.status);
+
+  const content = (
+    <div className="space-y-6">
+      <div className="flex items-center gap-2">
+        <h2 className="font-semibold">
           {competition.disciplines?.name} — {competition.categories?.name}
-        </h1>
+        </h2>
+        <span
+          className={`text-xs rounded-full px-2 py-0.5 font-medium ${competitionStatusChipClass[competition.status]}`}
+        >
+          {competitionStatusLabel[competition.status]}
+        </span>
       </div>
 
       {standingsByGroup.length > 0 && (
-        <section className="space-y-6">
-          <h2 className="text-sm font-semibold text-neutral-400 uppercase tracking-wide">
+        <section className="space-y-4">
+          <h3 className="text-xs font-semibold panel-label uppercase tracking-wide">
             Tabla de posiciones
-          </h2>
-          <div className="grid sm:grid-cols-2 gap-8">
+          </h3>
+          <div className="grid sm:grid-cols-2 gap-4">
             {standingsByGroup.map(({ group, rows }) => (
-              <PublicStandingsTable key={group.id} groupName={group.name} rows={rows} />
+              <HomeStandingsTable key={group.id} groupName={group.name} rows={rows} />
             ))}
           </div>
         </section>
       )}
 
       {bracketDisplayMatches.length > 0 && (
-        <section className="space-y-4">
-          <h2 className="text-sm font-semibold text-neutral-400 uppercase tracking-wide">
-            Cuadro eliminatorio
-          </h2>
-          <PublicBracketView matches={bracketDisplayMatches} />
+        <section className="space-y-3">
+          <h3 className="text-xs font-semibold panel-label uppercase tracking-wide">Cuadro eliminatorio</h3>
+          <HomeBracketView matches={bracketDisplayMatches} />
         </section>
       )}
 
       {standingsByGroup.length === 0 && bracketDisplayMatches.length === 0 && (
-        <p className="text-sm text-neutral-500">Todavía no hay grupos ni resultados cargados.</p>
-      )}
-
-      {others.length > 0 && (
-        <section className="pt-4 border-t border-neutral-800">
-          <p className="text-xs text-neutral-500 uppercase tracking-wide mb-2">También en vivo ahora</p>
-          <div className="flex flex-wrap gap-2">
-            {others.map((c) => (
-              <Link
-                key={c.id}
-                href={`/publico/${event.id}/${c.id}`}
-                className="text-sm rounded-full border border-neutral-800 px-3 py-1.5 hover:border-brand-teal hover:text-brand-teal transition-colors"
-              >
-                {c.disciplines?.name} — {c.categories?.name}
-              </Link>
-            ))}
-          </div>
-        </section>
+        <p className="text-sm panel-label">Todavía no hay grupos ni resultados cargados.</p>
       )}
     </div>
   );
-}
 
-function ActiveEventNoLiveMatch({
-  event,
-  competitions,
-}: {
-  event: EventRow;
-  competitions: CompetitionWithNames[];
-}) {
-  return (
-    <div className="space-y-6">
-      <div>
-        <p className="text-xs text-brand-teal font-semibold uppercase tracking-wide">Jornada de hoy</p>
-        <h1 className="text-2xl font-bold mt-1">{event.name}</h1>
-        <p className="text-neutral-500 text-sm mt-1">
-          Todavía no hay ningún torneo en curso — arrancan en breve.
-        </p>
-      </div>
-      <div className="space-y-2">
-        {competitions.length === 0 && (
-          <p className="text-sm text-neutral-500">Todavía no hay torneos cargados.</p>
-        )}
-        {competitions.map((c) => (
-          <Link
-            key={c.id}
-            href={`/publico/${event.id}/${c.id}`}
-            className="flex items-center justify-between rounded-lg border border-neutral-800 px-4 py-3 hover:border-neutral-600 transition-colors"
-          >
-            <p className="font-medium">
-              {c.disciplines?.name} — {c.categories?.name}
-            </p>
-            <span className="text-xs text-neutral-500">Ver →</span>
-          </Link>
-        ))}
-      </div>
-    </div>
-  );
+  return {
+    id: competition.id,
+    label: `${competition.disciplines?.name ?? "?"} — ${competition.categories?.name ?? "?"}`,
+    dotClass: colors.dot,
+    isLive,
+    content,
+  };
 }
 
 function UpcomingEvents({ events }: { events: EventRow[] }) {
   return (
     <div className="space-y-6">
       <div className="text-center space-y-2 py-8">
-        <h1 className="text-2xl font-bold">Liga Robótica Neuquina</h1>
-        <p className="text-neutral-400 text-sm">No hay ningún torneo en vivo en este momento.</p>
+        <h1 className="text-xl sm:text-2xl font-bold">Liga Robótica Neuquina</h1>
+        <p className="panel-label text-sm">No hay ningún torneo en vivo en este momento.</p>
       </div>
       <div>
-        <p className="text-xs text-neutral-500 uppercase tracking-wide mb-3">Próximas fechas</p>
+        <p className="text-xs panel-label uppercase tracking-wide mb-3">Próximas fechas</p>
         <div className="space-y-2">
           {events.length === 0 && (
-            <p className="text-sm text-neutral-500">Todavía no hay jornadas programadas.</p>
+            <p className="text-sm panel-label">Todavía no hay jornadas programadas.</p>
           )}
           {events.map((ev) => (
             <Link
               key={ev.id}
               href={`/publico/${ev.id}`}
-              className="flex items-center justify-between rounded-lg border border-neutral-800 px-4 py-3 hover:border-neutral-600 transition-colors"
+              className="panel-card flex items-center justify-between rounded-lg px-4 py-3 hover:brightness-95 dark:hover:brightness-125 transition"
             >
               <p className="font-medium">{ev.name}</p>
-              <span className="text-sm text-neutral-500">{ev.event_date}</span>
+              <span className="text-sm panel-label">{ev.event_date}</span>
             </Link>
           ))}
         </div>
