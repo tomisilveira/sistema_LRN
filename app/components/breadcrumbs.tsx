@@ -8,7 +8,10 @@ export interface BreadcrumbItem {
 /** Migas de pan para ubicarse en el drill-down Eventos › Evento › Torneo. */
 export function Breadcrumbs({ items }: { items: BreadcrumbItem[] }) {
   return (
-    <nav aria-label="Breadcrumb" className="text-sm panel-label mb-1">
+    <nav
+      aria-label="Breadcrumb"
+      className="panel-surface rounded-lg px-3 py-2 text-sm panel-label mb-4 -mt-2"
+    >
       <ol className="flex flex-wrap items-center gap-1.5">
         {items.map((item, i) => (
           <li key={i} className="flex items-center gap-1.5">

@@ -52,7 +52,10 @@ export default async function ProtectedAdminLayout({ children }: { children: Rea
             </span>
           </Link>
           <nav className="flex items-center gap-4">
-            <Link href="/admin" className="text-sm panel-label hover:text-brand-teal transition-colors">
+            <Link
+              href="/admin"
+              className="panel-chip text-sm rounded-full px-3 py-1.5 hover:bg-brand-teal/15 hover:text-brand-teal transition-colors"
+            >
               Eventos
             </Link>
             <ThemeToggle />

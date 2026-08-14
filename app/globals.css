@@ -20,6 +20,9 @@
   --color-brand-orange: #f99f1b;
   --color-brand-green: #5eb046;
   --color-brand-pink: #ec008c;
+  /* Quinto color, solo para el sistema de colores por disciplina (canchas y
+     torneos) — no forma parte de la paleta de marca original. */
+  --color-brand-violet: #8b5cf6;
 }
 
 @theme inline {

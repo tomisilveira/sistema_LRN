@@ -1,6 +1,6 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import type { Team } from "@/lib/database.types";
-import { TeamCheckinRow } from "./team-checkin-row";
+import { AccreditationBoard, type AccreditationGroup } from "./accreditation-board";
 
 export const dynamic = "force-dynamic";
 
@@ -46,6 +46,12 @@ export default async function AcreditacionPage({ params }: { params: Promise<{ e
     teamsByCompetition.set(t.competition_id, list);
   }
 
+  const groups: AccreditationGroup[] = competitionList.map((c) => ({
+    id: c.id,
+    label: `${c.disciplines?.name ?? ""} — ${c.categories?.name ?? ""}`,
+    teams: teamsByCompetition.get(c.id) ?? [],
+  }));
+
   const totalPresent = teamsList.reduce((sum, t) => sum + (t.participants_present ?? 0), 0);
 
   return (
@@ -55,31 +61,11 @@ export default async function AcreditacionPage({ params }: { params: Promise<{ e
         <h1 className="text-xl font-bold">Acreditación</h1>
       </header>
 
-      {competitionList.length === 0 && (
+      {competitionList.length === 0 ? (
         <p className="text-sm text-neutral-500">Todavía no hay torneos cargados en este evento.</p>
+      ) : (
+        <AccreditationBoard eventToken={eventToken} groups={groups} />
       )}
-
-      <div className="space-y-6">
-        {competitionList.map((c) => {
-          const list = teamsByCompetition.get(c.id) ?? [];
-          return (
-            <section key={c.id}>
-              <h2 className="text-sm font-semibold text-brand-teal uppercase tracking-wide mb-2">
-                {c.disciplines?.name} — {c.categories?.name}
-              </h2>
-              {list.length === 0 ? (
-                <p className="text-sm text-neutral-600">Sin equipos inscriptos todavía.</p>
-              ) : (
-                <div className="space-y-2">
-                  {list.map((t) => (
-                    <TeamCheckinRow key={t.id} eventToken={eventToken} team={t} />
-                  ))}
-                </div>
-              )}
-            </section>
-          );
-        })}
-      </div>
 
       <footer className="mt-8 pt-4 border-t border-neutral-800 text-sm text-neutral-400">
         Total participantes presentes:{" "}

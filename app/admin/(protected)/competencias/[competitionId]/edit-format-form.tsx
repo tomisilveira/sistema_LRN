@@ -59,9 +59,14 @@ export function EditFormatForm({ competitionId, competition }: { competitionId: 
         <input name="allow_draws" type="checkbox" defaultChecked={competition.allow_draws} className="rounded" />
         Esta disciplina admite empates (desmarcar para sumo)
       </label>
-      <button type="submit" className="rounded-md panel-button-secondary px-4 py-2 text-sm">
-        Guardar formato
-      </button>
+      <div className="flex gap-2">
+        <button type="submit" className="rounded-md panel-button-primary font-medium px-4 py-2 text-sm">
+          Guardar formato
+        </button>
+        <button type="reset" className="rounded-md panel-button-secondary px-4 py-2 text-sm">
+          Restablecer
+        </button>
+      </div>
     </form>
   );
 }

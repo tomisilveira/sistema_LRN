@@ -96,6 +96,9 @@ export interface Court {
   name: string;
   access_token: string;
   sort_order: number;
+  // Disciplina para la que está armada la cancha físicamente (fútbol, sumo,
+  // mini sumo...). Null en canchas viejas todavía sin clasificar.
+  discipline_id: string | null;
 }
 
 export interface CourtPublic {
@@ -103,6 +106,7 @@ export interface CourtPublic {
   event_id: string;
   name: string;
   sort_order: number;
+  discipline_id: string | null;
 }
 
 export interface Match {
