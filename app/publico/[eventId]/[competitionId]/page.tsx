@@ -51,8 +51,14 @@ export default async function PublicCompetitionPage({
 
   const standingsByGroup = await Promise.all(
     groupsList.map(async (g) => {
-      const { data } = await supabase.rpc("get_group_standings", { p_group_id: g.id });
-      return { group: g, rows: (data ?? []) as GroupStandingRow[] };
+      try {
+        const { data, error } = await supabase.rpc("get_group_standings", { p_group_id: g.id });
+        if (error) throw error;
+        return { group: g, rows: (data ?? []) as GroupStandingRow[] };
+      } catch (err) {
+        console.error(`get_group_standings falló para el grupo ${g.id}:`, err);
+        return { group: g, rows: [] as GroupStandingRow[] };
+      }
     })
   );
 

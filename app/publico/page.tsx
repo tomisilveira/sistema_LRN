@@ -12,9 +12,13 @@ const statusLabel: Record<EventRow["status"], string> = {
 
 export default async function PublicEventsPage() {
   const supabase = await createServerSupabaseClient();
+  // Consulta anónima (sin login): la tabla events solo tiene grant de
+  // columnas puntuales para `anon` (ver 0003_accreditation.sql) — pedir "*"
+  // incluiría accreditation_token, sin grant, y la query entera falla con
+  // "permission denied for table events".
   const { data: events } = await supabase
     .from("events")
-    .select("*")
+    .select("id, name, event_date, status, created_at")
     .order("event_date", { ascending: false });
 
   return (

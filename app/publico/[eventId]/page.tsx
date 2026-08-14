@@ -9,9 +9,12 @@ export default async function PublicEventPage({ params }: { params: Promise<{ ev
   const { eventId } = await params;
   const supabase = await createServerSupabaseClient();
 
+  // Ver comentario equivalente en app/publico/page.tsx: `anon` solo tiene
+  // grant de columnas puntuales sobre `events`, "*" rompe con permission
+  // denied.
   const { data: event } = await supabase
     .from("events")
-    .select("*")
+    .select("id, name, event_date, status, created_at")
     .eq("id", eventId)
     .maybeSingle<EventRow>();
   if (!event) notFound();
