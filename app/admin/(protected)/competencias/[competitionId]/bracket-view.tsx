@@ -32,50 +32,76 @@ export function BracketView({
   const submit = submitResult.bind(null, competitionId);
 
   return (
-    <div className="flex gap-6 overflow-x-auto pb-2">
-      {rounds.map(([round, ms]) => (
-        <div key={round} className="flex flex-col justify-around gap-4 min-w-[220px]">
-          <p className="text-xs text-neutral-500 uppercase tracking-wide">{roundName(round)}</p>
-          {ms.map((m) => (
-            <div key={m.id} className="rounded-xl panel-card panel-surface p-3 space-y-2">
-              <TeamLine name={m.team_a_name} won={m.winner_id === m.team_a_id} score={m.score_a} />
-              <TeamLine name={m.team_b_name} won={m.winner_id === m.team_b_id} score={m.score_b} />
-              {m.status === "completed" ? (
-                <p className="text-[10px] panel-label">Jugado</p>
-              ) : m.team_a_name && m.team_b_name ? (
-                <form action={submit.bind(null, m.id)} className="flex flex-col gap-1.5 pt-1">
-                  <div className="flex gap-1">
-                    <input
-                      name="score_a"
-                      type="number"
-                      placeholder="A"
-                      className="w-full rounded panel-input px-1.5 py-1 text-xs"
-                    />
-                    <input
-                      name="score_b"
-                      type="number"
-                      placeholder="B"
-                      className="w-full rounded panel-input px-1.5 py-1 text-xs"
-                    />
-                  </div>
-                  <select
-                    name="winner_id"
-                    className="w-full rounded panel-input px-1.5 py-1 text-xs"
-                    defaultValue=""
-                  >
-                    <option value="">(o elegir ganador directo)</option>
-                    <option value={m.team_a_id ?? ""}>{m.team_a_name}</option>
-                    <option value={m.team_b_id ?? ""}>{m.team_b_name}</option>
-                  </select>
-                  <button type="submit" className="text-xs rounded panel-button-primary py-1 transition-colors">
-                    Guardar resultado
-                  </button>
-                </form>
-              ) : (
-                <p className="text-[10px] panel-label opacity-70">Esperando clasificados</p>
-              )}
-            </div>
-          ))}
+    <div className="flex items-stretch gap-3 overflow-x-auto pb-2">
+      {rounds.map(([round, ms], ri) => (
+        <div key={round} className="flex flex-col min-w-[230px]">
+          <p className="text-xs text-brand-teal-dark dark:text-brand-teal font-semibold uppercase tracking-wide text-center pb-2 mb-2 border-b-2 border-brand-teal/30">
+            {roundName(round)}
+          </p>
+          <div
+            className="flex-1 flex flex-col justify-center"
+            style={{ gap: `${Math.pow(2, ri) * 1.1}rem` }}
+          >
+            {ms.map((m) => {
+              const decided = m.status === "completed";
+              return (
+                <div
+                  key={m.id}
+                  className={`rounded-xl panel-card p-3 space-y-2 border-l-4 ${
+                    decided ? "border-brand-green" : "border-neutral-300 dark:border-neutral-700"
+                  }`}
+                >
+                  <TeamLine
+                    name={m.team_a_name}
+                    won={m.winner_id !== null && m.winner_id === m.team_a_id}
+                    score={m.score_a}
+                  />
+                  <TeamLine
+                    name={m.team_b_name}
+                    won={m.winner_id !== null && m.winner_id === m.team_b_id}
+                    score={m.score_b}
+                  />
+                  {decided ? (
+                    <p className="text-[10px] panel-label">✅ Jugado</p>
+                  ) : m.team_a_name && m.team_b_name ? (
+                    <form action={submit.bind(null, m.id)} className="flex flex-col gap-1.5 pt-1">
+                      <div className="flex gap-1">
+                        <input
+                          name="score_a"
+                          type="number"
+                          placeholder="A"
+                          className="w-full rounded panel-input px-1.5 py-1 text-xs"
+                        />
+                        <input
+                          name="score_b"
+                          type="number"
+                          placeholder="B"
+                          className="w-full rounded panel-input px-1.5 py-1 text-xs"
+                        />
+                      </div>
+                      <select
+                        name="winner_id"
+                        className="w-full rounded panel-input px-1.5 py-1 text-xs"
+                        defaultValue=""
+                      >
+                        <option value="">(o elegir ganador directo)</option>
+                        <option value={m.team_a_id ?? ""}>{m.team_a_name}</option>
+                        <option value={m.team_b_id ?? ""}>{m.team_b_name}</option>
+                      </select>
+                      <button
+                        type="submit"
+                        className="text-xs rounded panel-button-primary py-1 font-medium transition-colors"
+                      >
+                        Guardar resultado
+                      </button>
+                    </form>
+                  ) : (
+                    <p className="text-[10px] panel-label opacity-70">Esperando clasificados</p>
+                  )}
+                </div>
+              );
+            })}
+          </div>
         </div>
       ))}
     </div>
@@ -85,8 +111,8 @@ export function BracketView({
 function TeamLine({ name, won, score }: { name: string | null; won: boolean; score: number | null }) {
   return (
     <div className={`flex items-center justify-between text-sm ${won ? "font-semibold text-brand-green" : "panel-label"}`}>
-      <span>{name ?? "Por definir"}</span>
-      {score !== null && <span>{score}</span>}
+      <span className="truncate">{won && "🏆 "}{name ?? "Por definir"}</span>
+      {score !== null && <span className="shrink-0 ml-2">{score}</span>}
     </div>
   );
 }

@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { notFound } from "next/navigation";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import type {
@@ -26,6 +27,8 @@ import {
 import { GroupAssignSelect } from "./group-assign-select";
 import { StandingsTable } from "./standings-table";
 import { MatchResultForm } from "./match-result-form";
+import { MatchScheduleForm } from "./match-schedule-form";
+import { TeamAccreditationControls } from "./team-accreditation-controls";
 import { BracketView, type BracketDisplayMatch } from "./bracket-view";
 import { RealtimeRefresh } from "./realtime-refresh";
 import { CopyLinkButton } from "@/app/components/copy-link-button";
@@ -86,11 +89,22 @@ export default async function CompetitionPage({
       .order("bracket_slot"),
   ]);
 
-  const [{ data: courtsRaw }, { data: allDisciplines }] = await Promise.all([
+  const [{ data: courtsRaw }, { data: allDisciplines }, { data: siblingCompetitionsRaw }] = await Promise.all([
     supabase.from("courts").select("*").eq("event_id", event?.id ?? "").order("sort_order"),
     supabase.from("disciplines").select("id, name"),
+    // Otros torneos del mismo evento — para poder saltar directo a otra
+    // disciplina/categoría sin volver por Eventos > pestaña Torneos.
+    supabase
+      .from("competitions")
+      .select("id, status, disciplines(name, sort_order), categories(name)")
+      .eq("event_id", competition.event_id)
+      .order("created_at"),
   ]);
   const disciplineNameById = new Map((allDisciplines ?? []).map((d: { id: string; name: string }) => [d.id, d.name]));
+  const siblingCompetitions = (siblingCompetitionsRaw ?? []) as unknown as (Pick<Competition, "id" | "status"> & {
+    disciplines: { name: string; sort_order: number } | null;
+    categories: { name: string } | null;
+  })[];
 
   // Las canchas se comparten entre torneos, pero conviene ver primero las
   // que ya están armadas para esta disciplina — evita elegir por error una
@@ -117,6 +131,18 @@ export default async function CompetitionPage({
     teamsByGroupId.set(gt.group_id, list);
   }
   const unassignedTeams = (teams ?? []).filter((t: Team) => !groupIdByTeamId.has(t.id));
+
+  // Pedido explícito del usuario: el torneo solo puede arrancar una vez que
+  // TODOS los equipos cargados están asignados a un grupo — antes se podía
+  // iniciar con equipos sueltos, que quedaban afuera del fixture sin avisar.
+  const startBlockedReason =
+    (teams ?? []).length === 0
+      ? "Cargá equipos antes de iniciar el torneo (pestaña Equipos)."
+      : groupsList.length === 0
+        ? "Creá los grupos y asigná los equipos antes de iniciar el torneo (pestaña Grupos)."
+        : unassignedTeams.length > 0
+          ? `Asigná ${unassignedTeams.length === 1 ? "el equipo que falta" : `los ${unassignedTeams.length} equipos que faltan`} a un grupo antes de iniciar el torneo (pestaña Grupos).`
+          : null;
 
   // Si la RPC de un grupo puntual falla (red, cold start, etc.), que se
   // pierda solo ese grupo y no toda la página — antes un error acá tiraba
@@ -244,31 +270,29 @@ export default async function CompetitionPage({
               </div>
             </ModalFormButton>
           </div>
+          <p className="text-xs panel-label -mt-1">
+            Acreditado y Homologado se pueden tildar acá mismo (queda igual que hacerlo desde el link de
+            acreditación del evento).
+          </p>
           <div className="grid sm:grid-cols-2 gap-2">
             {(teams ?? []).map((t: Team) => {
               const ready = t.accredited && t.homologated;
               return (
                 <div
                   key={t.id}
-                  className="panel-surface flex items-center justify-between rounded-md px-3 py-2 text-sm"
+                  className="panel-surface flex items-start justify-between gap-2 rounded-md px-3 py-2 text-sm"
                 >
-                  <div>
-                    <p>{t.name}</p>
+                  <div className="min-w-0">
+                    <p className="truncate">{t.name}</p>
                     {t.institution && <p className="text-xs panel-label">{t.institution}</p>}
                     {t.mentor_name && (
                       <p className="text-xs panel-label opacity-80">
                         {t.mentor_name} · {t.mentor_contact}
                       </p>
                     )}
-                    <span
-                      className={`inline-block mt-1 text-xs rounded-full px-2 py-0.5 font-medium ${
-                        ready ? "panel-chip-success" : "panel-chip-warning"
-                      }`}
-                    >
-                      {ready ? "✅ Acreditado y homologado" : "⏳ Falta acreditar/homologar"}
-                    </span>
+                    <TeamAccreditationControls competitionId={competitionId} team={t} />
                   </div>
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 shrink-0">
                     {groupsList.length > 0 && ready && (
                       <GroupAssignSelect
                         competitionId={competitionId}
@@ -348,46 +372,83 @@ export default async function CompetitionPage({
               Sin grupos todavía — creá uno vacío o sorteá los equipos con los botones de arriba.
             </p>
           ) : (
-            <div className="grid sm:grid-cols-2 gap-3">
-              {groupsList.map((g) => {
-                const groupTeams = teamsByGroupId.get(g.id) ?? [];
-                return (
-                  <div key={g.id} className="panel-surface rounded-md p-3 space-y-2">
-                    <div className="flex items-center justify-between">
-                      <h3 className="text-sm font-semibold">{g.name}</h3>
-                      <span className="text-xs panel-label">
-                        {groupTeams.length} equipo{groupTeams.length === 1 ? "" : "s"}
-                      </span>
+            <>
+              <p className="text-xs panel-label -mt-2">
+                El selector de cada fila mueve al equipo a otro grupo (o lo saca) al toque, sin ir a la
+                pestaña Equipos.
+              </p>
+              <div className="grid sm:grid-cols-2 gap-3">
+                {groupsList.map((g) => {
+                  const groupTeams = teamsByGroupId.get(g.id) ?? [];
+                  return (
+                    <div key={g.id} className="panel-surface rounded-md p-3 space-y-2">
+                      <div className="flex items-center justify-between">
+                        <h3 className="text-sm font-semibold">{g.name}</h3>
+                        <span className="text-xs panel-label">
+                          {groupTeams.length} equipo{groupTeams.length === 1 ? "" : "s"}
+                        </span>
+                      </div>
+                      {groupTeams.length === 0 ? (
+                        <p className="text-xs panel-label">Todavía no tiene equipos asignados.</p>
+                      ) : (
+                        <ul className="text-sm space-y-1.5">
+                          {groupTeams.map((t) => (
+                            <li key={t.id} className="flex items-center justify-between gap-2">
+                              <div className="min-w-0">
+                                <span className="truncate">{t.name}</span>
+                                {t.institution && (
+                                  <span className="text-xs panel-label ml-1">· {t.institution}</span>
+                                )}
+                              </div>
+                              <GroupAssignSelect
+                                competitionId={competitionId}
+                                teamId={t.id}
+                                groups={groupsList}
+                                currentGroupId={g.id}
+                              />
+                            </li>
+                          ))}
+                        </ul>
+                      )}
                     </div>
-                    {groupTeams.length === 0 ? (
-                      <p className="text-xs panel-label">Todavía no tiene equipos asignados.</p>
-                    ) : (
-                      <ul className="text-sm space-y-1">
-                        {groupTeams.map((t) => (
-                          <li key={t.id} className="flex items-center justify-between gap-2">
-                            <span>{t.name}</span>
-                            {t.institution && <span className="text-xs panel-label">{t.institution}</span>}
-                          </li>
-                        ))}
-                      </ul>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
+                  );
+                })}
+              </div>
+            </>
           )}
 
           {unassignedTeams.length > 0 && (
             <div className="pt-2 border-t border-neutral-200 dark:border-neutral-800">
               <p className="text-xs panel-label mb-1.5">
-                Sin grupo asignado ({unassignedTeams.length}):
+                Sin grupo asignado ({unassignedTeams.length}) — elegí grupo para el que ya estén listos:
               </p>
-              <div className="flex flex-wrap gap-1.5">
-                {unassignedTeams.map((t) => (
-                  <span key={t.id} className="panel-chip text-xs rounded-full px-2 py-0.5">
-                    {t.name}
-                  </span>
-                ))}
+              <div className="space-y-1.5">
+                {unassignedTeams.map((t) => {
+                  const ready = t.accredited && t.homologated;
+                  return (
+                    <div
+                      key={t.id}
+                      className="panel-surface flex items-center justify-between gap-2 rounded-md px-2.5 py-1.5 text-sm"
+                    >
+                      <span className="truncate">{t.name}</span>
+                      {groupsList.length > 0 && ready ? (
+                        <GroupAssignSelect
+                          competitionId={competitionId}
+                          teamId={t.id}
+                          groups={groupsList}
+                          currentGroupId={null}
+                        />
+                      ) : (
+                        <span
+                          className="panel-chip-warning text-xs rounded-full px-2 py-0.5 shrink-0"
+                          title="Falta acreditar y homologar a este equipo (pestaña Acreditación) antes de poder asignarlo a un grupo"
+                        >
+                          Falta acreditar
+                        </span>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
             </div>
           )}
@@ -455,7 +516,15 @@ export default async function CompetitionPage({
       label: "Posiciones",
       content: (
         <section className="panel-card rounded-xl p-4 space-y-6">
-          <h2 className="font-medium">Tabla de posiciones</h2>
+          <div>
+            <h2 className="font-medium">Tabla de posiciones</h2>
+            <p className="text-xs panel-label mt-0.5">
+              El orden se calcula solo por puntos y diferencia. La columna{" "}
+              <span className="font-medium">Orden manual</span> es para forzar el puesto de un equipo a
+              mano (ej. para resolver un desempate) — escribí el puesto y salí del campo para guardar;
+              dejalo vacío para volver al orden automático.
+            </p>
+          </div>
           {standingsByGroup.map(({ group, rows }) => (
             <StandingsTable
               key={group.id}
@@ -480,14 +549,23 @@ export default async function CompetitionPage({
         <div className="flex items-center justify-between gap-3">
           <h2 className="font-medium">Partidos de fase de grupos</h2>
           {(groupMatches ?? []).length === 0 ? (
-            <form action={startTournamentAction}>
-              <button
-                type="submit"
-                className="text-sm rounded-md panel-button-primary font-medium px-4 py-2 whitespace-nowrap"
+            startBlockedReason ? (
+              <span
+                className="text-xs rounded-md panel-chip-warning px-3 py-2 whitespace-nowrap"
+                title={startBlockedReason}
               >
-                ▶️ Iniciar torneo
-              </button>
-            </form>
+                🔒 Iniciar torneo
+              </span>
+            ) : (
+              <form action={startTournamentAction}>
+                <button
+                  type="submit"
+                  className="text-sm rounded-md panel-button-primary font-medium px-4 py-2 whitespace-nowrap"
+                >
+                  ▶️ Iniciar torneo
+                </button>
+              </form>
+            )
           ) : (
             <form action={restartTournamentAction}>
               <ConfirmSubmitButton
@@ -502,9 +580,9 @@ export default async function CompetitionPage({
         <div className="space-y-2">
           {(groupMatches ?? []).length === 0 && (
             <p className="text-sm panel-label">
-              Todavía no se generaron partidos. &ldquo;Iniciar torneo&rdquo; arma el
-              todos-contra-todos de cada grupo y le asigna cancha y turno a cada partido
-              automáticamente.
+              {startBlockedReason
+                ? startBlockedReason
+                : <>&ldquo;Iniciar torneo&rdquo; arma el todos-contra-todos de cada grupo y le asigna cancha y turno a cada partido automáticamente.</>}
             </p>
           )}
           {(groupMatches ?? []).map((m: Match) => (
@@ -517,7 +595,7 @@ export default async function CompetitionPage({
               competitionDisciplineId={competition.discipline_id}
               disciplineNameById={disciplineNameById}
               allowDraws={competition.allow_draws}
-              onSchedule={assignScheduleAction.bind(null, m.id)}
+              onSchedule={assignScheduleAction}
               onResult={submitResultAction.bind(null, m.id)}
             />
           ))}
@@ -528,27 +606,31 @@ export default async function CompetitionPage({
 
   if (competition.format_type === "single_elimination") {
     tabs.push({
-      id: "cuadro",
-      label: "Cuadro",
+      id: "fase-final",
+      label: "Fase Final",
+      badge: bracketDisplayMatches.length || undefined,
       content: (
         <section className="panel-card rounded-xl p-4 space-y-4">
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between gap-3">
             <h2 className="font-medium">Cuadro de eliminatoria simple</h2>
             {bracketDisplayMatches.length === 0 && (
               <form action={generateBracketAction}>
                 <button
                   type="submit"
-                  className="text-xs rounded-md panel-button-accent px-3 py-1.5 font-medium"
+                  className="text-xs rounded-md panel-button-accent px-3 py-1.5 font-medium whitespace-nowrap"
+                  title="Normalmente no hace falta: se arma solo apenas se completa el último partido de grupos."
                 >
-                  Generar cuadro desde posiciones
+                  Generar ahora
                 </button>
               </form>
             )}
           </div>
           {bracketDisplayMatches.length === 0 ? (
             <p className="text-sm panel-label">
-              Se genera con los clasificados de cada grupo ({competition.qualifiers_per_group} por grupo)
-              una vez que la fase de grupos esté cerrada.
+              Se arma solo, con los clasificados de cada grupo ({competition.qualifiers_per_group} por
+              grupo), apenas se carga el resultado del último partido de la fase de grupos — no hace
+              falta ningún paso manual. El botón de arriba es solo para forzarlo antes de tiempo si hiciera
+              falta.
             </p>
           ) : (
             <BracketView competitionId={competitionId} matches={bracketDisplayMatches} />
@@ -581,6 +663,31 @@ export default async function CompetitionPage({
             {competitionStatusLabel[competition.status]}
           </span>
         </div>
+
+        {siblingCompetitions.length > 1 && (
+          <nav aria-label="Otros torneos del evento" className="flex flex-wrap items-center gap-1.5 mt-3">
+            <span className="text-xs panel-label mr-0.5">Cambiar de torneo:</span>
+            {siblingCompetitions.map((c) => {
+              const isCurrent = c.id === competitionId;
+              const sColors = disciplineColor(c.disciplines);
+              return (
+                <Link
+                  key={c.id}
+                  href={`/admin/competencias/${c.id}`}
+                  aria-current={isCurrent ? "true" : undefined}
+                  className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium transition-colors ${
+                    isCurrent
+                      ? "panel-button-primary"
+                      : "panel-chip hover:bg-neutral-300 dark:hover:bg-neutral-700"
+                  }`}
+                >
+                  <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${sColors.dot}`} aria-hidden="true" />
+                  {c.disciplines?.name} — {c.categories?.name}
+                </Link>
+              );
+            })}
+          </nav>
+        )}
       </div>
 
       <TabbedLayout items={tabs} />
@@ -606,69 +713,71 @@ function MatchRow({
   competitionDisciplineId: string;
   disciplineNameById: Map<string, string>;
   allowDraws: boolean;
-  onSchedule: (formData: FormData) => Promise<void>;
+  onSchedule: (matchId: string, formData: FormData) => Promise<void>;
   onResult: (formData: FormData) => Promise<void>;
 }) {
+  const courtName = match.court_id ? courts.find((c) => c.id === match.court_id)?.name : null;
+
   return (
-    <div className="panel-surface rounded-md px-3 py-2 flex flex-wrap items-center gap-3 text-sm">
-      <div className="min-w-[180px] flex-1">
-        <span className={match.winner_id === match.team_a_id ? "font-semibold" : ""}>{teamAName}</span>
-        {" vs "}
-        <span className={match.winner_id === match.team_b_id ? "font-semibold" : ""}>{teamBName}</span>
-        {match.status === "completed" && match.score_a !== null && match.score_b !== null && (
-          <span className="panel-label"> · {match.score_a}-{match.score_b}</span>
-        )}
-        {match.status === "in_progress" && (
-          <span className="text-brand-orange font-medium"> · en curso</span>
+    <div className="panel-surface rounded-lg px-3 py-2.5 space-y-2.5 text-sm">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div className="min-w-[180px]">
+          <span className={match.winner_id === match.team_a_id ? "font-semibold" : ""}>{teamAName}</span>
+          {" vs "}
+          <span className={match.winner_id === match.team_b_id ? "font-semibold" : ""}>{teamBName}</span>
+          {match.status === "completed" && match.score_a !== null && match.score_b !== null && (
+            <span className="panel-label"> · {match.score_a}-{match.score_b}</span>
+          )}
+          {match.status === "in_progress" && (
+            <span className="text-brand-orange font-medium"> · en curso</span>
+          )}
+        </div>
+        {match.status === "completed" ? (
+          <span className="panel-chip-success text-xs rounded-full px-2 py-0.5 font-medium shrink-0">
+            ✅ Jugado
+          </span>
+        ) : courtName ? (
+          <span className="panel-chip text-xs rounded-full px-2 py-0.5 shrink-0">
+            🏟 {courtName}
+            {match.turno !== null ? ` · Turno ${match.turno}` : ""}
+          </span>
+        ) : (
+          <span className="panel-chip-warning text-xs rounded-full px-2 py-0.5 shrink-0">
+            Sin cancha asignada
+          </span>
         )}
       </div>
 
       {match.status !== "completed" && (
-        <>
+        <div className="flex flex-wrap items-start gap-x-5 gap-y-2 pt-2 border-t border-neutral-200 dark:border-neutral-800">
           {/* Cancha y turno se asignan solos al iniciar el torneo — esto es
               solo para pisar esa asignación a mano si hace falta (ej. una
               cancha se rompe a mitad de la jornada). */}
-          <form action={onSchedule} className="flex items-center gap-1" title="Reasignar cancha/turno a mano">
-            <select
-              name="court_id"
-              defaultValue={match.court_id ?? ""}
-              className="rounded panel-input px-1.5 py-1 text-xs"
-            >
-              <option value="">Sin cancha</option>
-              {courts.map((c) => {
-                const otherDiscipline =
-                  c.discipline_id && c.discipline_id !== competitionDisciplineId
-                    ? disciplineNameById.get(c.discipline_id)
-                    : null;
-                return (
-                  <option key={c.id} value={c.id}>
-                    {c.name}
-                    {otherDiscipline ? ` (⚠ ${otherDiscipline})` : ""}
-                  </option>
-                );
-              })}
-            </select>
-            <input
-              name="turno"
-              type="number"
-              placeholder="Turno"
-              defaultValue={match.turno ?? ""}
-              className="w-16 rounded panel-input px-1.5 py-1 text-xs"
+          <div className="flex items-center gap-2">
+            <span className="text-[11px] uppercase tracking-wide panel-label shrink-0">Cancha/turno</span>
+            <MatchScheduleForm
+              matchId={match.id}
+              courtId={match.court_id}
+              turno={match.turno}
+              courts={courts}
+              competitionDisciplineId={competitionDisciplineId}
+              disciplineNameById={disciplineNameById}
+              onSchedule={onSchedule}
             />
-            <button type="submit" className="text-xs panel-label hover:opacity-80" title="Reasignar">
-              Guardar
-            </button>
-          </form>
+          </div>
 
-          <MatchResultForm
-            action={onResult}
-            teamAId={match.team_a_id}
-            teamBId={match.team_b_id}
-            teamAName={teamAName}
-            teamBName={teamBName}
-            allowDraws={allowDraws}
-          />
-        </>
+          <div className="flex items-center gap-2">
+            <span className="text-[11px] uppercase tracking-wide panel-label shrink-0">Resultado</span>
+            <MatchResultForm
+              action={onResult}
+              teamAId={match.team_a_id}
+              teamBId={match.team_b_id}
+              teamAName={teamAName}
+              teamBName={teamBName}
+              allowDraws={allowDraws}
+            />
+          </div>
+        </div>
       )}
     </div>
   );

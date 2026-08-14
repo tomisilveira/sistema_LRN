@@ -51,19 +51,27 @@ export default async function PublicEventPage({ params }: { params: Promise<{ ev
             <Link
               key={c.id}
               href={`/publico/${eventId}/${c.id}`}
-              className={`panel-card flex items-center justify-between rounded-lg border-l-4 ${colors.border} px-4 py-3 hover:brightness-95 dark:hover:brightness-125 transition`}
+              className={`panel-card-button group flex items-center justify-between gap-3 rounded-xl border-l-4 ${colors.border} px-4 py-3.5`}
             >
-              <div className="flex items-center gap-2">
-                <span className={`w-2 h-2 rounded-full ${colors.dot}`} aria-hidden="true" />
-                <p className="font-medium">
+              <div className="flex items-center gap-2 min-w-0">
+                <span className={`w-2 h-2 rounded-full shrink-0 ${colors.dot}`} aria-hidden="true" />
+                <p className="font-medium truncate">
                   {c.disciplines?.name} — {c.categories?.name}
                 </p>
               </div>
-              <span
-                className={`text-xs rounded-full px-2 py-0.5 font-medium ${competitionStatusChipClass[c.status]}`}
-              >
-                {competitionStatusLabel[c.status]}
-              </span>
+              <div className="flex items-center gap-2 shrink-0">
+                <span
+                  className={`text-xs rounded-full px-2 py-0.5 font-medium ${competitionStatusChipClass[c.status]}`}
+                >
+                  {competitionStatusLabel[c.status]}
+                </span>
+                <span
+                  className="panel-label text-lg leading-none transition-transform group-hover:translate-x-0.5"
+                  aria-hidden="true"
+                >
+                  →
+                </span>
+              </div>
             </Link>
           );
         })}

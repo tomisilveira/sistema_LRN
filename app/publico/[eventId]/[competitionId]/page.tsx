@@ -103,7 +103,7 @@ export default async function PublicCompetitionPage({
 
       {bracketDisplayMatches.length > 0 && (
         <section className="space-y-3">
-          <h2 className="text-xs font-semibold panel-label uppercase tracking-wide">Cuadro eliminatorio</h2>
+          <h2 className="text-xs font-semibold panel-label uppercase tracking-wide">Fase Final</h2>
           <PublicBracketView matches={bracketDisplayMatches} />
         </section>
       )}

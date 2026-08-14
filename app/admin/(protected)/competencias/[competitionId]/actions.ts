@@ -81,6 +81,50 @@ export async function removeTeam(competitionId: string, teamId: string) {
   revalidateCompetition(competitionId);
 }
 
+/**
+ * Acreditar/homologar equipos desde el panel admin — mismo par de flags que
+ * la mesa de acreditación pública (app/acreditacion/[eventToken]), pero acá
+ * con la sesión de admin en vez del token del evento, para no obligar a
+ * abrir ese link aparte cuando ya se está en el torneo. `.eq("competition_id",
+ * competitionId)` de más, por las dudas de que el teamId no corresponda a
+ * este torneo.
+ */
+export async function setTeamAccredited(competitionId: string, teamId: string, value: boolean) {
+  const supabase = await createServerSupabaseClient();
+  const { error } = await supabase
+    .from("teams")
+    .update({ accredited: value, accredited_at: value ? new Date().toISOString() : null })
+    .eq("id", teamId)
+    .eq("competition_id", competitionId);
+  if (error) throw new Error(error.message);
+  revalidateCompetition(competitionId);
+}
+
+export async function setTeamHomologated(competitionId: string, teamId: string, value: boolean) {
+  const supabase = await createServerSupabaseClient();
+  const { error } = await supabase
+    .from("teams")
+    .update({ homologated: value, homologated_at: value ? new Date().toISOString() : null })
+    .eq("id", teamId)
+    .eq("competition_id", competitionId);
+  if (error) throw new Error(error.message);
+  revalidateCompetition(competitionId);
+}
+
+export async function setTeamParticipantsPresent(competitionId: string, teamId: string, formData: FormData) {
+  const raw = String(formData.get("participants_present") ?? "").trim();
+  const value = raw === "" ? null : Math.max(0, Number(raw));
+
+  const supabase = await createServerSupabaseClient();
+  const { error } = await supabase
+    .from("teams")
+    .update({ participants_present: value })
+    .eq("id", teamId)
+    .eq("competition_id", competitionId);
+  if (error) throw new Error(error.message);
+  revalidateCompetition(competitionId);
+}
+
 export async function createGroup(competitionId: string, formData: FormData) {
   const name = String(formData.get("name") ?? "").trim();
   if (!name) throw new Error("Falta el nombre del grupo.");
@@ -209,6 +253,25 @@ export async function startTournament(competitionId: string) {
     .eq("competition_id", competitionId);
 
   if (!groups || groups.length === 0) throw new Error("Creá los grupos y asigná equipos primero.");
+
+  // Pedido explícito del usuario: no se puede iniciar el torneo mientras
+  // queden equipos cargados sin asignar a un grupo (se resuelve desde la
+  // pestaña Grupos) — este chequeo es el resguardo del lado del server, la
+  // UI ya oculta el botón "Iniciar torneo" en ese caso.
+  const { count: totalTeams } = await supabase
+    .from("teams")
+    .select("id", { count: "exact", head: true })
+    .eq("competition_id", competitionId);
+  const assignedTeamIds = new Set(
+    (groups as unknown as { group_teams: { team_id: string }[] }[]).flatMap((g) =>
+      g.group_teams.map((gt) => gt.team_id)
+    )
+  );
+  if ((totalTeams ?? 0) > assignedTeamIds.size) {
+    throw new Error(
+      `Todavía hay ${(totalTeams ?? 0) - assignedTeamIds.size} equipo(s) sin asignar a un grupo — asignalos (o quitalos del torneo) desde la pestaña Grupos antes de iniciar.`
+    );
+  }
 
   const rows: Partial<Match>[] = [];
   for (const g of groups as unknown as { id: string; group_teams: { team_id: string }[] }[]) {

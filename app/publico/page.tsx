@@ -29,10 +29,15 @@ export default async function PublicEventsPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-xl sm:text-2xl font-bold">Jornadas</h1>
+      {/* Mismo tratamiento de "portada" que el inicio (app/page.tsx) cuando
+          no hay torneo en vivo — para que se sienta la misma página y no una
+          lista aparte con otro estilo. */}
+      <div className="text-center space-y-2 py-6">
+        <h1 className="text-xl sm:text-2xl font-bold">Liga Robótica Neuquina</h1>
+        <p className="panel-label text-sm">Todas las jornadas</p>
       </div>
       <div className="space-y-2">
+        <p className="text-xs panel-label uppercase tracking-wide mb-1">Jornadas</p>
         {(events ?? []).length === 0 && (
           <p className="text-sm panel-label">Todavía no hay jornadas publicadas.</p>
         )}
@@ -40,15 +45,23 @@ export default async function PublicEventsPage() {
           <Link
             key={ev.id}
             href={`/publico/${ev.id}`}
-            className="panel-card flex items-center justify-between rounded-lg px-4 py-3 hover:brightness-95 dark:hover:brightness-125 transition"
+            className="panel-card-button group flex items-center justify-between gap-3 rounded-xl px-4 py-3.5"
           >
-            <div>
-              <p className="font-medium">{ev.name}</p>
+            <div className="min-w-0">
+              <p className="font-medium truncate">{ev.name}</p>
               <p className="text-sm panel-label">{ev.event_date}</p>
             </div>
-            <span className={`text-xs rounded-full px-2 py-1 font-medium ${statusChipClass[ev.status]}`}>
-              {statusLabel[ev.status]}
-            </span>
+            <div className="flex items-center gap-2 shrink-0">
+              <span className={`text-xs rounded-full px-2 py-1 font-medium ${statusChipClass[ev.status]}`}>
+                {statusLabel[ev.status]}
+              </span>
+              <span
+                className="panel-label text-lg leading-none transition-transform group-hover:translate-x-0.5"
+                aria-hidden="true"
+              >
+                →
+              </span>
+            </div>
           </Link>
         ))}
       </div>

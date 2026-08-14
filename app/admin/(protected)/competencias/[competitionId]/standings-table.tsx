@@ -1,5 +1,5 @@
 import type { GroupStandingRow } from "@/lib/database.types";
-import { setManualRankOverride } from "./actions";
+import { ManualRankInput } from "./manual-rank-input";
 
 export function StandingsTable({
   competitionId,
@@ -14,15 +14,13 @@ export function StandingsTable({
   rows: GroupStandingRow[];
   editable?: boolean;
 }) {
-  const setRank = setManualRankOverride.bind(null, competitionId, groupId);
-
   return (
     <div>
       <h3 className="text-sm font-medium mb-2">{groupName}</h3>
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
           <thead>
-            <tr className="text-neutral-500 text-xs">
+            <tr className="panel-label text-xs">
               <th className="text-left font-normal py-1 pr-2">#</th>
               <th className="text-left font-normal py-1 pr-2">Equipo</th>
               <th className="text-center font-normal py-1 px-1">PJ</th>
@@ -31,14 +29,28 @@ export function StandingsTable({
               <th className="text-center font-normal py-1 px-1">P</th>
               <th className="text-center font-normal py-1 px-1">DIF</th>
               <th className="text-center font-normal py-1 px-1">Pts</th>
-              {editable && <th className="text-center font-normal py-1 pl-2">Orden manual</th>}
+              {editable && (
+                <th className="text-center font-normal py-1 pl-2 whitespace-nowrap">
+                  Orden manual
+                </th>
+              )}
             </tr>
           </thead>
           <tbody>
             {rows.map((r, i) => (
               <tr key={r.team_id} className="border-t border-neutral-200 dark:border-neutral-800">
-                <td className="py-1.5 pr-2 text-neutral-500">{i + 1}</td>
-                <td className="py-1.5 pr-2 font-medium">{r.team_name}</td>
+                <td className="py-1.5 pr-2 panel-label">{i + 1}</td>
+                <td className="py-1.5 pr-2 font-medium">
+                  {r.team_name}
+                  {r.manual_rank_override !== null && (
+                    <span
+                      className="ml-1 text-brand-orange"
+                      title={`Posición forzada a mano: puesto ${r.manual_rank_override}`}
+                    >
+                      📌
+                    </span>
+                  )}
+                </td>
                 <td className="text-center py-1.5 px-1">{r.played}</td>
                 <td className="text-center py-1.5 px-1">{r.won}</td>
                 <td className="text-center py-1.5 px-1">{r.drawn}</td>
@@ -47,19 +59,12 @@ export function StandingsTable({
                 <td className="text-center py-1.5 px-1 font-semibold">{r.points}</td>
                 {editable && (
                   <td className="text-center py-1.5 pl-2">
-                    <form action={setRank.bind(null, r.team_id)} className="inline-flex items-center gap-1">
-                      <input
-                        name="rank"
-                        type="number"
-                        min={1}
-                        defaultValue={r.manual_rank_override ?? ""}
-                        placeholder="-"
-                        className="w-12 rounded panel-input px-1 py-0.5 text-xs text-center"
-                      />
-                      <button type="submit" className="text-xs panel-label hover:opacity-80">
-                        OK
-                      </button>
-                    </form>
+                    <ManualRankInput
+                      competitionId={competitionId}
+                      groupId={groupId}
+                      teamId={r.team_id}
+                      defaultValue={r.manual_rank_override}
+                    />
                   </td>
                 )}
               </tr>

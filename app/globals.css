@@ -114,3 +114,20 @@ body {
 .panel-nav {
   @apply border-neutral-200 dark:border-neutral-800;
 }
+
+/* Tarjeta que hace de botón completo (fila clickeable entera) — usada en
+   listas de selección (eventos, jornadas, torneos) en vez de una fila plana,
+   para que se note a simple vista que es interactiva. */
+.panel-card-button {
+  @apply bg-white border border-neutral-200 shadow-sm dark:bg-neutral-900 dark:border-neutral-800
+    transition hover:shadow-md hover:border-brand-teal/50 hover:-translate-y-0.5
+    dark:hover:shadow-none dark:hover:bg-neutral-800/60;
+}
+
+/* Botón chico para acciones inline dentro de filas/tablas (guardar,
+   confirmar) — antes varias de estas eran texto gris (panel-label) sin
+   ningún borde ni fondo, así que no se leían como botón. */
+.panel-button-xs {
+  @apply rounded-md border border-brand-teal/40 text-brand-teal-dark dark:text-brand-teal dark:border-brand-teal/50
+    hover:bg-brand-teal/10 transition disabled:opacity-50 disabled:hover:bg-transparent;
+}

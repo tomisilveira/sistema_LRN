@@ -258,19 +258,27 @@ export default async function EventPage({ params }: { params: Promise<{ eventId:
                   <Link
                     key={c.id}
                     href={`/admin/competencias/${c.id}`}
-                    className={`flex items-center justify-between rounded-md border-l-4 ${colors.border} ${colors.bg} px-3 py-2 transition hover:brightness-95 dark:hover:brightness-125`}
+                    className={`group flex items-center justify-between gap-3 rounded-lg border-l-4 ${colors.border} ${colors.bg} px-3.5 py-2.5 shadow-sm transition hover:shadow-md hover:-translate-y-0.5`}
                   >
-                    <div>
-                      <p className="text-sm font-medium">
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium truncate">
                         {c.disciplines?.name} — {c.categories?.name}
                       </p>
                       <p className="text-xs panel-label">{formatLabel[c.format_type]}</p>
                     </div>
-                    <span
-                      className={`text-xs rounded-full px-2 py-0.5 font-medium ${competitionStatusChipClass[c.status]}`}
-                    >
-                      {competitionStatusLabel[c.status]}
-                    </span>
+                    <div className="flex items-center gap-2 shrink-0">
+                      <span
+                        className={`text-xs rounded-full px-2 py-0.5 font-medium ${competitionStatusChipClass[c.status]}`}
+                      >
+                        {competitionStatusLabel[c.status]}
+                      </span>
+                      <span
+                        className="panel-label text-lg leading-none transition-transform group-hover:translate-x-0.5"
+                        aria-hidden="true"
+                      >
+                        →
+                      </span>
+                    </div>
                   </Link>
                 );
               }
@@ -312,7 +320,10 @@ export default async function EventPage({ params }: { params: Promise<{ eventId:
         </div>
       </div>
 
-      <TabbedLayout items={tabs} />
+      {/* Arranca en Torneos (no en Canchas): es adonde se vuelve casi siempre
+          después de entrar a un torneo puntual, para elegir otra
+          disciplina/categoría del mismo evento. */}
+      <TabbedLayout items={tabs} defaultTabId="torneos" />
     </div>
   );
 }

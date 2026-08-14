@@ -70,15 +70,23 @@ export default async function AdminDashboardPage() {
             <Link
               key={ev.id}
               href={`/admin/eventos/${ev.id}`}
-              className="panel-link-card flex items-center justify-between rounded-xl px-4 py-3 transition-colors"
+              className="panel-card-button group flex items-center justify-between gap-3 rounded-xl px-4 py-3.5"
             >
-              <div>
-                <p className="font-medium">{ev.name}</p>
+              <div className="min-w-0">
+                <p className="font-medium truncate">{ev.name}</p>
                 <p className="text-sm panel-label">{ev.event_date}</p>
               </div>
-              <span className={`text-xs rounded-full px-2 py-1 font-medium ${statusChipClass[ev.status]}`}>
-                {statusLabel[ev.status]}
-              </span>
+              <div className="flex items-center gap-2 shrink-0">
+                <span className={`text-xs rounded-full px-2 py-1 font-medium ${statusChipClass[ev.status]}`}>
+                  {statusLabel[ev.status]}
+                </span>
+                <span
+                  className="panel-label text-lg leading-none transition-transform group-hover:translate-x-0.5"
+                  aria-hidden="true"
+                >
+                  →
+                </span>
+              </div>
             </Link>
           ))}
         </div>
