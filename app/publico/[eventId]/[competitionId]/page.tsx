@@ -10,9 +10,10 @@ import type {
   Match,
   GroupStandingRow,
 } from "@/lib/database.types";
-import { PublicRealtime } from "./public-realtime";
-import { PublicStandingsTable } from "./public-standings-table";
-import { PublicBracketView, type BracketDisplayMatch } from "./public-bracket-view";
+import { competitionStatusLabel, competitionStatusChipClass } from "@/lib/labels";
+import { PublicRealtime } from "@/app/components/public-realtime";
+import { PublicStandingsTable } from "@/app/components/public-standings-table";
+import { PublicBracketView, type BracketDisplayMatch } from "@/app/components/public-bracket-view";
 
 export const revalidate = 0;
 
@@ -69,44 +70,47 @@ export default async function PublicCompetitionPage({
   }));
 
   return (
-    <main className="min-h-screen bg-neutral-950 text-neutral-100 p-6">
+    <div className="space-y-8">
       <PublicRealtime competitionId={competitionId} />
-      <div className="max-w-4xl mx-auto space-y-8">
-        <div>
-          <Link href={`/publico/${eventId}`} className="text-xs text-neutral-500 hover:text-neutral-300">
-            ← {event?.name}
-          </Link>
-          <h1 className="text-2xl font-bold mt-1">
+      <div>
+        <Link href={`/publico/${eventId}`} className="text-xs panel-label hover:text-brand-teal transition-colors">
+          ← {event?.name}
+        </Link>
+        <div className="flex items-center gap-2 mt-1">
+          <h1 className="text-xl sm:text-2xl font-bold">
             {discipline?.name} — {category?.name}
           </h1>
+          <span
+            className={`text-xs rounded-full px-2 py-0.5 font-medium ${competitionStatusChipClass[competition.status]}`}
+          >
+            {competitionStatusLabel[competition.status]}
+          </span>
         </div>
-
-        {standingsByGroup.length > 0 && (
-          <section className="space-y-6">
-            <h2 className="text-sm font-semibold text-neutral-400 uppercase tracking-wide">
-              Tabla de posiciones
-            </h2>
-            <div className="grid sm:grid-cols-2 gap-8">
-              {standingsByGroup.map(({ group, rows }) => (
-                <PublicStandingsTable key={group.id} groupName={group.name} rows={rows} />
-              ))}
-            </div>
-          </section>
-        )}
-
-        {bracketDisplayMatches.length > 0 && (
-          <section className="space-y-4">
-            <h2 className="text-sm font-semibold text-neutral-400 uppercase tracking-wide">
-              Cuadro eliminatorio
-            </h2>
-            <PublicBracketView matches={bracketDisplayMatches} />
-          </section>
-        )}
-
-        {standingsByGroup.length === 0 && bracketDisplayMatches.length === 0 && (
-          <p className="text-sm text-neutral-500">Todavía no hay grupos ni resultados cargados.</p>
-        )}
       </div>
-    </main>
+
+      {standingsByGroup.length > 0 && (
+        <section className="space-y-4">
+          <h2 className="text-xs font-semibold panel-label uppercase tracking-wide">
+            Tabla de posiciones
+          </h2>
+          <div className="grid sm:grid-cols-2 gap-4">
+            {standingsByGroup.map(({ group, rows }) => (
+              <PublicStandingsTable key={group.id} groupName={group.name} rows={rows} />
+            ))}
+          </div>
+        </section>
+      )}
+
+      {bracketDisplayMatches.length > 0 && (
+        <section className="space-y-3">
+          <h2 className="text-xs font-semibold panel-label uppercase tracking-wide">Cuadro eliminatorio</h2>
+          <PublicBracketView matches={bracketDisplayMatches} />
+        </section>
+      )}
+
+      {standingsByGroup.length === 0 && bracketDisplayMatches.length === 0 && (
+        <p className="text-sm panel-label">Todavía no hay grupos ni resultados cargados.</p>
+      )}
+    </div>
   );
 }

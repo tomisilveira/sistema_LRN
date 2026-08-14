@@ -1,9 +1,9 @@
 import type { GroupStandingRow } from "@/lib/database.types";
 
-/** Versión clara/oscura de app/publico/[eventId]/[competitionId]/public-standings-table.tsx,
- * para el inicio (que sí tiene toggle de tema) — la de /publico se queda
- * fija en oscuro a propósito, no se toca. */
-export function HomeStandingsTable({ groupName, rows }: { groupName: string; rows: GroupStandingRow[] }) {
+/** Tabla de posiciones clara/oscura compartida entre el inicio y
+ * /publico/[eventId]/[competitionId] — ambos usan el mismo root de tema
+ * (ver public-shell.tsx). */
+export function PublicStandingsTable({ groupName, rows }: { groupName: string; rows: GroupStandingRow[] }) {
   return (
     <div className="panel-card rounded-lg p-3">
       <h3 className="text-sm font-semibold text-brand-teal-dark dark:text-brand-teal mb-2">{groupName}</h3>
@@ -24,9 +24,7 @@ export function HomeStandingsTable({ groupName, rows }: { groupName: string; row
           <tbody>
             {rows.map((r, i) => (
               <tr key={r.team_id} className="border-t border-neutral-200 dark:border-neutral-800">
-                <td
-                  className={`py-1.5 pr-2 ${i === 0 ? "text-brand-green font-semibold" : "panel-label"}`}
-                >
+                <td className={`py-1.5 pr-2 ${i === 0 ? "text-brand-green font-semibold" : "panel-label"}`}>
                   {i + 1}
                 </td>
                 <td className="py-1.5 pr-2 font-medium">{r.team_name}</td>

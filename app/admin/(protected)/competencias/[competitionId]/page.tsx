@@ -31,6 +31,7 @@ import { CopyLinkButton } from "@/app/components/copy-link-button";
 import { Breadcrumbs } from "@/app/components/breadcrumbs";
 import { TabbedLayout, type TabItem } from "@/app/components/tabbed-layout";
 import { ConfirmSubmitButton } from "@/app/components/confirm-submit-button";
+import { ModalFormButton } from "@/app/components/modal-form";
 import { competitionStatusLabel, competitionStatusChipClass } from "@/lib/labels";
 import { disciplineColor } from "@/lib/discipline-colors";
 import { FormatAdvisory } from "./format-advisory";
@@ -150,6 +151,12 @@ export default async function CompetitionPage({
   const colors = disciplineColor(discipline);
   const teamsReadyCount = (teams ?? []).filter((t: Team) => t.accredited && t.homologated).length;
 
+  // Personas presentes por equipo — cargado desde Acreditación
+  // (participants_present) con member_count como respaldo si todavía no se
+  // acreditó. Sirve para calcular medallas/premios por grupo.
+  const peopleCount = (t: Team) => t.participants_present ?? t.member_count ?? 0;
+  const grandTotalPeople = (teams ?? []).reduce((sum, t) => sum + peopleCount(t), 0);
+
   const tabs: TabItem[] = [
     {
       id: "formato",
@@ -205,9 +212,36 @@ export default async function CompetitionPage({
       badge: (teams ?? []).length || undefined,
       content: (
         <section className="panel-card rounded-xl p-4 space-y-3">
-          <h2 className="font-medium">
-            Equipos ({(teams ?? []).length}) · {teamsReadyCount} listos
-          </h2>
+          <div className="flex items-start justify-between gap-3">
+            <h2 className="font-medium">
+              Equipos ({(teams ?? []).length}) · {teamsReadyCount} listos
+            </h2>
+            <ModalFormButton
+              buttonLabel="+ Agregar equipo"
+              buttonClassName="rounded-md panel-button-primary font-medium px-4 py-2 text-sm shrink-0 whitespace-nowrap"
+              title="Agregar equipo"
+              action={addTeamAction}
+              submitLabel="Agregar"
+            >
+              <div>
+                <label className="block text-sm panel-label mb-1">Nombre del equipo</label>
+                <input
+                  name="name"
+                  required
+                  placeholder="Nombre del equipo"
+                  className="w-full rounded-md panel-input px-3 py-2 text-sm"
+                />
+              </div>
+              <div>
+                <label className="block text-sm panel-label mb-1">Institución (opcional)</label>
+                <input
+                  name="institution"
+                  placeholder="Institución"
+                  className="w-full rounded-md panel-input px-3 py-2 text-sm"
+                />
+              </div>
+            </ModalFormButton>
+          </div>
           <div className="grid sm:grid-cols-2 gap-2">
             {(teams ?? []).map((t: Team) => {
               const ready = t.accredited && t.homologated;
@@ -254,25 +288,6 @@ export default async function CompetitionPage({
               );
             })}
           </div>
-          <form action={addTeamAction} className="flex flex-wrap gap-2">
-            <input
-              name="name"
-              required
-              placeholder="Nombre del equipo"
-              className="flex-1 min-w-[150px] rounded-md panel-input px-3 py-2 text-sm"
-            />
-            <input
-              name="institution"
-              placeholder="Institución (opcional)"
-              className="flex-1 min-w-[150px] rounded-md panel-input px-3 py-2 text-sm"
-            />
-            <button type="submit" className="rounded-md panel-button-primary font-medium px-4 py-2 text-sm">
-              Agregar
-            </button>
-            <button type="reset" className="rounded-md panel-button-secondary px-4 py-2 text-sm">
-              Limpiar
-            </button>
-          </form>
         </section>
       ),
     },
@@ -282,51 +297,53 @@ export default async function CompetitionPage({
       badge: groupsList.length || undefined,
       content: (
         <section className="panel-card rounded-xl p-4 space-y-4">
-          <div className="flex items-center justify-between gap-3">
+          <div className="flex flex-wrap items-start justify-between gap-3">
             <h2 className="font-medium">Grupos</h2>
-            <details>
-              <summary className="cursor-pointer list-none text-xs rounded-md panel-button-secondary px-3 py-1.5 inline-block select-none">
-                + Agregar grupo
-              </summary>
-              <div className="mt-3 panel-surface rounded-md p-3 space-y-3">
-                <form action={createGroupAction} className="flex flex-wrap gap-2">
+            <div className="flex flex-wrap gap-2">
+              <ModalFormButton
+                buttonLabel="+ Crear grupo vacío"
+                buttonClassName="rounded-md panel-button-secondary px-3 py-2 text-sm whitespace-nowrap"
+                title="Crear grupo vacío"
+                description="Lo creás sin equipos y después los asignás uno por uno desde la pestaña Equipos."
+                action={createGroupAction}
+                submitLabel="Crear grupo"
+              >
+                <div>
+                  <label className="block text-sm panel-label mb-1">Nombre del grupo</label>
                   <input
                     name="name"
                     placeholder="Grupo C"
                     required
-                    className="rounded-md panel-input px-3 py-2 text-sm w-32"
+                    className="w-full rounded-md panel-input px-3 py-2 text-sm"
                   />
-                  <button type="submit" className="rounded-md panel-button-secondary px-3 py-2 text-sm">
-                    + Grupo manual
-                  </button>
-                </form>
-                <form action={randomDrawAction} className="flex flex-wrap gap-2 items-center">
-                  <label className="text-sm panel-label">Sorteo aleatorio en</label>
+                </div>
+              </ModalFormButton>
+              <ModalFormButton
+                buttonLabel="🎲 Sortear equipos"
+                buttonClassName="rounded-md panel-button-accent px-3 py-2 text-sm font-medium whitespace-nowrap"
+                title="Sortear equipos en grupos"
+                description="Reparte al azar en partes iguales a TODOS los equipos ya acreditados y homologados. Si ya había grupos armados, borra esas asignaciones y arranca de cero."
+                action={randomDrawAction}
+                submitLabel="Sortear"
+                confirmMessage="Esto borra y vuelve a repartir TODAS las asignaciones de grupo actuales. ¿Continuar?"
+              >
+                <div>
+                  <label className="block text-sm panel-label mb-1">¿En cuántos grupos?</label>
                   <input
                     name="num_groups"
                     type="number"
                     min={1}
                     defaultValue={2}
-                    className="rounded-md panel-input px-2 py-2 text-sm w-16"
+                    className="w-24 rounded-md panel-input px-3 py-2 text-sm"
                   />
-                  <ConfirmSubmitButton
-                    confirmMessage="Esto borra y vuelve a repartir TODAS las asignaciones de grupo actuales. ¿Continuar?"
-                    className="rounded-md panel-button-secondary px-3 py-2 text-sm"
-                  >
-                    grupos
-                  </ConfirmSubmitButton>
-                </form>
-                <p className="text-xs panel-label opacity-80">
-                  El sorteo aleatorio borra y vuelve a repartir todas las asignaciones actuales.
-                  Solo participan los equipos ya acreditados y homologados.
-                </p>
-              </div>
-            </details>
+                </div>
+              </ModalFormButton>
+            </div>
           </div>
 
           {groupsList.length === 0 ? (
             <p className="text-sm panel-label">
-              Sin grupos todavía — creá uno o hacé un sorteo con &ldquo;+ Agregar grupo&rdquo;.
+              Sin grupos todavía — creá uno vacío o sorteá los equipos con los botones de arriba.
             </p>
           ) : (
             <div className="grid sm:grid-cols-2 gap-3">
@@ -372,6 +389,59 @@ export default async function CompetitionPage({
               </div>
             </div>
           )}
+        </section>
+      ),
+    },
+    {
+      id: "participantes",
+      label: "Participantes",
+      content: (
+        <section className="panel-card rounded-xl p-4 space-y-4">
+          <div>
+            <h2 className="font-medium">Participantes por grupo</h2>
+            <p className="text-xs panel-label mt-0.5">
+              Cantidad de personas presentes por grupo (cargado desde Acreditación) — útil para
+              calcular medallas o premios.
+            </p>
+          </div>
+          {groupsList.length === 0 ? (
+            <p className="text-sm panel-label">Sin grupos todavía.</p>
+          ) : (
+            <div className="grid sm:grid-cols-2 gap-3">
+              {groupsList.map((g) => {
+                const groupTeams = teamsByGroupId.get(g.id) ?? [];
+                const totalPeople = groupTeams.reduce((sum, t) => sum + peopleCount(t), 0);
+                const missingCount = groupTeams.filter(
+                  (t) => t.participants_present === null && t.member_count === null
+                ).length;
+                return (
+                  <div key={g.id} className="panel-surface rounded-md p-3 space-y-1">
+                    <div className="flex items-center justify-between">
+                      <h3 className="text-sm font-semibold">{g.name}</h3>
+                      <span className="text-xs panel-label">
+                        {groupTeams.length} equipo{groupTeams.length === 1 ? "" : "s"}
+                      </span>
+                    </div>
+                    <p className="text-2xl font-bold text-brand-teal-dark dark:text-brand-teal">
+                      {totalPeople} <span className="text-sm font-normal panel-label">personas</span>
+                    </p>
+                    {missingCount > 0 && (
+                      <p className="text-xs text-brand-orange">
+                        {missingCount} equipo{missingCount === 1 ? "" : "s"} sin cargar cuántos se
+                        presentaron
+                      </p>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+          <div className="pt-3 border-t border-neutral-200 dark:border-neutral-800 flex items-center justify-between">
+            <span className="text-sm font-medium">Total del torneo</span>
+            <span className="text-lg font-bold">
+              {grandTotalPeople} personas · {(teams ?? []).length} equipos
+            </span>
+          </div>
         </section>
       ),
     },

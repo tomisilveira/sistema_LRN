@@ -15,6 +15,7 @@ export function ModalFormButton({
   children,
   action,
   submitLabel = "Guardar",
+  confirmMessage,
 }: {
   buttonLabel: string;
   buttonClassName?: string;
@@ -23,6 +24,10 @@ export function ModalFormButton({
   children: React.ReactNode;
   action: (formData: FormData) => Promise<void>;
   submitLabel?: string;
+  /** Si viene, antes de llamar al action pide confirmación (window.confirm)
+   * — para la opción del cuadro que sea una acción destructiva (ej. el
+   * sorteo aleatorio, que pisa las asignaciones de grupo actuales). */
+  confirmMessage?: string;
 }) {
   const [open, setOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -37,6 +42,7 @@ export function ModalFormButton({
 
   function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
+    if (confirmMessage && !window.confirm(confirmMessage)) return;
     setError(null);
     const formData = new FormData(e.currentTarget);
     startTransition(async () => {

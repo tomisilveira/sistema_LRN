@@ -3,13 +3,13 @@
 import { useEffect, useState } from "react";
 
 export function ThemeToggle() {
-  const [isDark, setIsDark] = useState(true);
+  const [isDark, setIsDark] = useState(false);
 
   useEffect(() => {
     // Sincroniza con la clase que puso el script anti-flash (app/admin/layout.tsx)
     // antes del primer render — no se puede saber en el server.
     // eslint-disable-next-line react-hooks/set-state-in-effect
-    setIsDark(document.getElementById("admin-theme-root")?.classList.contains("dark") ?? true);
+    setIsDark(document.getElementById("admin-theme-root")?.classList.contains("dark") ?? false);
   }, []);
 
   function toggle() {

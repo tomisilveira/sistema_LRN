@@ -2,20 +2,21 @@
 
 import { useEffect, useState } from "react";
 
-/** Igual mecanismo que el toggle del panel admin (ver
+/** Mismo mecanismo que el toggle del admin (ver
  * app/admin/(protected)/theme-toggle.tsx) pero con su propia clave de
- * localStorage y arrancando en claro — el admin arranca en oscuro, el
- * inicio público arranca en claro; son toggles independientes a propósito. */
-export function HomeThemeToggle() {
+ * localStorage y arrancando en claro — son toggles independientes a
+ * propósito. Se usa en el inicio y en todo /publico (mismo root, ver
+ * public-shell.tsx), así que la elección viaja entre esas páginas. */
+export function PublicThemeToggle() {
   const [isDark, setIsDark] = useState(false);
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
-    setIsDark(document.getElementById("home-theme-root")?.classList.contains("dark") ?? false);
+    setIsDark(document.getElementById("public-theme-root")?.classList.contains("dark") ?? false);
   }, []);
 
   function toggle() {
-    const root = document.getElementById("home-theme-root");
+    const root = document.getElementById("public-theme-root");
     if (!root) return;
     const next = !isDark;
     root.classList.toggle("dark", next);
