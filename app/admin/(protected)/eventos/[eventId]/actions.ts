@@ -101,3 +101,17 @@ export async function setEventStatusAction(eventId: string, status: "draft" | "a
   revalidatePath(`/admin/eventos/${eventId}`);
   revalidatePath("/admin");
 }
+
+/** Público/privado en la sección pública del sitio — independiente del
+ * status. Requiere la migración 0005_event_visibility.sql corrida en
+ * Supabase (columna events.is_public); si no está, esto tira un error de
+ * columna inexistente. */
+export async function setEventPublicAction(eventId: string, isPublic: boolean) {
+  const supabase = await createServerSupabaseClient();
+  const { error } = await supabase.from("events").update({ is_public: isPublic }).eq("id", eventId);
+  if (error) throw new Error(error.message);
+  revalidatePath(`/admin/eventos/${eventId}`);
+  revalidatePath("/admin");
+  revalidatePath("/publico");
+  revalidatePath("/");
+}

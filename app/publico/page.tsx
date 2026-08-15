@@ -19,12 +19,13 @@ const statusChipClass: Record<EventRow["status"], string> = {
 export default async function PublicEventsPage() {
   const supabase = await createServerSupabaseClient();
   // Consulta anónima (sin login): `anon` solo tiene grant de columnas
-  // puntuales sobre `events` (ver 0003_accreditation.sql) — pedir "*"
-  // incluiría accreditation_token, sin grant, y la query entera falla con
-  // "permission denied for table events".
+  // puntuales sobre `events` (ver 0003_accreditation.sql, 0005_event_visibility.sql)
+  // — pedir "*" incluiría accreditation_token, sin grant, y la query entera
+  // falla con "permission denied for table events".
   const { data: events } = await supabase
     .from("events")
-    .select("id, name, event_date, status, created_at")
+    .select("id, name, event_date, status, is_public, created_at")
+    .eq("is_public", true)
     .order("event_date", { ascending: false });
 
   return (

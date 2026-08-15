@@ -37,6 +37,10 @@ export interface EventRow {
   name: string;
   event_date: string;
   status: EventStatus;
+  // Visibilidad en la sección pública (independiente de `status`) — un
+  // evento en borrador o ya armado puede quedar oculto de /publico y del
+  // inicio hasta que el admin lo publique.
+  is_public: boolean;
   created_at: string;
   // Solo viene en la respuesta cuando se consulta con sesión de admin o con
   // la service-role key — `anon` no tiene grant de esta columna (ver

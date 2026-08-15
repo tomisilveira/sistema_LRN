@@ -1,22 +1,20 @@
-import Link from "next/link";
 import { notFound } from "next/navigation";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
-import type {
-  Competition,
-  Discipline,
-  Category,
-  Team,
-  Group,
-  Match,
-  GroupStandingRow,
-} from "@/lib/database.types";
-import { competitionStatusLabel, competitionStatusChipClass } from "@/lib/labels";
-import { PublicRealtime } from "@/app/components/public-realtime";
-import { PublicStandingsTable } from "@/app/components/public-standings-table";
-import { PublicBracketView, type BracketDisplayMatch } from "@/app/components/public-bracket-view";
+import type { Competition, EventRow } from "@/lib/database.types";
+import type { CompetitionWithNames } from "@/lib/build-event-tab-items";
+import { PublicEventBody } from "@/app/components/public-event-body";
 
 export const revalidate = 0;
 
+// Ver comentario equivalente en app/page.tsx: `anon` solo tiene grant de
+// columnas puntuales sobre `events`, "*" rompe con permission denied.
+const EVENT_PUBLIC_COLUMNS = "id, name, event_date, status, is_public, created_at";
+
+/** Deep-link a un torneo puntual (ej. un QR pegado en la cancha) — muestra
+ * el mismo cuerpo que /publico/[eventId] (switcher de jornadas + switcher
+ * de disciplinas), pero arrancando en esta competencia en vez de la
+ * primera/en vivo. Antes esto era una página aparte con su propio "← volver"
+ * y sin forma de saltar a otro torneo del evento ni a otra jornada. */
 export default async function PublicCompetitionPage({
   params,
 }: {
@@ -30,87 +28,42 @@ export default async function PublicCompetitionPage({
     .select("*")
     .eq("id", competitionId)
     .maybeSingle<Competition>();
-  if (!competition) notFound();
+  if (!competition || competition.event_id !== eventId) notFound();
 
-  const [{ data: discipline }, { data: category }, { data: event }, { data: teams }, { data: groups }, { data: bracketMatches }] =
-    await Promise.all([
-      supabase.from("disciplines").select("*").eq("id", competition.discipline_id).single<Discipline>(),
-      supabase.from("categories").select("*").eq("id", competition.category_id).single<Category>(),
-      supabase.from("events").select("id, name").eq("id", eventId).single(),
-      supabase.from("teams").select("*").eq("competition_id", competitionId),
-      supabase.from("groups").select("*").eq("competition_id", competitionId).order("sort_order"),
-      supabase
-        .from("matches")
-        .select("*")
-        .eq("competition_id", competitionId)
-        .eq("phase", "bracket")
-        .order("bracket_slot"),
-    ]);
+  const { data: event } = await supabase
+    .from("events")
+    .select(EVENT_PUBLIC_COLUMNS)
+    .eq("id", eventId)
+    .maybeSingle<EventRow>();
+  if (!event || !event.is_public) notFound();
 
-  const teamsById = new Map((teams ?? []).map((t: Team) => [t.id, t]));
-  const groupsList = (groups ?? []) as Group[];
+  const [{ data: competitions }, { data: switcherEventsRaw }] = await Promise.all([
+    supabase
+      .from("competitions")
+      .select("*, disciplines(name, sort_order), categories(name)")
+      .eq("event_id", eventId)
+      .order("created_at"),
+    supabase
+      .from("events")
+      .select(EVENT_PUBLIC_COLUMNS)
+      .eq("is_public", true)
+      .neq("status", "finished")
+      .order("event_date", { ascending: true }),
+  ]);
 
-  const standingsByGroup = await Promise.all(
-    groupsList.map(async (g) => {
-      try {
-        const { data, error } = await supabase.rpc("get_group_standings", { p_group_id: g.id });
-        if (error) throw error;
-        return { group: g, rows: (data ?? []) as GroupStandingRow[] };
-      } catch (err) {
-        console.error(`get_group_standings falló para el grupo ${g.id}:`, err);
-        return { group: g, rows: [] as GroupStandingRow[] };
-      }
-    })
-  );
-
-  const bracketDisplayMatches: BracketDisplayMatch[] = (bracketMatches ?? []).map((m: Match) => ({
-    ...m,
-    team_a_name: m.team_a_id ? teamsById.get(m.team_a_id)?.name ?? null : null,
-    team_b_name: m.team_b_id ? teamsById.get(m.team_b_id)?.name ?? null : null,
-  }));
+  const switcherEvents = (switcherEventsRaw ?? []) as EventRow[];
+  if (!switcherEvents.some((e) => e.id === event.id)) {
+    switcherEvents.push(event);
+    switcherEvents.sort((a, b) => (a.event_date < b.event_date ? 1 : -1));
+  }
 
   return (
-    <div className="space-y-8">
-      <PublicRealtime competitionId={competitionId} />
-      <div>
-        <Link href={`/publico/${eventId}`} className="text-xs panel-label hover:text-brand-teal transition-colors">
-          ← {event?.name}
-        </Link>
-        <div className="flex items-center gap-2 mt-1">
-          <h1 className="text-xl sm:text-2xl font-bold">
-            {discipline?.name} — {category?.name}
-          </h1>
-          <span
-            className={`text-xs rounded-full px-2 py-0.5 font-medium ${competitionStatusChipClass[competition.status]}`}
-          >
-            {competitionStatusLabel[competition.status]}
-          </span>
-        </div>
-      </div>
-
-      {standingsByGroup.length > 0 && (
-        <section className="space-y-4">
-          <h2 className="text-xs font-semibold panel-label uppercase tracking-wide">
-            Tabla de posiciones
-          </h2>
-          <div className="grid sm:grid-cols-2 gap-4">
-            {standingsByGroup.map(({ group, rows }) => (
-              <PublicStandingsTable key={group.id} groupName={group.name} rows={rows} />
-            ))}
-          </div>
-        </section>
-      )}
-
-      {bracketDisplayMatches.length > 0 && (
-        <section className="space-y-3">
-          <h2 className="text-xs font-semibold panel-label uppercase tracking-wide">Fase Final</h2>
-          <PublicBracketView matches={bracketDisplayMatches} />
-        </section>
-      )}
-
-      {standingsByGroup.length === 0 && bracketDisplayMatches.length === 0 && (
-        <p className="text-sm panel-label">Todavía no hay grupos ni resultados cargados.</p>
-      )}
-    </div>
+    <PublicEventBody
+      supabase={supabase}
+      event={event}
+      competitions={(competitions ?? []) as CompetitionWithNames[]}
+      switcherEvents={switcherEvents}
+      defaultCompetitionId={competitionId}
+    />
   );
 }

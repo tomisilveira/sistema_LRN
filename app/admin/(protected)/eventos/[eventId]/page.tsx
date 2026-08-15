@@ -2,7 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import type { Competition, Court, Discipline, Category, EventRow } from "@/lib/database.types";
-import { addCourt, createCompetition, setEventStatusAction } from "./actions";
+import { addCourt, createCompetition, setEventStatusAction, setEventPublicAction } from "./actions";
 import { CourtDisciplineSelect } from "./court-discipline-select";
 import { CopyLinkButton } from "@/app/components/copy-link-button";
 import { Breadcrumbs } from "@/app/components/breadcrumbs";
@@ -37,6 +37,7 @@ export default async function EventPage({ params }: { params: Promise<{ eventId:
   const disciplinesById = new Map((disciplines ?? []).map((d: Discipline) => [d.id, d]));
 
   const setStatus = setEventStatusAction.bind(null, eventId);
+  const setPublic = setEventPublicAction.bind(null, eventId);
   const addCourtAction = addCourt.bind(null, eventId);
   const createCompetitionAction = createCompetition.bind(null, eventId);
   const hasCourts = (courts ?? []).length > 0;
@@ -295,7 +296,21 @@ export default async function EventPage({ params }: { params: Promise<{ eventId:
         <Breadcrumbs items={[{ label: "Eventos", href: "/admin" }, { label: event.name }]} />
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-lg font-semibold">{event.name}</h1>
+            <div className="flex items-center gap-2">
+              <h1 className="text-lg font-semibold">{event.name}</h1>
+              <span
+                className={`text-xs rounded-full px-2 py-0.5 font-medium ${
+                  event.is_public ? "panel-chip-success" : "panel-chip-warning"
+                }`}
+                title={
+                  event.is_public
+                    ? "Visible en /publico y en el inicio."
+                    : "Oculto: no aparece en /publico ni en el inicio, aunque tenga link directo alguien no lo ve listado."
+                }
+              >
+                {event.is_public ? "🌐 Público" : "🔒 Privado"}
+              </span>
+            </div>
             <p className="text-sm panel-label">{event.event_date}</p>
           </div>
           <div className="flex items-center gap-2">
@@ -311,6 +326,15 @@ export default async function EventPage({ params }: { params: Promise<{ eventId:
             >
               📊 Exportar a Excel
             </a>
+            <form action={setPublic.bind(null, !event.is_public)}>
+              <button
+                type="submit"
+                className="panel-chip text-xs rounded-full px-3 py-1.5 transition-colors"
+                title="Mostrar/ocultar este evento en /publico y en el inicio"
+              >
+                {event.is_public ? "🔒 Hacer privado" : "🌐 Hacer público"}
+              </button>
+            </form>
             <form action={setStatus.bind(null, event.status === "active" ? "finished" : "active")}>
               <button type="submit" className="panel-chip text-xs rounded-full px-3 py-1.5 transition-colors">
                 {event.status === "active" ? "Marcar finalizado" : "Marcar activo"}

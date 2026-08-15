@@ -77,6 +77,14 @@ export default async function AdminDashboardPage() {
                 <p className="text-sm panel-label">{ev.event_date}</p>
               </div>
               <div className="flex items-center gap-2 shrink-0">
+                {!ev.is_public && (
+                  <span
+                    className="panel-chip-warning text-xs rounded-full px-2 py-1 font-medium"
+                    title="No aparece en /publico ni en el inicio"
+                  >
+                    🔒 Privado
+                  </span>
+                )}
                 <span className={`text-xs rounded-full px-2 py-1 font-medium ${statusChipClass[ev.status]}`}>
                   {statusLabel[ev.status]}
                 </span>
