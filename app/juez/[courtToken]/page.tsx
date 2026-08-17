@@ -4,6 +4,7 @@ import { ResultForm } from "./result-form";
 import { JudgeRealtime } from "./judge-realtime";
 import { StartMatchButton } from "./start-match-button";
 import { MatchTimer } from "./match-timer";
+import { KioskShell, KioskInvalidLink } from "@/app/components/kiosk-shell";
 
 export const dynamic = "force-dynamic";
 
@@ -18,11 +19,7 @@ export default async function JudgePage({ params }: { params: Promise<{ courtTok
     .maybeSingle();
 
   if (!court) {
-    return (
-      <main className="min-h-screen flex items-center justify-center p-6 text-center bg-neutral-950 text-neutral-100">
-        <p>Link de cancha inválido. Pedile el link correcto a la mesa de jueces.</p>
-      </main>
-    );
+    return <KioskInvalidLink message="Link de cancha inválido. Pedile el link correcto a la mesa de jueces." />;
   }
 
   const { data: event } = await supabase.from("events").select("name").eq("id", court.event_id).single();
@@ -55,22 +52,18 @@ export default async function JudgePage({ params }: { params: Promise<{ courtTok
   }
 
   return (
-    <main className="min-h-screen bg-neutral-950 text-neutral-100 p-4 max-w-md mx-auto">
+    <KioskShell eyebrow={event?.name} title={court.name}>
       <JudgeRealtime courtId={court.id} />
-      <header className="py-4">
-        <p className="text-sm text-neutral-500">{event?.name}</p>
-        <h1 className="text-xl font-bold">{court.name}</h1>
-      </header>
 
       {current ? (
-        <section className="rounded-xl border border-neutral-800 p-4 space-y-4">
-          <p className="text-xs text-neutral-500 uppercase tracking-wide">Próximo partido</p>
+        <section className="panel-card rounded-xl p-4 space-y-4">
+          <p className="text-xs panel-label uppercase tracking-wide font-medium">Próximo partido</p>
           <p className="text-lg font-semibold">
             {teamName.get(current.team_a_id ?? "") ?? "?"} vs{" "}
             {teamName.get(current.team_b_id ?? "") ?? "?"}
           </p>
           {!current.team_a_id || !current.team_b_id ? (
-            <p className="text-sm text-neutral-500">Todavía no están definidos los dos equipos.</p>
+            <p className="text-sm panel-label">Todavía no están definidos los dos equipos.</p>
           ) : current.status === "scheduled" ? (
             <StartMatchButton courtToken={courtToken} matchId={current.id} />
           ) : (
@@ -91,13 +84,13 @@ export default async function JudgePage({ params }: { params: Promise<{ courtTok
           )}
         </section>
       ) : (
-        <p className="text-neutral-500 text-sm">No hay partidos pendientes asignados a esta cancha.</p>
+        <p className="text-sm panel-label">No hay partidos pendientes asignados a esta cancha.</p>
       )}
 
       {upcoming.length > 0 && (
         <section className="mt-6">
-          <p className="text-xs text-neutral-500 uppercase tracking-wide mb-2">Después</p>
-          <ul className="space-y-1 text-sm text-neutral-400">
+          <p className="text-xs panel-label uppercase tracking-wide font-medium mb-2">Después</p>
+          <ul className="space-y-1 text-sm panel-label">
             {upcoming.map((m) => (
               <li key={m.id}>
                 {teamName.get(m.team_a_id ?? "") ?? "?"} vs {teamName.get(m.team_b_id ?? "") ?? "?"}
@@ -106,6 +99,6 @@ export default async function JudgePage({ params }: { params: Promise<{ courtTok
           </ul>
         </section>
       )}
-    </main>
+    </KioskShell>
   );
 }

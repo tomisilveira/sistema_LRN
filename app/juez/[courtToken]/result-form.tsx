@@ -70,8 +70,8 @@ export function ResultForm({
 
   if (confirming) {
     return (
-      <div className="space-y-3 rounded-lg bg-neutral-900 p-3">
-        <p className="text-sm text-neutral-400">Confirmar resultado:</p>
+      <div className="space-y-3 rounded-lg panel-card p-3">
+        <p className="text-sm panel-label">Confirmar resultado:</p>
         <p className="text-lg font-semibold">{summary}</p>
         {error && <p className="text-sm text-red-400">{error}</p>}
         <div className="flex gap-2">
@@ -85,7 +85,7 @@ export function ResultForm({
           <button
             onClick={handleConfirm}
             disabled={submitting}
-            className="flex-1 rounded-md bg-brand-teal text-white font-medium py-2.5 text-sm transition hover:brightness-90 disabled:opacity-50 disabled:hover:brightness-100"
+            className="flex-1 rounded-md panel-button-primary font-medium py-2.5 text-sm disabled:opacity-50"
           >
             {submitting ? "Enviando..." : "Confirmar"}
           </button>
@@ -120,26 +120,26 @@ export function ResultForm({
       {mode === "score" ? (
         <div className="flex items-center gap-3">
           <div className="flex-1 text-center">
-            <p className="text-sm text-neutral-400 mb-1">{teamAName}</p>
+            <p className="text-sm panel-label mb-1">{teamAName}</p>
             <input
               type="number"
               inputMode="numeric"
               min={0}
               value={scoreA}
               onChange={(e) => setScoreA(e.target.value)}
-              className="w-full text-center text-2xl rounded-lg bg-neutral-900 border border-neutral-700 py-3 outline-none focus:ring-2 focus:ring-brand-teal focus:border-brand-teal"
+              className="w-full text-center text-2xl rounded-lg panel-input py-3"
             />
           </div>
-          <span className="text-neutral-600">—</span>
+          <span className="panel-label">—</span>
           <div className="flex-1 text-center">
-            <p className="text-sm text-neutral-400 mb-1">{teamBName}</p>
+            <p className="text-sm panel-label mb-1">{teamBName}</p>
             <input
               type="number"
               inputMode="numeric"
               min={0}
               value={scoreB}
               onChange={(e) => setScoreB(e.target.value)}
-              className="w-full text-center text-2xl rounded-lg bg-neutral-900 border border-neutral-700 py-3 outline-none focus:ring-2 focus:ring-brand-teal focus:border-brand-teal"
+              className="w-full text-center text-2xl rounded-lg panel-input py-3"
             />
           </div>
         </div>
@@ -173,7 +173,7 @@ export function ResultForm({
         disabled={
           !canSubmit || (mode === "score" && !allowDraws && scoreA !== "" && scoreB !== "" && scoreA === scoreB)
         }
-        className="w-full rounded-md bg-brand-teal text-white font-medium py-3 transition hover:brightness-90 disabled:opacity-40 disabled:hover:brightness-100"
+        className="w-full rounded-md panel-button-primary font-medium py-3 disabled:opacity-40"
       >
         Cargar resultado
       </button>

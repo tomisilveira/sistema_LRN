@@ -30,12 +30,12 @@ export function RegistrationForm({ competitionId }: { competitionId: string }) {
     return (
       <div className="rounded-lg border border-brand-green/50 bg-brand-green/10 p-4 space-y-3">
         <p className="font-semibold text-brand-green">¡{submitted} está inscripto! 🎉</p>
-        <p className="text-sm text-neutral-400">
+        <p className="text-sm panel-label">
           Nos vemos en la jornada. Si necesitás cambiar algo, contactá a la organización.
         </p>
         <button
           onClick={() => setSubmitted(null)}
-          className="text-sm text-neutral-400 hover:text-neutral-100 underline"
+          className="text-sm panel-label hover:opacity-80 underline"
         >
           Inscribir otro equipo
         </button>
@@ -46,52 +46,43 @@ export function RegistrationForm({ competitionId }: { competitionId: string }) {
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
       <div>
-        <label className="block text-sm text-neutral-400 mb-1" htmlFor="name">
+        <label className="block text-sm panel-label mb-1" htmlFor="name">
           Nombre del equipo *
         </label>
-        <input
-          id="name"
-          name="name"
-          required
-          className="w-full rounded-md bg-neutral-900 border border-neutral-700 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-teal focus:border-brand-teal"
-        />
+        <input id="name" name="name" required className="w-full rounded-md panel-input px-3 py-2 text-sm" />
       </div>
       <div>
-        <label className="block text-sm text-neutral-400 mb-1" htmlFor="institution">
+        <label className="block text-sm panel-label mb-1" htmlFor="institution">
           Institución / escuela
         </label>
-        <input
-          id="institution"
-          name="institution"
-          className="w-full rounded-md bg-neutral-900 border border-neutral-700 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-teal focus:border-brand-teal"
-        />
+        <input id="institution" name="institution" className="w-full rounded-md panel-input px-3 py-2 text-sm" />
       </div>
       <div className="grid sm:grid-cols-2 gap-4">
         <div>
-          <label className="block text-sm text-neutral-400 mb-1" htmlFor="mentor_name">
+          <label className="block text-sm panel-label mb-1" htmlFor="mentor_name">
             Mentor/profesor responsable *
           </label>
           <input
             id="mentor_name"
             name="mentor_name"
             required
-            className="w-full rounded-md bg-neutral-900 border border-neutral-700 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-teal focus:border-brand-teal"
+            className="w-full rounded-md panel-input px-3 py-2 text-sm"
           />
         </div>
         <div>
-          <label className="block text-sm text-neutral-400 mb-1" htmlFor="mentor_contact">
+          <label className="block text-sm panel-label mb-1" htmlFor="mentor_contact">
             Contacto del mentor (email o tel) *
           </label>
           <input
             id="mentor_contact"
             name="mentor_contact"
             required
-            className="w-full rounded-md bg-neutral-900 border border-neutral-700 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-teal focus:border-brand-teal"
+            className="w-full rounded-md panel-input px-3 py-2 text-sm"
           />
         </div>
       </div>
       <div>
-        <label className="block text-sm text-neutral-400 mb-1" htmlFor="member_count">
+        <label className="block text-sm panel-label mb-1" htmlFor="member_count">
           Cantidad de integrantes del equipo
         </label>
         <input
@@ -99,29 +90,24 @@ export function RegistrationForm({ competitionId }: { competitionId: string }) {
           name="member_count"
           type="number"
           min={1}
-          className="w-32 rounded-md bg-neutral-900 border border-neutral-700 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-teal focus:border-brand-teal"
+          className="w-32 rounded-md panel-input px-3 py-2 text-sm"
         />
       </div>
       <div>
-        <label className="block text-sm text-neutral-400 mb-1" htmlFor="notes">
+        <label className="block text-sm panel-label mb-1" htmlFor="notes">
           Notas (opcional)
         </label>
-        <textarea
-          id="notes"
-          name="notes"
-          rows={2}
-          className="w-full rounded-md bg-neutral-900 border border-neutral-700 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-teal focus:border-brand-teal"
-        />
+        <textarea id="notes" name="notes" rows={2} className="w-full rounded-md panel-input px-3 py-2 text-sm" />
       </div>
       {error && <p className="text-sm text-red-400">{error}</p>}
       <button
         type="submit"
         disabled={pending}
-        className="w-full rounded-md bg-brand-teal text-white font-medium py-2.5 transition hover:brightness-90 disabled:opacity-50 disabled:hover:brightness-100"
+        className="w-full rounded-md panel-button-primary font-medium py-2.5 disabled:opacity-50"
       >
         {pending ? "Enviando..." : "Inscribir equipo"}
       </button>
-      <p className="text-xs text-neutral-600">
+      <p className="text-xs panel-label">
         No pidas datos de menores acá — solo del adulto responsable del equipo.
       </p>
     </form>

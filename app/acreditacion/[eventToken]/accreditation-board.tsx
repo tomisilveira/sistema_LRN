@@ -49,21 +49,21 @@ export function AccreditationBoard({
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder="Buscar equipo o institución…"
-          className="flex-1 min-w-[180px] rounded-md bg-neutral-900 border border-neutral-700 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-brand-teal focus:border-brand-teal"
+          className="flex-1 min-w-[180px] rounded-md panel-input px-3 py-2 text-sm"
         />
-        <span className="text-xs text-neutral-400 whitespace-nowrap rounded-full bg-neutral-900 border border-neutral-800 px-2.5 py-1">
+        <span className="panel-chip text-xs whitespace-nowrap rounded-full px-2.5 py-1">
           {readyTeams}/{totalTeams} listos
         </span>
       </div>
 
       {filteredGroups.length === 0 && (
-        <p className="text-sm text-neutral-600">
+        <p className="text-sm panel-label">
           {q ? `Sin resultados para "${query}".` : "Todavía no hay equipos inscriptos."}
         </p>
       )}
 
       {filteredGroups.map((g) => (
-        <section key={g.id} className="rounded-xl border border-neutral-800 p-3 space-y-2">
+        <section key={g.id} className="panel-card rounded-xl p-3 space-y-2">
           <h2 className="text-sm font-semibold text-brand-teal uppercase tracking-wide">{g.label}</h2>
           <div className="space-y-2">
             {g.teams.map((t) => (

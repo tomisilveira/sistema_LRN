@@ -62,12 +62,12 @@ export function TeamCheckinRow({ eventToken, team }: { eventToken: string; team:
   return (
     <div
       className={`rounded-md px-3 py-2 flex flex-wrap items-center gap-4 text-sm border transition-colors ${
-        ready ? "bg-brand-green/10 border-brand-green/40" : "bg-neutral-900 border-neutral-800"
+        ready ? "bg-brand-green/10 border-brand-green/40" : "panel-card"
       }`}
     >
       <div className="min-w-[160px] flex-1">
         <p className="font-medium">{team.name}</p>
-        {team.institution && <p className="text-xs text-neutral-500">{team.institution}</p>}
+        {team.institution && <p className="text-xs panel-label">{team.institution}</p>}
         {error && <p className="text-xs text-red-400">{error}</p>}
       </div>
 
@@ -96,7 +96,7 @@ export function TeamCheckinRow({ eventToken, team }: { eventToken: string; team:
       </label>
 
       <div className="flex items-center gap-1.5">
-        <label className="text-xs text-neutral-500" htmlFor={`pp-${team.id}`}>
+        <label className="text-xs panel-label" htmlFor={`pp-${team.id}`}>
           Presentes
         </label>
         <input
@@ -113,7 +113,7 @@ export function TeamCheckinRow({ eventToken, team }: { eventToken: string; team:
           type="button"
           onClick={handleSavePresent}
           disabled={pending}
-          className="text-xs rounded-md bg-brand-teal text-white px-2.5 py-1 font-medium hover:brightness-90 disabled:opacity-50 transition"
+          className="text-xs rounded-md panel-button-primary px-2.5 py-1 font-medium"
         >
           Guardar
         </button>

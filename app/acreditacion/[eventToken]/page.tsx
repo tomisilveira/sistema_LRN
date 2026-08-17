@@ -1,6 +1,7 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import type { Team } from "@/lib/database.types";
 import { AccreditationBoard, type AccreditationGroup } from "./accreditation-board";
+import { KioskShell, KioskInvalidLink } from "@/app/components/kiosk-shell";
 
 export const dynamic = "force-dynamic";
 
@@ -15,11 +16,7 @@ export default async function AcreditacionPage({ params }: { params: Promise<{ e
     .maybeSingle();
 
   if (!event) {
-    return (
-      <main className="min-h-screen flex items-center justify-center p-6 text-center bg-neutral-950 text-neutral-100">
-        <p>Link de acreditación inválido. Pedile el link correcto a la organización.</p>
-      </main>
-    );
+    return <KioskInvalidLink message="Link de acreditación inválido. Pedile el link correcto a la organización." />;
   }
 
   const { data: competitions } = await supabase
@@ -55,22 +52,17 @@ export default async function AcreditacionPage({ params }: { params: Promise<{ e
   const totalPresent = teamsList.reduce((sum, t) => sum + (t.participants_present ?? 0), 0);
 
   return (
-    <main className="min-h-screen bg-neutral-950 text-neutral-100 p-4 max-w-2xl mx-auto">
-      <header className="py-4">
-        <p className="text-sm text-neutral-500">{event.name}</p>
-        <h1 className="text-xl font-bold">Acreditación</h1>
-      </header>
-
+    <KioskShell eyebrow={event.name} title="Acreditación" maxWidthClassName="max-w-2xl">
       {competitionList.length === 0 ? (
-        <p className="text-sm text-neutral-500">Todavía no hay torneos cargados en este evento.</p>
+        <p className="text-sm panel-label">Todavía no hay torneos cargados en este evento.</p>
       ) : (
         <AccreditationBoard eventToken={eventToken} groups={groups} />
       )}
 
-      <footer className="mt-8 pt-4 border-t border-neutral-800 text-sm text-neutral-400">
+      <footer className="mt-8 pt-4 panel-nav border-t text-sm panel-label">
         Total participantes presentes:{" "}
         <span className="font-semibold text-brand-orange text-base">{totalPresent}</span>
       </footer>
-    </main>
+    </KioskShell>
   );
 }

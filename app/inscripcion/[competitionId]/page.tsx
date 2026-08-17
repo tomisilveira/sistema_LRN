@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import type { Competition, Discipline, Category } from "@/lib/database.types";
 import { RegistrationForm } from "./registration-form";
+import { KioskShell } from "@/app/components/kiosk-shell";
 
 export const revalidate = 0;
 
@@ -27,25 +28,21 @@ export default async function InscripcionPage({
   ]);
 
   return (
-    <main className="min-h-screen bg-neutral-950 text-neutral-100 p-6">
-      <div className="max-w-md mx-auto space-y-6">
-        <div>
-          <p className="text-sm text-neutral-500">{event?.name}</p>
-          <h1 className="text-2xl font-bold mt-1">
-            {discipline?.name} — {category?.name}
-          </h1>
-          <p className="text-sm text-neutral-400 mt-1">Inscripción de equipos</p>
-        </div>
-
+    <KioskShell
+      eyebrow={event?.name}
+      title={`${discipline?.name} — ${category?.name}`}
+      subtitle="Inscripción de equipos"
+    >
+      <div className="space-y-6">
         {competition.registration_open ? (
           <RegistrationForm competitionId={competitionId} />
         ) : (
-          <p className="text-sm text-neutral-500 rounded-lg border border-neutral-800 p-4">
+          <p className="text-sm panel-label panel-surface rounded-lg p-4">
             Las inscripciones para este torneo están cerradas por ahora. Consultá con la
             organización de la Liga Robótica Neuquina.
           </p>
         )}
       </div>
-    </main>
+    </KioskShell>
   );
 }

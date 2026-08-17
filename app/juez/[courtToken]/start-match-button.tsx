@@ -32,12 +32,12 @@ export function StartMatchButton({ courtToken, matchId }: { courtToken: string; 
 
   return (
     <div className="space-y-2">
-      <p className="text-sm text-neutral-500">Cuando los dos equipos estén listos en la cancha:</p>
+      <p className="text-sm panel-label">Cuando los dos equipos estén listos en la cancha:</p>
       {error && <p className="text-sm text-red-400">{error}</p>}
       <button
         onClick={handleStart}
         disabled={loading}
-        className="w-full rounded-md bg-brand-orange text-neutral-900 font-semibold py-3 transition hover:brightness-90 disabled:opacity-50 disabled:hover:brightness-100"
+        className="w-full rounded-md panel-button-accent font-semibold py-3 disabled:opacity-50"
       >
         {loading ? "Abriendo..." : "Iniciar partido"}
       </button>

@@ -47,13 +47,13 @@ export function MatchTimer({
   return (
     <div className="flex items-center justify-between rounded-lg bg-neutral-900 border border-brand-orange/30 px-4 py-3">
       <div>
-        <p className="text-xs text-neutral-500 uppercase tracking-wide">En curso</p>
+        <p className="text-xs panel-label uppercase tracking-wide font-medium">En curso</p>
         <p className="text-2xl font-mono font-bold tabular-nums text-brand-orange">{formatElapsed(elapsed)}</p>
       </div>
       <button
         onClick={handleCancel}
         disabled={canceling}
-        className="text-xs text-neutral-500 hover:text-neutral-300 underline"
+        className="text-xs panel-label hover:opacity-80 underline"
       >
         Abrí mal, volver
       </button>
