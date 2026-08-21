@@ -47,7 +47,7 @@ export function BracketView({
               return (
                 <div
                   key={m.id}
-                  className={`rounded-xl panel-card p-3 space-y-2 border-l-4 ${
+                  className={`rounded-xl panel-card p-3 space-y-2 border-l-4 transition-colors duration-300 panel-enter ${
                     decided ? "border-brand-green" : "border-neutral-300 dark:border-neutral-700"
                   }`}
                 >

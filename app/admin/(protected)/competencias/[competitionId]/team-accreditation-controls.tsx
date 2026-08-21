@@ -110,13 +110,13 @@ export function TeamAccreditationControls({
         />
       </label>
       <span
-        className={`text-xs rounded-full px-2 py-0.5 font-medium ${ready ? "panel-chip-success" : "panel-chip-warning"}`}
+        className={`text-xs rounded-full px-2 py-0.5 font-medium transition-colors ${ready ? "panel-chip-success" : "panel-chip-warning"}`}
       >
         {ready ? "✅ Listo" : "⏳ Falta"}
       </span>
       {pending && <span className="text-xs panel-label">…</span>}
-      {saved && <span className="text-xs text-brand-green">✓</span>}
-      {error && <span className="text-xs text-red-500 dark:text-red-400">{error}</span>}
+      {saved && <span className="text-xs text-brand-green panel-enter">✓</span>}
+      {error && <span className="text-xs text-red-500 dark:text-red-400 panel-enter">{error}</span>}
     </div>
   );
 }

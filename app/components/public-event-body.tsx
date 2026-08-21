@@ -36,7 +36,7 @@ export async function PublicEventBody({
       : undefined) ?? tabItems[liveIndex >= 0 ? liveIndex : 0]?.id;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 panel-enter">
       <PublicEventSwitcher events={switcherEvents} currentEventId={event.id} />
 
       <div className="flex flex-wrap items-center justify-between gap-2">

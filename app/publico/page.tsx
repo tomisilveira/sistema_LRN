@@ -37,7 +37,7 @@ export default async function PublicEventsPage() {
         <h1 className="text-xl sm:text-2xl font-bold">Liga Robótica Neuquina</h1>
         <p className="panel-label text-sm">Todas las jornadas</p>
       </div>
-      <div className="space-y-2">
+      <div className="space-y-2 panel-enter-stagger">
         <p className="text-xs panel-label uppercase tracking-wide mb-1">Jornadas</p>
         {(events ?? []).length === 0 && (
           <p className="text-sm panel-label">Todavía no hay jornadas publicadas.</p>

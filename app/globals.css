@@ -73,20 +73,22 @@ body {
 }
 
 .panel-button-primary {
-  @apply bg-brand-teal text-white transition hover:brightness-90 disabled:opacity-50 disabled:hover:brightness-100;
+  @apply bg-brand-teal text-white transition duration-150 hover:brightness-90 active:scale-[0.97]
+    disabled:opacity-50 disabled:hover:brightness-100 disabled:active:scale-100;
 }
 
 .panel-button-accent {
-  @apply bg-brand-orange text-neutral-900 transition hover:brightness-90 disabled:opacity-50 disabled:hover:brightness-100;
+  @apply bg-brand-orange text-neutral-900 transition duration-150 hover:brightness-90 active:scale-[0.97]
+    disabled:opacity-50 disabled:hover:brightness-100 disabled:active:scale-100;
 }
 
 .panel-button-secondary {
-  @apply border border-brand-teal/40 text-brand-teal-dark hover:bg-brand-teal/10 transition
+  @apply border border-brand-teal/40 text-brand-teal-dark hover:bg-brand-teal/10 transition duration-150 active:scale-[0.97]
     dark:text-brand-teal dark:border-brand-teal/50 dark:hover:bg-brand-teal/10;
 }
 
 .panel-button-danger {
-  @apply text-red-500 hover:text-red-600 dark:text-red-400 dark:hover:text-red-300 transition;
+  @apply text-red-500 hover:text-red-600 dark:text-red-400 dark:hover:text-red-300 transition duration-150 active:scale-95;
 }
 
 .panel-chip {
@@ -120,7 +122,7 @@ body {
    para que se note a simple vista que es interactiva. */
 .panel-card-button {
   @apply bg-white border border-neutral-200 shadow-sm dark:bg-neutral-900 dark:border-neutral-800
-    transition hover:shadow-md hover:border-brand-teal/50 hover:-translate-y-0.5
+    transition duration-200 hover:shadow-lg hover:border-brand-teal/50 hover:-translate-y-0.5 active:translate-y-0 active:scale-[0.99]
     dark:hover:shadow-none dark:hover:bg-neutral-800/60;
 }
 
@@ -129,5 +131,151 @@ body {
    ningún borde ni fondo, así que no se leían como botón. */
 .panel-button-xs {
   @apply rounded-md border border-brand-teal/40 text-brand-teal-dark dark:text-brand-teal dark:border-brand-teal/50
-    hover:bg-brand-teal/10 transition disabled:opacity-50 disabled:hover:bg-transparent;
+    hover:bg-brand-teal/10 transition duration-150 active:scale-[0.96] disabled:opacity-50 disabled:hover:bg-transparent;
+}
+
+/* ==========================================================================
+   Movimiento: entradas, feedback táctil, transiciones de modal/pestañas.
+   Todo puramente cosmético (opacity/transform), nunca layout — y anulado
+   entero bajo prefers-reduced-motion para quien lo pida.
+   ========================================================================== */
+
+@media (prefers-reduced-motion: no-preference) {
+  @keyframes panel-fade-up {
+    from {
+      opacity: 0;
+      transform: translateY(6px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  @keyframes panel-fade-in {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+
+  @keyframes panel-scale-in {
+    from {
+      opacity: 0;
+      transform: scale(0.96);
+    }
+    to {
+      opacity: 1;
+      transform: scale(1);
+    }
+  }
+
+  @keyframes panel-breathe {
+    0%,
+    100% {
+      opacity: 0.55;
+    }
+    50% {
+      opacity: 1;
+    }
+  }
+
+  /* Entrada simple para un bloque (contenido de pestaña activa, tarjeta
+     suelta que aparece condicionalmente, mensajes de éxito/error). */
+  .panel-enter {
+    animation: panel-fade-up 0.35s cubic-bezier(0.16, 1, 0.3, 1) both;
+  }
+
+  /* Entrada en cascada: aplicar al contenedor de una lista/grilla de
+     tarjetas — cada hijo directo entra con un pequeño delay adicional. */
+  .panel-enter-stagger > * {
+    animation: panel-fade-up 0.35s cubic-bezier(0.16, 1, 0.3, 1) both;
+  }
+  .panel-enter-stagger > *:nth-child(1) {
+    animation-delay: 0ms;
+  }
+  .panel-enter-stagger > *:nth-child(2) {
+    animation-delay: 40ms;
+  }
+  .panel-enter-stagger > *:nth-child(3) {
+    animation-delay: 80ms;
+  }
+  .panel-enter-stagger > *:nth-child(4) {
+    animation-delay: 120ms;
+  }
+  .panel-enter-stagger > *:nth-child(5) {
+    animation-delay: 160ms;
+  }
+  .panel-enter-stagger > *:nth-child(6) {
+    animation-delay: 200ms;
+  }
+  .panel-enter-stagger > *:nth-child(7) {
+    animation-delay: 240ms;
+  }
+  .panel-enter-stagger > *:nth-child(8) {
+    animation-delay: 280ms;
+  }
+  .panel-enter-stagger > *:nth-child(n + 9) {
+    animation-delay: 320ms;
+  }
+
+  .panel-modal-backdrop {
+    animation: panel-fade-in 0.2s ease-out both;
+  }
+  .panel-modal-panel {
+    animation: panel-scale-in 0.22s cubic-bezier(0.16, 1, 0.3, 1) both;
+  }
+
+  /* Puntitos de marca en los headers (public/kiosk/admin) — respiración muy
+     lenta y sutil, no es información, es solo que el logo se sienta "vivo". */
+  .panel-brand-dots > span {
+    animation: panel-breathe 3s ease-in-out infinite;
+  }
+  .panel-brand-dots > span:nth-child(2) {
+    animation-delay: 0.4s;
+  }
+  .panel-brand-dots > span:nth-child(3) {
+    animation-delay: 0.8s;
+  }
+  .panel-brand-dots > span:nth-child(4) {
+    animation-delay: 1.2s;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .panel-enter,
+  .panel-enter-stagger > *,
+  .panel-modal-backdrop,
+  .panel-modal-panel,
+  .panel-brand-dots > span {
+    animation: none !important;
+  }
+}
+
+/* Punto "en vivo" con glow — usado en el panel de partidos en curso.
+   Más presencia que un animate-pulse suelto sin quedar chillón. */
+.panel-live-dot {
+  @apply relative inline-flex w-2 h-2 rounded-full bg-red-500;
+  box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.55);
+  animation: panel-live-ping 1.8s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+@keyframes panel-live-ping {
+  0% {
+    box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.45);
+  }
+  70% {
+    box-shadow: 0 0 0 6px rgba(239, 68, 68, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(239, 68, 68, 0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .panel-live-dot {
+    animation: none !important;
+  }
 }

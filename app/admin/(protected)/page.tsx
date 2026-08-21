@@ -62,7 +62,7 @@ export default async function AdminDashboardPage() {
             </div>
           </ModalFormButton>
         </div>
-        <div className="space-y-2">
+        <div className="space-y-2 panel-enter-stagger">
           {(events ?? []).length === 0 && (
             <p className="text-sm panel-label">Todavía no hay eventos creados.</p>
           )}
@@ -130,7 +130,7 @@ export default async function AdminDashboardPage() {
             </label>
           </ModalFormButton>
         </div>
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-wrap gap-2 panel-enter-stagger">
           {(disciplines ?? []).length === 0 && (
             <p className="text-sm panel-label">Todavía no hay disciplinas cargadas.</p>
           )}
@@ -139,7 +139,7 @@ export default async function AdminDashboardPage() {
             return (
               <span
                 key={d.id}
-                className={`inline-flex items-center gap-1.5 text-sm rounded-full px-3 py-1.5 border-l-4 ${colors.border} ${colors.bg}`}
+                className={`inline-flex items-center gap-1.5 text-sm rounded-full px-3 py-1.5 border-l-4 transition-colors hover:brightness-95 ${colors.border} ${colors.bg}`}
               >
                 <span className={`w-1.5 h-1.5 rounded-full ${colors.dot}`} aria-hidden="true" />
                 {d.name}

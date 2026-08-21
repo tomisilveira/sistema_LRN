@@ -23,8 +23,8 @@ export function KioskShell({
   return (
     <div className="dark panel-page min-h-screen">
       <div className={`${maxWidthClassName} mx-auto p-4`}>
-        <header className="py-4 flex items-center gap-2.5">
-          <span className="flex gap-0.5 shrink-0" aria-hidden="true">
+        <header className="py-4 flex items-center gap-2.5 panel-enter">
+          <span className="flex gap-0.5 shrink-0 panel-brand-dots" aria-hidden="true">
             <span className="w-2 h-2 rounded-full bg-brand-teal" />
             <span className="w-2 h-2 rounded-full bg-brand-orange" />
             <span className="w-2 h-2 rounded-full bg-brand-pink" />
@@ -36,7 +36,8 @@ export function KioskShell({
             {subtitle && <p className="text-sm panel-label mt-0.5">{subtitle}</p>}
           </div>
         </header>
-        {children}
+        <div className="h-0.5 w-full rounded-full bg-gradient-to-r from-brand-teal via-brand-orange to-brand-pink mb-4 opacity-70" />
+        <div className="panel-enter">{children}</div>
       </div>
     </div>
   );

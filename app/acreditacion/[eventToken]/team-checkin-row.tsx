@@ -119,7 +119,9 @@ export function TeamCheckinRow({ eventToken, team }: { eventToken: string; team:
         </button>
       </div>
 
-      {saved && <span className="text-xs text-brand-green font-medium">✓ Guardado</span>}
+      {saved && (
+        <span className="text-xs text-brand-green font-medium panel-enter">✓ Guardado</span>
+      )}
     </div>
   );
 }

@@ -70,15 +70,15 @@ export function ResultForm({
 
   if (confirming) {
     return (
-      <div className="space-y-3 rounded-lg panel-card p-3">
+      <div className="space-y-3 rounded-lg panel-card p-3 panel-enter">
         <p className="text-sm panel-label">Confirmar resultado:</p>
         <p className="text-lg font-semibold">{summary}</p>
-        {error && <p className="text-sm text-red-400">{error}</p>}
+        {error && <p className="text-sm text-red-400 panel-enter">{error}</p>}
         <div className="flex gap-2">
           <button
             onClick={() => setConfirming(false)}
             disabled={submitting}
-            className="flex-1 rounded-md border border-neutral-700 py-2.5 text-sm"
+            className="flex-1 rounded-md border border-neutral-700 py-2.5 text-sm transition active:scale-[0.97]"
           >
             Volver
           </button>
@@ -101,7 +101,7 @@ export function ResultForm({
       <div className="flex gap-2 text-xs">
         <button
           onClick={() => setMode("score")}
-          className={`flex-1 rounded-md py-1.5 border transition ${
+          className={`flex-1 rounded-md py-1.5 border transition active:scale-[0.97] ${
             mode === "score" ? "bg-brand-teal text-white border-brand-teal" : "border-neutral-700"
           }`}
         >
@@ -109,7 +109,7 @@ export function ResultForm({
         </button>
         <button
           onClick={() => setMode("winner")}
-          className={`flex-1 rounded-md py-1.5 border transition ${
+          className={`flex-1 rounded-md py-1.5 border transition active:scale-[0.97] ${
             mode === "winner" ? "bg-brand-teal text-white border-brand-teal" : "border-neutral-700"
           }`}
         >
@@ -147,7 +147,7 @@ export function ResultForm({
         <div className="grid grid-cols-2 gap-2">
           <button
             onClick={() => setWinnerId(teamAId)}
-            className={`rounded-lg py-4 text-sm font-medium border transition ${
+            className={`rounded-lg py-4 text-sm font-medium border transition active:scale-[0.97] ${
               winnerId === teamAId ? "bg-brand-teal text-white border-brand-teal" : "border-neutral-700"
             }`}
           >
@@ -155,7 +155,7 @@ export function ResultForm({
           </button>
           <button
             onClick={() => setWinnerId(teamBId)}
-            className={`rounded-lg py-4 text-sm font-medium border transition ${
+            className={`rounded-lg py-4 text-sm font-medium border transition active:scale-[0.97] ${
               winnerId === teamBId ? "bg-brand-teal text-white border-brand-teal" : "border-neutral-700"
             }`}
           >

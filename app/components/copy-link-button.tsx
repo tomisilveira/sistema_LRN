@@ -19,9 +19,11 @@ export function CopyLinkButton({ path, label = "Copiar link" }: { path: string; 
   return (
     <button
       onClick={handleCopy}
-      className="text-xs rounded-md panel-button-secondary px-2 py-1 transition-colors whitespace-nowrap"
+      className={`text-xs rounded-md px-2 py-1 whitespace-nowrap border transition-all duration-150 active:scale-[0.96] ${
+        copied ? "panel-chip-success border-transparent" : "panel-button-secondary"
+      }`}
     >
-      {copied ? "¡Copiado!" : label}
+      {copied ? "✓ ¡Copiado!" : label}
     </button>
   );
 }

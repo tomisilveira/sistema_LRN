@@ -19,16 +19,19 @@ export function PublicLiveNowPanel({ matches }: { matches: LiveMatchInfo[] }) {
   if (matches.length === 0) return null;
 
   return (
-    <section className="rounded-xl border-2 border-red-500/40 bg-red-500/5 p-4 space-y-3">
+    <section className="rounded-xl border-2 border-red-500/40 bg-red-500/5 p-4 space-y-3 panel-enter">
       <div className="flex items-center gap-2">
-        <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse shrink-0" aria-hidden="true" />
+        <span className="panel-live-dot shrink-0" aria-hidden="true" />
         <h2 className="text-sm font-bold uppercase tracking-wide text-red-600 dark:text-red-400">
           En vivo ahora
         </h2>
       </div>
-      <div className="grid sm:grid-cols-2 gap-2">
+      <div className="grid sm:grid-cols-2 gap-2 panel-enter-stagger">
         {matches.map((m) => (
-          <div key={m.matchId} className="panel-card rounded-lg px-3 py-2.5 space-y-1">
+          <div
+            key={m.matchId}
+            className="panel-card rounded-lg px-3 py-2.5 space-y-1 transition-shadow hover:shadow-md"
+          >
             <div className="flex items-center gap-1.5 text-xs panel-label">
               <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${m.dotClass}`} aria-hidden="true" />
               <span className="truncate">{m.disciplineCategory}</span>

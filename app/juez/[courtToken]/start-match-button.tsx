@@ -33,7 +33,7 @@ export function StartMatchButton({ courtToken, matchId }: { courtToken: string; 
   return (
     <div className="space-y-2">
       <p className="text-sm panel-label">Cuando los dos equipos estén listos en la cancha:</p>
-      {error && <p className="text-sm text-red-400">{error}</p>}
+      {error && <p className="text-sm text-red-400 panel-enter">{error}</p>}
       <button
         onClick={handleStart}
         disabled={loading}

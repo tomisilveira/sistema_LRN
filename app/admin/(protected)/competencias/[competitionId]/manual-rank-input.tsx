@@ -59,9 +59,9 @@ export function ManualRankInput({
         }}
       />
       <span className="w-3.5 text-xs shrink-0" aria-live="polite">
-        {pending ? "…" : saved ? <span className="text-brand-green">✓</span> : null}
+        {pending ? "…" : saved ? <span className="text-brand-green panel-enter">✓</span> : null}
       </span>
-      {error && <span className="text-xs text-red-500 dark:text-red-400">{error}</span>}
+      {error && <span className="text-xs text-red-500 dark:text-red-400 panel-enter">{error}</span>}
     </span>
   );
 }

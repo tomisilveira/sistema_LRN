@@ -73,7 +73,7 @@ function UpcomingEvents({ events }: { events: EventRow[] }) {
       </div>
       <div>
         <p className="text-xs panel-label uppercase tracking-wide mb-3">Próximas fechas</p>
-        <div className="space-y-2">
+        <div className="space-y-2 panel-enter-stagger">
           {events.length === 0 && (
             <p className="text-sm panel-label">Todavía no hay jornadas programadas.</p>
           )}

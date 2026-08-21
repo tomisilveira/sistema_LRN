@@ -9,7 +9,7 @@ export function FormatAdvisory({ teamCount, courtCount }: { teamCount: number; c
   const rec = recommendFormat(teamCount, courtCount);
 
   return (
-    <div className="rounded-md panel-surface p-3 text-sm space-y-1.5">
+    <div className="rounded-md panel-surface border-l-4 border-brand-teal/40 p-3 text-sm space-y-1.5">
       <p className="font-medium">
         Sugerencia: <span>{formatLabel[rec.recommended]}</span>
       </p>

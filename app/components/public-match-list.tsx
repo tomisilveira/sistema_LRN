@@ -15,14 +15,14 @@ export function PublicMatchList({ matches }: { matches: PublicMatchDisplay[] }) 
   if (matches.length === 0) return null;
 
   return (
-    <div className="space-y-1.5">
+    <div className="space-y-1.5 panel-enter-stagger">
       {matches.map((m) => (
         <div
           key={m.id}
-          className={`rounded-md px-3 py-2 flex flex-wrap items-center justify-between gap-2 text-sm border ${
+          className={`rounded-md px-3 py-2 flex flex-wrap items-center justify-between gap-2 text-sm border transition-colors ${
             m.status === "in_progress"
               ? "border-red-500/50 bg-red-500/5"
-              : "panel-surface border-transparent"
+              : "panel-surface border-transparent hover:border-brand-teal/30"
           }`}
         >
           <div className="min-w-[160px]">
@@ -36,7 +36,7 @@ export function PublicMatchList({ matches }: { matches: PublicMatchDisplay[] }) 
           <div className="flex items-center gap-2 text-xs shrink-0">
             {m.status === "in_progress" ? (
               <span className="inline-flex items-center gap-1 text-red-600 dark:text-red-400 font-medium">
-                <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse" aria-hidden="true" />
+                <span className="panel-live-dot" aria-hidden="true" />
                 En vivo{m.started_at && (
                   <>
                     {" · "}

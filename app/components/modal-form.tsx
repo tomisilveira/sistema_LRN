@@ -62,14 +62,14 @@ export function ModalFormButton({
       </button>
       {open && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50"
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 panel-modal-backdrop"
           onClick={close}
         >
           <div
             role="dialog"
             aria-modal="true"
             aria-labelledby="modal-form-title"
-            className="panel-page panel-card rounded-xl p-5 w-full max-w-md space-y-4 shadow-lg"
+            className="panel-page panel-card rounded-xl p-5 w-full max-w-md space-y-4 shadow-lg panel-modal-panel"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-start justify-between gap-2">
@@ -83,7 +83,7 @@ export function ModalFormButton({
                 type="button"
                 onClick={close}
                 aria-label="Cerrar"
-                className="panel-label hover:opacity-70 text-lg leading-none shrink-0"
+                className="panel-label hover:opacity-70 hover:rotate-90 active:scale-90 transition-all duration-150 text-lg leading-none shrink-0"
               >
                 ×
               </button>

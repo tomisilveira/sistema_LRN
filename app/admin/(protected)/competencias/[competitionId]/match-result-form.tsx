@@ -96,7 +96,7 @@ export function MatchResultForm({
       >
         Cargar resultado
       </button>
-      {error && <span className="text-xs text-red-500 dark:text-red-400 basis-full">{error}</span>}
+      {error && <span className="text-xs text-red-500 dark:text-red-400 basis-full panel-enter">{error}</span>}
     </form>
   );
 }

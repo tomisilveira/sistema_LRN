@@ -28,7 +28,7 @@ export function RegistrationForm({ competitionId }: { competitionId: string }) {
 
   if (submitted) {
     return (
-      <div className="rounded-lg border border-brand-green/50 bg-brand-green/10 p-4 space-y-3">
+      <div className="rounded-lg border border-brand-green/50 bg-brand-green/10 p-4 space-y-3 panel-enter">
         <p className="font-semibold text-brand-green">¡{submitted} está inscripto! 🎉</p>
         <p className="text-sm panel-label">
           Nos vemos en la jornada. Si necesitás cambiar algo, contactá a la organización.
@@ -99,7 +99,7 @@ export function RegistrationForm({ competitionId }: { competitionId: string }) {
         </label>
         <textarea id="notes" name="notes" rows={2} className="w-full rounded-md panel-input px-3 py-2 text-sm" />
       </div>
-      {error && <p className="text-sm text-red-400">{error}</p>}
+      {error && <p className="text-sm text-red-400 panel-enter">{error}</p>}
       <button
         type="submit"
         disabled={pending}

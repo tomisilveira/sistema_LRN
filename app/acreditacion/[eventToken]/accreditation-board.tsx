@@ -63,9 +63,9 @@ export function AccreditationBoard({
       )}
 
       {filteredGroups.map((g) => (
-        <section key={g.id} className="panel-card rounded-xl p-3 space-y-2">
+        <section key={g.id} className="panel-card rounded-xl p-3 space-y-2 panel-enter">
           <h2 className="text-sm font-semibold text-brand-teal uppercase tracking-wide">{g.label}</h2>
-          <div className="space-y-2">
+          <div className="space-y-2 panel-enter-stagger">
             {g.teams.map((t) => (
               <TeamCheckinRow key={t.id} eventToken={eventToken} team={t} />
             ))}

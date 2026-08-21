@@ -88,14 +88,14 @@ export default async function EventPage({ params }: { params: Promise<{ eventId:
             )}
           </div>
           {hasCourts ? (
-            <div className="grid sm:grid-cols-2 gap-2">
+            <div className="grid sm:grid-cols-2 gap-2 panel-enter-stagger">
               {(courts ?? []).map((court: Court) => {
                 const discipline = court.discipline_id ? disciplinesById.get(court.discipline_id) : null;
                 const colors = disciplineColor(discipline);
                 return (
                   <div
                     key={court.id}
-                    className={`rounded-md border-l-4 ${colors.border} ${colors.bg} px-3 py-2 space-y-2`}
+                    className={`rounded-md border-l-4 transition-colors hover:brightness-95 ${colors.border} ${colors.bg} px-3 py-2 space-y-2`}
                   >
                     <div className="flex items-center justify-between gap-2">
                       <span className="text-sm font-medium">{court.name}</span>
@@ -243,7 +243,7 @@ export default async function EventPage({ params }: { params: Promise<{ eventId:
               </label>
             </ModalFormButton>
           </div>
-          <div className="space-y-2">
+          <div className="space-y-2 panel-enter-stagger">
             {(competitions ?? []).length === 0 && (
               <p className="text-sm panel-label">Todavía no hay torneos creados.</p>
             )}
@@ -259,7 +259,7 @@ export default async function EventPage({ params }: { params: Promise<{ eventId:
                   <Link
                     key={c.id}
                     href={`/admin/competencias/${c.id}`}
-                    className={`group flex items-center justify-between gap-3 rounded-lg border-l-4 ${colors.border} ${colors.bg} px-3.5 py-2.5 shadow-sm transition hover:shadow-md hover:-translate-y-0.5`}
+                    className={`group flex items-center justify-between gap-3 rounded-lg border-l-4 ${colors.border} ${colors.bg} px-3.5 py-2.5 shadow-sm transition duration-200 hover:shadow-lg hover:-translate-y-0.5 hover:brightness-95 active:translate-y-0 active:scale-[0.99]`}
                   >
                     <div className="min-w-0">
                       <p className="text-sm font-medium truncate">

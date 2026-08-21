@@ -21,7 +21,7 @@ export default function AdminError({ error, reset }: { error: Error & { digest?:
 
   return (
     <div className="flex-1 flex items-center justify-center p-8 min-h-[60vh]">
-      <div className="max-w-sm w-full text-center space-y-4">
+      <div className="max-w-sm w-full text-center space-y-4 panel-enter">
         <p className="text-3xl">⚠️</p>
         <h1 className="text-lg font-semibold">Algo no salió bien</h1>
         <p className="text-sm panel-label">

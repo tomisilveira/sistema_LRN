@@ -43,17 +43,34 @@ export function MatchTimer({
   }
 
   const elapsed = now - new Date(startedAt).getTime();
+  const elapsedMinutes = elapsed / 60000;
+  // Puramente visual: el timer ya calculaba `elapsed`, esto solo elige el
+  // color según cuánto pasó, para que la mesa de jueces note de un vistazo
+  // un partido que se está estirando — no cambia el cálculo ni el negocio.
+  const urgency =
+    elapsedMinutes >= 5
+      ? { border: "border-red-500/40", text: "text-red-500" }
+      : elapsedMinutes >= 3
+        ? { border: "border-brand-orange/40", text: "text-brand-orange" }
+        : { border: "border-brand-teal/30", text: "text-brand-teal" };
 
   return (
-    <div className="flex items-center justify-between rounded-lg bg-neutral-900 border border-brand-orange/30 px-4 py-3">
+    <div
+      className={`flex items-center justify-between rounded-lg bg-neutral-900 border px-4 py-3 transition-colors duration-500 ${urgency.border}`}
+    >
       <div>
-        <p className="text-xs panel-label uppercase tracking-wide font-medium">En curso</p>
-        <p className="text-2xl font-mono font-bold tabular-nums text-brand-orange">{formatElapsed(elapsed)}</p>
+        <p className="text-xs panel-label uppercase tracking-wide font-medium flex items-center gap-1.5">
+          <span className="panel-live-dot" aria-hidden="true" />
+          En curso
+        </p>
+        <p className={`text-2xl font-mono font-bold tabular-nums transition-colors duration-500 ${urgency.text}`}>
+          {formatElapsed(elapsed)}
+        </p>
       </div>
       <button
         onClick={handleCancel}
         disabled={canceling}
-        className="text-xs panel-label hover:opacity-80 underline"
+        className="text-xs panel-label hover:opacity-80 underline transition-opacity"
       >
         Abrí mal, volver
       </button>

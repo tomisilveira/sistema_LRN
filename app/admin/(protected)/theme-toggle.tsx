@@ -24,7 +24,7 @@ export function ThemeToggle() {
   return (
     <button
       onClick={toggle}
-      className="text-sm panel-label hover:opacity-80 transition-opacity"
+      className="text-sm panel-label hover:opacity-80 hover:scale-110 active:scale-90 transition-transform"
       aria-label="Cambiar tema claro/oscuro"
     >
       {isDark ? "☀️ Claro" : "🌙 Oscuro"}

@@ -20,7 +20,7 @@ export function PublicShell({ children }: { children: React.ReactNode }) {
       <header className="panel-nav panel-page border-b shadow-sm sticky top-0 z-20">
         <div className="max-w-4xl mx-auto flex flex-wrap items-center justify-between gap-3 px-4 sm:px-6 py-3">
           <Link href="/" className="flex items-center gap-2">
-            <span className="flex gap-1" aria-hidden="true">
+            <span className="flex gap-1 panel-brand-dots" aria-hidden="true">
               <span className="w-2 h-2 rounded-full bg-brand-teal" />
               <span className="w-2 h-2 rounded-full bg-brand-orange" />
               <span className="w-2 h-2 rounded-full bg-brand-pink" />
@@ -44,9 +44,10 @@ export function PublicShell({ children }: { children: React.ReactNode }) {
             </Link>
           </nav>
         </div>
+        <div className="h-0.5 w-full bg-gradient-to-r from-brand-teal via-brand-orange to-brand-pink" />
       </header>
 
-      <main className="max-w-4xl mx-auto p-4 sm:p-6">{children}</main>
+      <main className="max-w-4xl mx-auto p-4 sm:p-6 panel-enter">{children}</main>
     </div>
   );
 }

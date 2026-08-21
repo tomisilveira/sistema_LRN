@@ -27,7 +27,7 @@ export function PublicThemeToggle() {
   return (
     <button
       onClick={toggle}
-      className="text-xs rounded-full panel-chip px-3 py-1.5 hover:opacity-80 transition-opacity whitespace-nowrap"
+      className="text-xs rounded-full panel-chip px-3 py-1.5 hover:opacity-80 hover:scale-105 active:scale-90 transition-transform whitespace-nowrap"
       aria-label="Cambiar tema claro/oscuro"
     >
       {isDark ? "☀️ Claro" : "🌙 Oscuro"}

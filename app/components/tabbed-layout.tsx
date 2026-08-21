@@ -29,9 +29,9 @@ export function TabbedLayout({ items, defaultTabId }: { items: TabItem[]; defaul
               type="button"
               onClick={() => setActive(item.id)}
               aria-current={isActive ? "true" : undefined}
-              className={`flex items-center justify-between gap-2 rounded-lg px-3 py-2 text-sm text-left whitespace-nowrap transition-colors ${
+              className={`flex items-center justify-between gap-2 rounded-lg px-3 py-2 text-sm text-left whitespace-nowrap transition-all duration-150 active:scale-[0.98] ${
                 isActive
-                  ? "panel-button-primary font-medium"
+                  ? "panel-button-primary font-medium shadow-sm"
                   : "panel-label hover:bg-neutral-200 dark:hover:bg-neutral-800"
               }`}
             >
@@ -51,7 +51,7 @@ export function TabbedLayout({ items, defaultTabId }: { items: TabItem[]; defaul
       </nav>
       <div className="flex-1 min-w-0 w-full space-y-8">
         {items.map((item) => (
-          <div key={item.id} className={item.id === active ? "" : "hidden"}>
+          <div key={item.id} className={item.id === active ? "panel-enter" : "hidden"}>
             {item.content}
           </div>
         ))}

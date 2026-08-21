@@ -23,9 +23,14 @@ export function PublicStandingsTable({ groupName, rows }: { groupName: string; r
           </thead>
           <tbody>
             {rows.map((r, i) => (
-              <tr key={r.team_id} className="border-t border-neutral-200 dark:border-neutral-800">
-                <td className={`py-1.5 pr-2 ${i === 0 ? "text-brand-green font-semibold" : "panel-label"}`}>
-                  {i + 1}
+              <tr
+                key={r.team_id}
+                className={`border-t border-neutral-200 dark:border-neutral-800 transition-colors hover:bg-neutral-100 dark:hover:bg-neutral-800/60 ${
+                  i % 2 === 1 ? "bg-neutral-50/60 dark:bg-neutral-900/40" : ""
+                }`}
+              >
+                <td className="py-1.5 pr-2">
+                  <RankBadge rank={i + 1} />
                 </td>
                 <td className="py-1.5 pr-2 font-medium">{r.team_name}</td>
                 <td className="text-center py-1.5 px-1">{r.played}</td>
@@ -40,5 +45,27 @@ export function PublicStandingsTable({ groupName, rows }: { groupName: string; r
         </table>
       </div>
     </div>
+  );
+}
+
+/** Numerito de puesto — los primeros 3 con un chip de color (oro/plata/
+ * bronce) para que el podio se note de un vistazo. Misma idea que la
+ * versión admin (standings-table.tsx), duplicada a propósito: son paquetes
+ * de UI distintos (público vs. panel). */
+function RankBadge({ rank }: { rank: number }) {
+  if (rank > 3) {
+    return <span className="panel-label text-sm px-1.5">{rank}</span>;
+  }
+  const styles = {
+    1: "bg-brand-orange/20 text-amber-800 dark:text-brand-orange border-brand-orange/40",
+    2: "bg-neutral-300/40 text-neutral-700 dark:bg-neutral-400/20 dark:text-neutral-300 border-neutral-400/40",
+    3: "bg-brand-teal/15 text-brand-teal-dark dark:text-brand-teal border-brand-teal/40",
+  } as const;
+  return (
+    <span
+      className={`inline-flex items-center justify-center w-5 h-5 rounded-full border text-xs font-bold ${styles[rank as 1 | 2 | 3]}`}
+    >
+      {rank}
+    </span>
   );
 }

@@ -274,13 +274,13 @@ export default async function CompetitionPage({
             Acreditado y Homologado se pueden tildar acá mismo (queda igual que hacerlo desde el link de
             acreditación del evento).
           </p>
-          <div className="grid sm:grid-cols-2 gap-2">
+          <div className="grid sm:grid-cols-2 gap-2 panel-enter-stagger">
             {(teams ?? []).map((t: Team) => {
               const ready = t.accredited && t.homologated;
               return (
                 <div
                   key={t.id}
-                  className="panel-surface flex items-start justify-between gap-2 rounded-md px-3 py-2 text-sm"
+                  className="panel-surface flex items-start justify-between gap-2 rounded-md px-3 py-2 text-sm transition-colors hover:border-brand-teal/40"
                 >
                   <div className="min-w-0">
                     <p className="truncate">{t.name}</p>
@@ -377,7 +377,7 @@ export default async function CompetitionPage({
                 El selector de cada fila mueve al equipo a otro grupo (o lo saca) al toque, sin ir a la
                 pestaña Equipos.
               </p>
-              <div className="grid sm:grid-cols-2 gap-3">
+              <div className="grid sm:grid-cols-2 gap-3 panel-enter-stagger">
                 {groupsList.map((g) => {
                   const groupTeams = teamsByGroupId.get(g.id) ?? [];
                   return (
@@ -470,7 +470,7 @@ export default async function CompetitionPage({
           {groupsList.length === 0 ? (
             <p className="text-sm panel-label">Sin grupos todavía.</p>
           ) : (
-            <div className="grid sm:grid-cols-2 gap-3">
+            <div className="grid sm:grid-cols-2 gap-3 panel-enter-stagger">
               {groupsList.map((g) => {
                 const groupTeams = teamsByGroupId.get(g.id) ?? [];
                 const totalPeople = groupTeams.reduce((sum, t) => sum + peopleCount(t), 0);
@@ -577,7 +577,7 @@ export default async function CompetitionPage({
             </form>
           )}
         </div>
-        <div className="space-y-2">
+        <div className="space-y-2 panel-enter-stagger">
           {(groupMatches ?? []).length === 0 && (
             <p className="text-sm panel-label">
               {startBlockedReason
@@ -719,7 +719,13 @@ function MatchRow({
   const courtName = match.court_id ? courts.find((c) => c.id === match.court_id)?.name : null;
 
   return (
-    <div className="panel-surface rounded-lg px-3 py-2.5 space-y-2.5 text-sm">
+    <div
+      className={`rounded-lg px-3 py-2.5 space-y-2.5 text-sm transition-colors ${
+        match.status === "in_progress"
+          ? "bg-brand-orange/5 border border-brand-orange/40"
+          : "panel-surface hover:border-brand-teal/30"
+      }`}
+    >
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="min-w-[180px]">
           <span className={match.winner_id === match.team_a_id ? "font-semibold" : ""}>{teamAName}</span>
@@ -729,7 +735,11 @@ function MatchRow({
             <span className="panel-label"> · {match.score_a}-{match.score_b}</span>
           )}
           {match.status === "in_progress" && (
-            <span className="text-brand-orange font-medium"> · en curso</span>
+            <span className="text-brand-orange font-medium inline-flex items-center gap-1">
+              {" · "}
+              <span className="panel-live-dot" aria-hidden="true" />
+              en curso
+            </span>
           )}
         </div>
         {match.status === "completed" ? (

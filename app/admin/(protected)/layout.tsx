@@ -40,7 +40,7 @@ export default async function ProtectedAdminLayout({ children }: { children: Rea
       <header className="panel-nav border-b">
         <div className="px-6 py-3 flex items-center justify-between">
           <Link href="/admin" className="flex items-center gap-2.5">
-            <span className="flex gap-0.5" aria-hidden="true">
+            <span className="flex gap-0.5 panel-brand-dots" aria-hidden="true">
               <span className="w-2 h-2 rounded-full bg-brand-teal" />
               <span className="w-2 h-2 rounded-full bg-brand-orange" />
               <span className="w-2 h-2 rounded-full bg-brand-pink" />
@@ -54,7 +54,7 @@ export default async function ProtectedAdminLayout({ children }: { children: Rea
           <nav className="flex items-center gap-4">
             <Link
               href="/admin"
-              className="panel-chip text-sm rounded-full px-3 py-1.5 hover:bg-brand-teal/15 hover:text-brand-teal transition-colors"
+              className="panel-chip text-sm rounded-full px-3 py-1.5 hover:bg-brand-teal/15 hover:text-brand-teal active:scale-95 transition"
             >
               Eventos
             </Link>
@@ -65,7 +65,7 @@ export default async function ProtectedAdminLayout({ children }: { children: Rea
         </div>
         <div className="h-0.5 w-full bg-gradient-to-r from-brand-teal via-brand-orange to-brand-pink" />
       </header>
-      <main className="flex-1 p-6">{children}</main>
+      <main className="flex-1 p-6 panel-enter">{children}</main>
     </div>
   );
 }

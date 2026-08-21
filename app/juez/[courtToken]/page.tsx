@@ -56,7 +56,7 @@ export default async function JudgePage({ params }: { params: Promise<{ courtTok
       <JudgeRealtime courtId={court.id} />
 
       {current ? (
-        <section className="panel-card rounded-xl p-4 space-y-4">
+        <section className="panel-card rounded-xl p-4 space-y-4 panel-enter">
           <p className="text-xs panel-label uppercase tracking-wide font-medium">Próximo partido</p>
           <p className="text-lg font-semibold">
             {teamName.get(current.team_a_id ?? "") ?? "?"} vs{" "}
@@ -90,7 +90,7 @@ export default async function JudgePage({ params }: { params: Promise<{ courtTok
       {upcoming.length > 0 && (
         <section className="mt-6">
           <p className="text-xs panel-label uppercase tracking-wide font-medium mb-2">Después</p>
-          <ul className="space-y-1 text-sm panel-label">
+          <ul className="space-y-1 text-sm panel-label panel-enter-stagger">
             {upcoming.map((m) => (
               <li key={m.id}>
                 {teamName.get(m.team_a_id ?? "") ?? "?"} vs {teamName.get(m.team_b_id ?? "") ?? "?"}
