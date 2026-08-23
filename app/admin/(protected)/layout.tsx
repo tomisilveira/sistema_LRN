@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { SignOutButton } from "./sign-out-button";
 import { AdminSidebar } from "./admin-sidebar";
+import { SectionNavProvider } from "./section-nav-context";
 
 export default async function ProtectedAdminLayout({ children }: { children: React.ReactNode }) {
   const supabase = await createServerSupabaseClient();
@@ -35,9 +36,11 @@ export default async function ProtectedAdminLayout({ children }: { children: Rea
   }
 
   return (
-    <div className="min-h-screen md:flex">
-      <AdminSidebar userEmail={user.email ?? ""} />
-      <main className="flex-1 p-6 panel-enter min-w-0">{children}</main>
-    </div>
+    <SectionNavProvider>
+      <div className="min-h-screen md:flex">
+        <AdminSidebar userEmail={user.email ?? ""} />
+        <main className="flex-1 p-6 panel-enter min-w-0">{children}</main>
+      </div>
+    </SectionNavProvider>
   );
 }

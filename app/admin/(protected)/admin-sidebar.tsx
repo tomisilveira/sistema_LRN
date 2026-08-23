@@ -4,11 +4,18 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { ThemeToggle } from "./theme-toggle";
 import { SignOutButton } from "./sign-out-button";
+import { useSectionNav, type SectionNavItem } from "./section-nav-context";
 
 const NAV_ITEMS = [
   { href: "/admin", label: "Eventos" },
   { href: "/admin/disciplinas", label: "Disciplinas" },
 ];
+
+// Eventos y Torneos son rutas anidadas conceptualmente bajo "Eventos" — acá
+// se decide si el link de tope queda resaltado y si corresponde mostrar las
+// secciones de la entidad activa (ver SectionNavProvider).
+const isUnderEventos = (pathname: string) =>
+  pathname === "/admin" || pathname.startsWith("/admin/eventos") || pathname.startsWith("/admin/competencias");
 
 function BrandDots() {
   return (
@@ -37,17 +44,53 @@ function NavLink({ href, label, active }: { href: string; label: string; active:
   );
 }
 
-/** Navegación de nivel superior del admin — antes un header horizontal con
- * un solo link ("Eventos"); ahora una barra lateral fija de verdad (como un
- * panel de administración), con "Disciplinas" promovida a su propia sección
- * (ver app/admin/(protected)/disciplinas/page.tsx) para que el sidebar
- * tenga más de un destino real. En mobile se acuesta como barra horizontal
- * arriba, mismo patrón responsive que ya usa TabbedLayout (nav scrolleable
- * en vez de un menú hamburguesa nuevo). El contexto DENTRO de un evento/
- * torneo lo sigue dando Breadcrumbs — esto es solo navegación de tope. */
+/** Botón de una sección anidada (Formato/Equipos/Grupos/...) de la
+ * entidad activa. No navega — cambia cuál pestaña del TabbedLayout de la
+ * página actual está visible (ver section-nav-context.tsx). */
+function SectionItemButton({
+  item,
+  active,
+  onSelect,
+}: {
+  item: SectionNavItem;
+  active: boolean;
+  onSelect: (id: string) => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={() => onSelect(item.id)}
+      aria-current={active ? "true" : undefined}
+      className={`flex items-center justify-between gap-2 w-full rounded-md px-2.5 py-1.5 text-sm text-left whitespace-nowrap transition-all duration-150 active:scale-[0.98] ${
+        active
+          ? "panel-button-primary font-medium shadow-sm"
+          : "panel-label hover:bg-neutral-200 dark:hover:bg-neutral-800"
+      }`}
+    >
+      <span className="truncate">{item.label}</span>
+      {item.badge !== undefined && item.badge !== "" && (
+        <span className={`text-xs rounded-full px-1.5 py-0.5 shrink-0 ${active ? "bg-white/25" : "panel-chip"}`}>
+          {item.badge}
+        </span>
+      )}
+    </button>
+  );
+}
+
+/** Navegación de nivel superior del admin — una barra lateral fija (como un
+ * panel de administración de verdad), con "Disciplinas" como su propia
+ * sección. Cuando estás adentro de un evento o un torneo, sus secciones
+ * (Formato/Equipos/Grupos/...) se anidan bajo "Eventos" en este MISMO menú
+ * en vez de dibujarse como un segundo menú aparte al lado del contenido —
+ * el contenido de esas páginas las publica acá vía SectionNavContext (ver
+ * app/components/tabbed-layout.tsx). En mobile se acuesta como barra
+ * horizontal arriba, con una segunda fila para las secciones anidadas
+ * cuando corresponde. */
 export function AdminSidebar({ userEmail }: { userEmail: string }) {
   const pathname = usePathname();
+  const { section, activeId, setActiveId } = useSectionNav();
   const isActive = (href: string) => (href === "/admin" ? pathname === "/admin" : pathname.startsWith(href));
+  const showNested = section !== null && isUnderEventos(pathname);
 
   return (
     <>
@@ -61,9 +104,27 @@ export function AdminSidebar({ userEmail }: { userEmail: string }) {
         </div>
         <nav className="flex gap-1 overflow-x-auto px-3 pb-2" aria-label="Secciones del admin">
           {NAV_ITEMS.map((item) => (
-            <NavLink key={item.href} href={item.href} label={item.label} active={isActive(item.href)} />
+            <NavLink
+              key={item.href}
+              href={item.href}
+              label={item.label}
+              active={item.href === "/admin" ? isUnderEventos(pathname) : isActive(item.href)}
+            />
           ))}
         </nav>
+        {showNested && section && (
+          <nav
+            className="flex items-center gap-1 overflow-x-auto px-3 pb-2 -mt-1"
+            aria-label={`Secciones de ${section.title}`}
+          >
+            <span className="text-xs panel-label shrink-0 pl-1" aria-hidden="true">
+              ↳
+            </span>
+            {section.items.map((it) => (
+              <SectionItemButton key={it.id} item={it} active={it.id === activeId} onSelect={setActiveId} />
+            ))}
+          </nav>
+        )}
         <div className="h-0.5 w-full bg-gradient-to-r from-brand-teal via-brand-orange to-brand-pink" />
       </header>
 
@@ -77,10 +138,42 @@ export function AdminSidebar({ userEmail }: { userEmail: string }) {
         </Link>
         <div className="h-0.5 w-full bg-gradient-to-r from-brand-teal via-brand-orange to-brand-pink" />
 
-        <nav className="flex-1 p-3 space-y-1" aria-label="Secciones del admin">
-          {NAV_ITEMS.map((item) => (
-            <NavLink key={item.href} href={item.href} label={item.label} active={isActive(item.href)} />
-          ))}
+        <nav className="flex-1 p-3 space-y-1 overflow-y-auto" aria-label="Secciones del admin">
+          {NAV_ITEMS.map((item) => {
+            if (item.href !== "/admin") {
+              return <NavLink key={item.href} href={item.href} label={item.label} active={isActive(item.href)} />;
+            }
+            return (
+              <div key={item.href} className="space-y-1">
+                <NavLink href={item.href} label={item.label} active={isUnderEventos(pathname)} />
+                {showNested && section && (
+                  <div className="ml-3 pl-2.5 border-l-2 border-neutral-200 dark:border-neutral-800 space-y-1 panel-enter">
+                    {section.href ? (
+                      <Link
+                        href={section.href}
+                        className="flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium panel-label hover:text-neutral-900 dark:hover:text-neutral-100 transition-colors"
+                      >
+                        {section.colorDot && (
+                          <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${section.colorDot}`} aria-hidden="true" />
+                        )}
+                        <span className="truncate">{section.title}</span>
+                      </Link>
+                    ) : (
+                      <div className="flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium panel-label">
+                        {section.colorDot && (
+                          <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${section.colorDot}`} aria-hidden="true" />
+                        )}
+                        <span className="truncate">{section.title}</span>
+                      </div>
+                    )}
+                    {section.items.map((it) => (
+                      <SectionItemButton key={it.id} item={it} active={it.id === activeId} onSelect={setActiveId} />
+                    ))}
+                  </div>
+                )}
+              </div>
+            );
+          })}
         </nav>
 
         <div className="p-3 border-t panel-nav space-y-2.5">

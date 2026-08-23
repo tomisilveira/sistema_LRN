@@ -25,10 +25,10 @@ export function PublicBracketView({ matches }: { matches: BracketDisplayMatch[] 
     .map(([round, ms]) => [round, ms.sort((a, b) => (a.bracket_slot ?? 0) - (b.bracket_slot ?? 0))] as const);
 
   return (
-    <div className="flex items-stretch gap-3 overflow-x-auto pb-2">
+    <div className="flex items-stretch gap-4 overflow-x-auto pb-2 snap-x snap-mandatory sm:snap-none">
       {rounds.map(([round, ms], ri) => (
-        <div key={round} className="flex flex-col min-w-[190px]">
-          <p className="text-xs text-brand-teal-dark dark:text-brand-teal font-semibold uppercase tracking-wide text-center pb-2 mb-2 border-b-2 border-brand-teal/30">
+        <div key={round} className="flex flex-col min-w-[200px] snap-start">
+          <p className="text-xs text-white bg-brand-teal-dark font-display font-bold uppercase tracking-wide text-center py-1.5 mb-3 rounded-full">
             {roundName(round)}
           </p>
           <div className="flex-1 flex flex-col justify-center" style={{ gap: `${Math.pow(2, ri) * 1.1}rem` }}>
@@ -37,7 +37,7 @@ export function PublicBracketView({ matches }: { matches: BracketDisplayMatch[] 
               return (
                 <div
                   key={m.id}
-                  className={`panel-card rounded-xl p-3 space-y-2 border-l-4 transition-colors duration-300 panel-enter ${
+                  className={`panel-card rounded-xl p-3.5 space-y-2 border-l-4 transition-colors duration-300 panel-enter ${
                     decided ? "border-brand-green" : "border-neutral-300 dark:border-neutral-700"
                   }`}
                 >
@@ -64,10 +64,12 @@ export function PublicBracketView({ matches }: { matches: BracketDisplayMatch[] 
 function TeamLine({ name, won, score }: { name: string | null; won: boolean; score: number | null }) {
   return (
     <div
-      className={`flex items-center justify-between text-sm ${won ? "font-semibold text-brand-green" : "panel-label"}`}
+      className={`flex items-center justify-between text-sm rounded-lg px-2 py-1 -mx-2 ${
+        won ? "font-display font-bold text-brand-green bg-brand-green/10" : "panel-label"
+      }`}
     >
       <span className="truncate">{won && "🏆 "}{name ?? "Por definir"}</span>
-      {score !== null && <span className="shrink-0 ml-2">{score}</span>}
+      {score !== null && <span className="shrink-0 ml-2 tabular-nums">{score}</span>}
     </div>
   );
 }

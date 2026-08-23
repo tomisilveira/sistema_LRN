@@ -5,20 +5,22 @@ import type { GroupStandingRow } from "@/lib/database.types";
  * (ver public-shell.tsx). */
 export function PublicStandingsTable({ groupName, rows }: { groupName: string; rows: GroupStandingRow[] }) {
   return (
-    <div className="panel-card rounded-lg p-3">
-      <h3 className="text-sm font-semibold text-brand-teal-dark dark:text-brand-teal mb-2">{groupName}</h3>
+    <div className="panel-surface rounded-xl overflow-hidden">
+      <h3 className="text-sm font-display font-bold uppercase tracking-wide text-white bg-brand-teal-dark px-3 py-2">
+        {groupName}
+      </h3>
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
           <thead>
-            <tr className="panel-label text-xs">
-              <th className="text-left font-normal py-1 pr-2">#</th>
-              <th className="text-left font-normal py-1 pr-2">Equipo</th>
-              <th className="text-center font-normal py-1 px-1">PJ</th>
-              <th className="text-center font-normal py-1 px-1">G</th>
-              <th className="text-center font-normal py-1 px-1">E</th>
-              <th className="text-center font-normal py-1 px-1">P</th>
-              <th className="text-center font-normal py-1 px-1">DIF</th>
-              <th className="text-center font-normal py-1 px-1 text-brand-orange">Pts</th>
+            <tr className="panel-label text-xs uppercase tracking-wide border-b border-neutral-200 dark:border-neutral-800">
+              <th className="text-left font-semibold py-2 pl-3 pr-2">#</th>
+              <th className="text-left font-semibold py-2 pr-2">Equipo</th>
+              <th className="text-center font-semibold py-2 px-1.5">PJ</th>
+              <th className="text-center font-semibold py-2 px-1.5">G</th>
+              <th className="text-center font-semibold py-2 px-1.5">E</th>
+              <th className="text-center font-semibold py-2 px-1.5">P</th>
+              <th className="text-center font-semibold py-2 px-1.5">DIF</th>
+              <th className="text-center font-semibold py-2 pl-1.5 pr-3 text-brand-orange">Pts</th>
             </tr>
           </thead>
           <tbody>
@@ -27,18 +29,20 @@ export function PublicStandingsTable({ groupName, rows }: { groupName: string; r
                 key={r.team_id}
                 className={`border-t border-neutral-200 dark:border-neutral-800 transition-colors hover:bg-neutral-100 dark:hover:bg-neutral-800/60 ${
                   i % 2 === 1 ? "bg-neutral-50/60 dark:bg-neutral-900/40" : ""
-                }`}
+                } ${i === 0 ? "font-medium" : ""}`}
               >
-                <td className="py-1.5 pr-2">
+                <td className="py-2 pl-3 pr-2">
                   <RankBadge rank={i + 1} />
                 </td>
-                <td className="py-1.5 pr-2 font-medium">{r.team_name}</td>
-                <td className="text-center py-1.5 px-1">{r.played}</td>
-                <td className="text-center py-1.5 px-1">{r.won}</td>
-                <td className="text-center py-1.5 px-1">{r.drawn}</td>
-                <td className="text-center py-1.5 px-1">{r.lost}</td>
-                <td className="text-center py-1.5 px-1">{r.score_diff}</td>
-                <td className="text-center py-1.5 px-1 font-semibold text-brand-orange">{r.points}</td>
+                <td className="py-2 pr-2 font-semibold truncate max-w-[9rem]">{r.team_name}</td>
+                <td className="text-center py-2 px-1.5 tabular-nums">{r.played}</td>
+                <td className="text-center py-2 px-1.5 tabular-nums">{r.won}</td>
+                <td className="text-center py-2 px-1.5 tabular-nums">{r.drawn}</td>
+                <td className="text-center py-2 px-1.5 tabular-nums">{r.lost}</td>
+                <td className="text-center py-2 px-1.5 tabular-nums">{r.score_diff}</td>
+                <td className="text-center py-2 pl-1.5 pr-3 font-display font-bold text-brand-orange tabular-nums">
+                  {r.points}
+                </td>
               </tr>
             ))}
           </tbody>
@@ -63,7 +67,7 @@ function RankBadge({ rank }: { rank: number }) {
   } as const;
   return (
     <span
-      className={`inline-flex items-center justify-center w-5 h-5 rounded-full border text-xs font-bold ${styles[rank as 1 | 2 | 3]}`}
+      className={`inline-flex items-center justify-center w-6 h-6 rounded-full border-2 text-xs font-display font-bold ${styles[rank as 1 | 2 | 3]}`}
     >
       {rank}
     </span>

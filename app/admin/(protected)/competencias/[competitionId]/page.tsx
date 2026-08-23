@@ -854,7 +854,11 @@ export default async function CompetitionPage({
         )}
       </div>
 
-      <TabbedLayout items={tabs} />
+      <TabbedLayout
+        items={tabs}
+        sectionTitle={`${discipline?.name} — ${category?.name}`}
+        sectionColorDot={colors.dot}
+      />
     </div>
   );
 }

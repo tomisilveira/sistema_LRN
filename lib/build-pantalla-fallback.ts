@@ -15,6 +15,10 @@ export interface PantallaCompetitionBoard {
   competitionId: string;
   title: string; // "Fútbol Robótico — Infantil"
   dotClass: string;
+  /** Acento de borde a juego con `dotClass` — mismo color por disciplina que
+   * usa el modo en vivo (ver build-court-boards.ts), para que la tarjeta se
+   * distinga de un vistazo incluso antes de leer el título. */
+  borderClass: string;
   /** 'groups': todavía en fase de grupos (o sin resultados), se muestra la
    * tabla de posiciones. 'bracket': ya hay cuadro generado, se muestra el
    * cuadro en vez de la tabla. */
@@ -65,6 +69,7 @@ async function buildOne(
   const bracketMatchList = (bracketMatches ?? []) as Match[];
 
   const title = `${competition.disciplines?.name ?? "?"} — ${competition.categories?.name ?? "?"}`;
+  const colors = disciplineColor(competition.disciplines);
 
   if (bracketMatchList.length > 0) {
     const toDisplay = (m: Match): BracketDisplayMatch => ({
@@ -83,7 +88,8 @@ async function buildOne(
     return {
       competitionId: competition.id,
       title,
-      dotClass: disciplineColor(competition.disciplines).dot,
+      dotClass: colors.dot,
+      borderClass: colors.border,
       phase: "bracket",
       standings: [],
       brackets,
@@ -108,7 +114,8 @@ async function buildOne(
   return {
     competitionId: competition.id,
     title,
-    dotClass: "bg-brand-teal",
+    dotClass: colors.dot,
+    borderClass: colors.border,
     phase: "groups",
     standings,
     brackets: [],

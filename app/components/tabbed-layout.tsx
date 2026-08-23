@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect } from "react";
+import { useSectionNav } from "@/app/admin/(protected)/section-nav-context";
 
 export interface TabItem {
   id: string;
@@ -10,52 +11,60 @@ export interface TabItem {
   content: React.ReactNode;
 }
 
-/** Menú lateral (horizontal en mobile) que muestra una sola sección de
- * contenido a la vez. El contenido de cada pestaña ya viene renderizado por
- * el server component que llama a este layout — acá solo se decide cuál se
- * ve, así que los Server Actions dentro de cada sección siguen funcionando
- * normal. */
-export function TabbedLayout({ items, defaultTabId }: { items: TabItem[]; defaultTabId?: string }) {
-  const [active, setActive] = useState(defaultTabId ?? items[0]?.id);
+/** Muestra una sola sección de contenido a la vez, pero el menú para
+ * elegir cuál ya NO lo dibuja acá: lo publica en SectionNavContext para que
+ * lo pinte el sidebar global del admin, anidado bajo "Eventos" — antes esto
+ * era un segundo menú lateral propio al lado del contenido, y quedaban dos
+ * menús verticales apilados en pantalla (ver admin-sidebar.tsx). El
+ * contenido de cada pestaña ya viene renderizado por el server component
+ * que llama a este layout — acá solo se decide cuál se ve, así que los
+ * Server Actions dentro de cada sección siguen funcionando normal. */
+export function TabbedLayout({
+  items,
+  defaultTabId,
+  sectionTitle,
+  sectionHref,
+  sectionColorDot,
+}: {
+  items: TabItem[];
+  defaultTabId?: string;
+  /** Nombre de la entidad (evento o torneo) que agrupa estos items en el sidebar. */
+  sectionTitle: string;
+  /** Link opcional al detalle de la entidad, mostrado arriba de los items. */
+  sectionHref?: string;
+  /** Clase de color (ej. "bg-brand-teal") para el punto de disciplina. */
+  sectionColorDot?: string;
+}) {
+  const { activeId, registerSection, clearSection } = useSectionNav();
+  const fallbackActive = defaultTabId ?? items[0]?.id;
+
+  // Se re-ejecuta si cambian los ids/labels/badges (ej. "Equipos (6)" pasa a
+  // "Equipos (7)" tras agregar uno) para que el sidebar quede al día — no en
+  // cada render, para no pisar la selección activa del usuario a cada rato.
+  const itemsKey = JSON.stringify(items.map((i) => [i.id, i.label, i.badge ?? null]));
+  useEffect(() => {
+    registerSection(
+      {
+        title: sectionTitle,
+        href: sectionHref,
+        colorDot: sectionColorDot,
+        items: items.map(({ id, label, badge }) => ({ id, label, badge })),
+      },
+      fallbackActive
+    );
+    return () => clearSection();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sectionTitle, sectionHref, sectionColorDot, itemsKey, fallbackActive]);
+
+  const active = activeId ?? fallbackActive;
 
   return (
-    <div className="flex flex-col md:flex-row gap-6 items-start">
-      <nav className="flex md:flex-col gap-1 overflow-x-auto md:overflow-visible w-full md:w-48 shrink-0 panel-card rounded-xl p-2 md:sticky md:top-6">
-        {items.map((item) => {
-          const isActive = item.id === active;
-          return (
-            <button
-              key={item.id}
-              type="button"
-              onClick={() => setActive(item.id)}
-              aria-current={isActive ? "true" : undefined}
-              className={`flex items-center justify-between gap-2 rounded-lg px-3 py-2 text-sm text-left whitespace-nowrap transition-all duration-150 active:scale-[0.98] ${
-                isActive
-                  ? "panel-button-primary font-medium shadow-sm"
-                  : "panel-label hover:bg-neutral-200 dark:hover:bg-neutral-800"
-              }`}
-            >
-              <span>{item.label}</span>
-              {item.badge !== undefined && item.badge !== "" && (
-                <span
-                  className={`text-xs rounded-full px-1.5 py-0.5 ${
-                    isActive ? "bg-white/25" : "panel-chip"
-                  }`}
-                >
-                  {item.badge}
-                </span>
-              )}
-            </button>
-          );
-        })}
-      </nav>
-      <div className="flex-1 min-w-0 w-full space-y-8">
-        {items.map((item) => (
-          <div key={item.id} className={item.id === active ? "panel-enter" : "hidden"}>
-            {item.content}
-          </div>
-        ))}
-      </div>
+    <div className="w-full min-w-0 space-y-8">
+      {items.map((item) => (
+        <div key={item.id} className={item.id === active ? "panel-enter" : "hidden"}>
+          {item.content}
+        </div>
+      ))}
     </div>
   );
 }

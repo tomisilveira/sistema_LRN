@@ -58,32 +58,33 @@ export default async function PantallaPage({ params }: { params: Promise<{ event
   return (
     <div className="panel-page min-h-screen">
       <PublicRealtime />
-      <div className="p-4 sm:p-6 space-y-4">
-        <header className="flex items-center justify-between gap-3 panel-enter">
-          <div className="flex items-center gap-2.5">
-            <span className="flex gap-1 panel-brand-dots" aria-hidden="true">
+      <div className="p-4 sm:p-6 space-y-5">
+        <header className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 pb-3 border-b-2 border-neutral-200 dark:border-neutral-800 panel-enter">
+          <div className="flex items-center gap-2.5 min-w-0">
+            <span className="flex gap-1 panel-brand-dots shrink-0" aria-hidden="true">
               <span className="w-2.5 h-2.5 rounded-full bg-brand-teal" />
               <span className="w-2.5 h-2.5 rounded-full bg-brand-orange" />
               <span className="w-2.5 h-2.5 rounded-full bg-brand-pink" />
               <span className="w-2.5 h-2.5 rounded-full bg-brand-green" />
             </span>
-            <h1 className="text-2xl font-display font-bold">{event.name}</h1>
+            <h1 className="text-2xl sm:text-3xl font-display font-bold truncate">{event.name}</h1>
           </div>
-          <p className="text-sm panel-label">{event.event_date}</p>
+          <p className="text-sm font-display font-semibold panel-label shrink-0">{event.event_date}</p>
         </header>
 
         {hasLive ? <ScreenBoards boards={liveBoards} /> : <ScreenFallback boards={fallbackBoards} />}
 
         {upcoming.length > 0 && (
-          <section className="panel-card rounded-xl p-4 space-y-2 panel-enter">
-            <p className="text-xs uppercase tracking-wide panel-label font-display font-semibold">
+          <section className="panel-card rounded-xl overflow-hidden panel-enter">
+            <p className="text-xs uppercase tracking-wide text-white bg-brand-teal-dark font-display font-bold px-4 py-2">
               Próximos partidos
             </p>
-            <div className="grid sm:grid-cols-2 gap-x-6 gap-y-1">
+            <div className="grid gap-2 p-3 sm:grid-cols-2 lg:grid-cols-3">
               {upcoming.map((m) => (
-                <p key={m.match.id} className="text-sm panel-label truncate">
-                  {m.teamAName} <span className="opacity-60">vs</span> {m.teamBName}
-                  <span className="opacity-60"> — {m.disciplineCategory}</span>
+                <p key={m.match.id} className="text-sm panel-surface rounded-lg px-3 py-2 truncate">
+                  <span className="font-semibold">{m.teamAName}</span>{" "}
+                  <span className="panel-label">vs</span> <span className="font-semibold">{m.teamBName}</span>
+                  <span className="panel-label block text-xs mt-0.5">{m.disciplineCategory}</span>
                 </p>
               ))}
             </div>
