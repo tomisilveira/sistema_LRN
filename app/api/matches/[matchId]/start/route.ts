@@ -3,7 +3,13 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { assertMatchBelongsToCourt, JudgeAuthError } from "@/lib/judge-auth";
 
 // El juez "abre" el partido cuando los dos equipos están parados en la
-// cancha — arranca el cronómetro (started_at) y pasa a 'in_progress'.
+// cancha — pasa a 'in_progress' y marca started_at, pero el reloj queda
+// pausado en 0 (timer_running_since null): recién arranca a contar cuando
+// el juez toca "Iniciar partido" en el panel (POST /resume, ver
+// match-timer-panel.tsx e isStopped en lib/match-timer.ts) — antes se
+// arrancaba solo acá, lo que hacía que el reloj ya estuviera corriendo
+// apenas se entraba al partido, antes de que los equipos estuvieran
+// realmente listos.
 export async function POST(request: Request, { params }: { params: Promise<{ matchId: string }> }) {
   const { matchId } = await params;
   const body = await request.json().catch(() => null);
@@ -29,8 +35,9 @@ export async function POST(request: Request, { params }: { params: Promise<{ mat
     .update({
       status: "in_progress",
       started_at: now,
-      // Arranca el reloj pausable del primer período/ronda ya corriendo.
-      timer_running_since: now,
+      // El reloj arranca pausado en 0 — el juez lo pone en marcha a mano
+      // con "Iniciar partido" (ver comentario arriba).
+      timer_running_since: null,
       timer_elapsed_seconds: 0,
       current_period: 1,
       round_winner_ids: [],

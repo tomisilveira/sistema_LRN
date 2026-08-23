@@ -129,7 +129,20 @@ export async function createCompetition(eventId: string, formData: FormData) {
     periods_count: discipline?.periods_count_default ?? 1,
     rounds_to_win: discipline?.rounds_to_win_default ?? null,
   });
-  if (error) throw new Error(error.message);
+  if (error) {
+    // 23505 = unique_violation — ya existe un torneo de esa disciplina ×
+    // categoría en este evento (unique (event_id, discipline_id,
+    // category_id), ver 0001_init.sql). Mensaje sin esto es un genérico de
+    // Postgres ("duplicate key value violates constraint...") que en
+    // producción termina mostrando un error críptico en vez de explicar
+    // qué pasó.
+    if (error.code === "23505") {
+      throw new Error(
+        "Ya existe un torneo de esa disciplina y categoría en este evento — entrá a ese torneo si querés cambiarle el formato, o elegí otra disciplina/categoría."
+      );
+    }
+    throw new Error(error.message);
+  }
 
   revalidatePath(`/admin/eventos/${eventId}`);
 }

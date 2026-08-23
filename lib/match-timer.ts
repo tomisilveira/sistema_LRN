@@ -44,13 +44,25 @@ export function remainingSeconds(
 
 /** Pausado = el período arrancó (hay algo acumulado) pero no está corriendo
  * ahora mismo. Distinto de "todavía no arrancó este período" (elapsed=0 y
- * running=null, recién llegado a un período/ronda nuevo). */
+ * running=null, recién llegado a un período/ronda nuevo) — para ESE caso
+ * ver `isStopped`, que cubre ambos. */
 export function isPaused(match: MatchTimerState): boolean {
   return match.status === "in_progress" && !match.timer_running_since && match.timer_elapsed_seconds > 0;
 }
 
 export function isRunning(match: MatchTimerState): boolean {
   return match.status === "in_progress" && !!match.timer_running_since;
+}
+
+/** El reloj no está corriendo ahora mismo — ni arrancó todavía este
+ * período/ronda (elapsed=0, recién entrado al partido o recién avanzado de
+ * período/round) ni está en una pausa a mitad de período (elapsed>0). En
+ * ambos casos el control es el mismo botón "Iniciar"/"Reanudar" (POST
+ * /resume, ver app/api/matches/[matchId]/resume/route.ts, que no exige
+ * elapsed>0). Es el negado exacto de `isRunning` mientras el partido está
+ * 'in_progress'. */
+export function isStopped(match: MatchTimerState): boolean {
+  return match.status === "in_progress" && !match.timer_running_since;
 }
 
 export function formatClock(totalSeconds: number): string {

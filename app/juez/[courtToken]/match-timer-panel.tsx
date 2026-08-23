@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import type { Competition, Match } from "@/lib/database.types";
 import { MatchClock } from "@/app/components/match-clock";
-import { isPaused, isRunning } from "@/lib/match-timer";
+import { isStopped } from "@/lib/match-timer";
 import { ResultForm } from "./result-form";
 
 /** Panel activo del partido en curso — el reloj (MatchClock) como hero,
@@ -139,18 +139,25 @@ export function MatchTimerPanel({
       {error && <p className="text-sm text-red-500 dark:text-red-400 text-center panel-enter">{error}</p>}
 
       <div className="flex gap-2">
-        {isPaused(match) ? (
+        {isStopped(match) ? (
           <button
             onClick={() => call("resume")}
             disabled={pending}
             className="flex-1 rounded-lg panel-button-primary font-display font-semibold py-3 text-base disabled:opacity-50"
           >
-            ▶ Reanudar
+            ▶{" "}
+            {match.timer_elapsed_seconds > 0
+              ? "Reanudar"
+              : competition.timer_mode === "periods" && match.current_period > 1
+                ? `Iniciar tiempo ${match.current_period}`
+                : competition.timer_mode === "rounds" && match.current_period > 1
+                  ? `Iniciar round ${match.current_period}`
+                  : "Iniciar partido"}
           </button>
         ) : (
           <button
             onClick={() => call("pause")}
-            disabled={pending || !isRunning(match)}
+            disabled={pending}
             className="flex-1 rounded-lg panel-button-secondary font-display font-semibold py-3 text-base disabled:opacity-50"
           >
             ⏸ Pausar
