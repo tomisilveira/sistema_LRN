@@ -3,12 +3,12 @@
 import { useEffect } from "react";
 import { unstable_isUnrecognizedActionError } from "next/navigation";
 
-// Cuando una Server Action tira un error de validación (ej. "creá los
-// grupos primero"), Next.js desmonta la página y muestra el boundary de
-// error más cercano — sin esto, eso significa la pantalla de crash cruda.
-// Acá lo mostramos con la estética del panel y un botón para reintentar
-// sin perder el contexto (vuelve a renderizar la misma página).
-export default function AdminError({ error, reset }: { error: Error & { digest?: string }; reset: () => void }) {
+// Boundary de error compartido por todo lo que NO es /admin (que tiene el
+// suyo, ver app/admin/(protected)/error.tsx) — público, /juez, /inscripcion,
+// /acreditacion, /evento/.../pantalla. Mismo criterio: sin esto, cualquier
+// error de render o de Server Action tira la pantalla de crash cruda de
+// Next en vez de un cartel prolijo con botón para reintentar.
+export default function RootError({ error, reset }: { error: Error & { digest?: string }; reset: () => void }) {
   useEffect(() => {
     console.error(error);
   }, [error]);
@@ -33,13 +33,11 @@ export default function AdminError({ error, reset }: { error: Error & { digest?:
 
   // En producción, Next.js reemplaza el mensaje real de los errores que
   // ocurren renderizando Server Components por un texto genérico ("Minified
-  // React error #...") para no filtrar detalles internos — el mensaje real
-  // solo queda en los logs del servidor (Netlify: Site → Logs → Functions),
-  // buscando por este digest.
+  // React error #...") para no filtrar detalles internos.
   const isRedacted = /Minified React error|Server Components render/i.test(message);
 
   return (
-    <div className="flex-1 flex items-center justify-center p-8 min-h-[60vh]">
+    <div className="panel-page min-h-screen flex items-center justify-center p-8">
       <div className="max-w-sm w-full text-center space-y-4 panel-enter">
         <p className="text-3xl">⚠️</p>
         <h1 className="text-lg font-semibold">Algo no salió bien</h1>

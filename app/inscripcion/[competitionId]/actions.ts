@@ -11,10 +11,13 @@ export async function registerTeam(competitionId: string, formData: FormData) {
 
   const { data: competition } = await supabase
     .from("competitions")
-    .select("registration_open")
+    .select("registration_open, status")
     .eq("id", competitionId)
     .maybeSingle();
-  if (!competition?.registration_open) {
+  // Mismo criterio que la página (ver page.tsx): además del toggle manual,
+  // una vez que el torneo arrancó ya no acepta equipos nuevos, aunque el
+  // admin se haya olvidado de cerrar la inscripción a mano.
+  if (!competition?.registration_open || competition.status !== "setup") {
     throw new Error("Las inscripciones para este torneo están cerradas.");
   }
 

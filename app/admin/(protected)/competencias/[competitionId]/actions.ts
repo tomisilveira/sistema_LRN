@@ -346,7 +346,14 @@ export async function startTournament(competitionId: string) {
     (inserted ?? []) as SchedulableMatch[]
   );
 
-  await supabase.from("competitions").update({ status: "groups_in_progress" }).eq("id", competitionId);
+  // Se cierra la inscripción sola acá — una vez armado el fixture, un
+  // equipo nuevo ya no entraría a ningún grupo (ver
+  // app/inscripcion/[competitionId]/page.tsx, que igual re-chequea el
+  // status por si el admin la había dejado abierta de antes).
+  await supabase
+    .from("competitions")
+    .update({ status: "groups_in_progress", registration_open: false })
+    .eq("id", competitionId);
 
   revalidateCompetition(competitionId);
 }
