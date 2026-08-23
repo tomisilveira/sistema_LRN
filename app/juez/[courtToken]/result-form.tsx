@@ -11,6 +11,8 @@ export function ResultForm({
   teamAName,
   teamBName,
   allowDraws,
+  initialScoreA = "",
+  initialScoreB = "",
 }: {
   courtToken: string;
   matchId: string;
@@ -19,10 +21,14 @@ export function ResultForm({
   teamAName: string;
   teamBName: string;
   allowDraws: boolean;
+  /** Marcador ya cargado en vivo (modo 'periods') a precargar en el
+   * formulario de cierre, para no tener que retipearlo. */
+  initialScoreA?: string;
+  initialScoreB?: string;
 }) {
   const router = useRouter();
-  const [scoreA, setScoreA] = useState("");
-  const [scoreB, setScoreB] = useState("");
+  const [scoreA, setScoreA] = useState(initialScoreA);
+  const [scoreB, setScoreB] = useState(initialScoreB);
   const [winnerId, setWinnerId] = useState("");
   const [mode, setMode] = useState<"score" | "winner">("score");
   const [confirming, setConfirming] = useState(false);
@@ -73,12 +79,12 @@ export function ResultForm({
       <div className="space-y-3 rounded-lg panel-card p-3 panel-enter">
         <p className="text-sm panel-label">Confirmar resultado:</p>
         <p className="text-lg font-semibold">{summary}</p>
-        {error && <p className="text-sm text-red-400 panel-enter">{error}</p>}
+        {error && <p className="text-sm text-red-500 dark:text-red-400 panel-enter">{error}</p>}
         <div className="flex gap-2">
           <button
             onClick={() => setConfirming(false)}
             disabled={submitting}
-            className="flex-1 rounded-md border border-neutral-700 py-2.5 text-sm transition active:scale-[0.97]"
+            className="flex-1 rounded-md border border-neutral-300 dark:border-neutral-700 py-2.5 text-sm transition active:scale-[0.97]"
           >
             Volver
           </button>
@@ -102,7 +108,7 @@ export function ResultForm({
         <button
           onClick={() => setMode("score")}
           className={`flex-1 rounded-md py-1.5 border transition active:scale-[0.97] ${
-            mode === "score" ? "bg-brand-teal text-white border-brand-teal" : "border-neutral-700"
+            mode === "score" ? "bg-brand-teal text-white border-brand-teal" : "border-neutral-300 dark:border-neutral-700"
           }`}
         >
           Marcador
@@ -110,7 +116,7 @@ export function ResultForm({
         <button
           onClick={() => setMode("winner")}
           className={`flex-1 rounded-md py-1.5 border transition active:scale-[0.97] ${
-            mode === "winner" ? "bg-brand-teal text-white border-brand-teal" : "border-neutral-700"
+            mode === "winner" ? "bg-brand-teal text-white border-brand-teal" : "border-neutral-300 dark:border-neutral-700"
           }`}
         >
           Ganó / perdió
@@ -148,7 +154,7 @@ export function ResultForm({
           <button
             onClick={() => setWinnerId(teamAId)}
             className={`rounded-lg py-4 text-sm font-medium border transition active:scale-[0.97] ${
-              winnerId === teamAId ? "bg-brand-teal text-white border-brand-teal" : "border-neutral-700"
+              winnerId === teamAId ? "bg-brand-teal text-white border-brand-teal" : "border-neutral-300 dark:border-neutral-700"
             }`}
           >
             Ganó {teamAName}
@@ -156,7 +162,7 @@ export function ResultForm({
           <button
             onClick={() => setWinnerId(teamBId)}
             className={`rounded-lg py-4 text-sm font-medium border transition active:scale-[0.97] ${
-              winnerId === teamBId ? "bg-brand-teal text-white border-brand-teal" : "border-neutral-700"
+              winnerId === teamBId ? "bg-brand-teal text-white border-brand-teal" : "border-neutral-300 dark:border-neutral-700"
             }`}
           >
             Ganó {teamBName}

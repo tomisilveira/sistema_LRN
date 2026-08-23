@@ -1,9 +1,12 @@
 @import "tailwindcss";
 
-/* Modo claro/oscuro del panel admin, activado por una clase .dark en un
-   ancestro (ver app/admin/layout.tsx) — no depende de prefers-color-scheme,
-   así el toggle manual del usuario manda. El resto del sitio (público, juez)
-   se queda con su look oscuro fijo de siempre. */
+/* Modo claro/oscuro, activado por una clase .dark en un ancestro (ver
+   app/admin/layout.tsx y app/components/public-shell.tsx) — no depende de
+   prefers-color-scheme, así el toggle manual del usuario manda. El admin y
+   el sitio público (/ y /publico) tienen su propio toggle; juez,
+   acreditación e inscripción (KioskShell, ver app/components/kiosk-shell.tsx)
+   y Modo Pantalla arrancan siempre en claro, sin ancestro .dark ni toggle
+   propio — son pantallas de campo/proyector, no hace falta oscuro ahí. */
 @custom-variant dark (&:where(.dark, .dark *));
 
 :root {
@@ -30,14 +33,15 @@
   --color-foreground: var(--foreground);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
+  --font-display: var(--font-rajdhani);
 }
 
 /* Antes había acá un @media (prefers-color-scheme: dark) que oscurecía
    --background/--foreground según el SO — se sacó porque cada sección del
    sitio ya decide su propio tema explícitamente (admin y el inicio público
-   con su toggle manual, público/juez con su oscuro fijo); dejarlo activo
-   podía asomar un fondo oscuro por los bordes del body en un SO con tema
-   oscuro, sin relación con el toggle de la página. */
+   con su toggle manual, juez/acreditación/inscripción/pantalla en claro
+   fijo); dejarlo activo podía asomar un fondo oscuro por los bordes del
+   body en un SO con tema oscuro, sin relación con el toggle de la página. */
 
 body {
   background: var(--background);
@@ -276,6 +280,96 @@ body {
 
 @media (prefers-reduced-motion: reduce) {
   .panel-live-dot {
+    animation: none !important;
+  }
+}
+
+/* ==========================================================================
+   Scoreboard de cancha: pantalla pública por cancha, "modo pantalla" y panel
+   del juez. Claro por defecto como el resto del sitio (sin `.dark` forzado)
+   — el reloj de cuenta regresiva es una PASTILLA de color sólido (como los
+   paneles LED de un marcador de cancha real) en vez de texto con glow sobre
+   negro: se lee mejor de lejos/proyector y funciona en claro, que era el
+   problema del look "arena" anterior.
+   ========================================================================== */
+
+/* Reloj grande de cuenta regresiva — dígitos tabulares en una pastilla de
+   color sólido; el color (teal/naranja/rojo) lo decide el componente según
+   segundos restantes / pausado, ver lib/match-timer.ts. El padding en `em`
+   escala solo con el tamaño de fuente que le pase cada uso (hero/compact). */
+.scoreboard-clock {
+  @apply inline-flex items-center justify-center rounded-2xl text-white shadow-sm;
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.02em;
+  font-weight: 700;
+  line-height: 1;
+  padding: 0.35em 0.75em;
+  transition: background-color 0.4s ease;
+}
+
+.scoreboard-clock-teal {
+  @apply bg-brand-teal;
+}
+.scoreboard-clock-orange {
+  @apply bg-brand-orange text-neutral-900;
+}
+.scoreboard-clock-red {
+  @apply bg-red-500;
+}
+
+.scoreboard-paused-badge {
+  @apply inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold uppercase tracking-wide
+    bg-red-500/15 text-red-600 dark:text-red-400 border border-red-500/35;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .scoreboard-paused-badge {
+    animation: panel-breathe 1.6s ease-in-out infinite;
+  }
+}
+
+/* Puntito de progreso de round (sumo) — vacío, o relleno con el color del
+   equipo que ganó ese round. */
+.scoreboard-round-dot {
+  @apply w-3 h-3 rounded-full border-2 border-neutral-300 dark:border-neutral-700 transition-colors duration-300;
+}
+
+/* "Metieron un gol": flash + pop cuando sube el marcador en Modo Pantalla
+   (ver app/components/goal-flash.tsx). Anulado bajo prefers-reduced-motion
+   como el resto de las animaciones del sistema. */
+@media (prefers-reduced-motion: no-preference) {
+  @keyframes goal-flash-pop {
+    0% {
+      transform: scale(1);
+    }
+    30% {
+      transform: scale(1.18);
+    }
+    60% {
+      transform: scale(0.97);
+    }
+    100% {
+      transform: scale(1);
+    }
+  }
+  @keyframes goal-flash-glow {
+    0%,
+    100% {
+      box-shadow: 0 0 0 0 transparent;
+    }
+    35% {
+      box-shadow: 0 0 0 8px color-mix(in srgb, var(--color-brand-green) 35%, transparent);
+    }
+  }
+  .goal-flash {
+    animation:
+      goal-flash-pop 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) both,
+      goal-flash-glow 1.4s ease-out both;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .goal-flash {
     animation: none !important;
   }
 }

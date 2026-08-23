@@ -1,12 +1,10 @@
 /** Shell compartido por las pantallas operativas de campo (juez, acreditación,
- * inscripción): siempre en oscuro fijo — pensadas para usarse a upa de una
- * mesa de jueces o de acreditación, no para el toggle de tema del resto del
- * sitio — pero con la MISMA paleta y componentes semánticos (panel-*) que
- * admin y /publico. Antes cada una tenía su propio header y sus propios
- * grises a mano (bg-neutral-900/950 sueltos); forzar `.dark` acá adentro
- * activa las utilities `dark:` de panel-* sin depender de localStorage, así
- * que alcanza con usar panel-card/panel-input/panel-label normales en los
- * hijos y quedan iguales al modo oscuro del panel admin. */
+ * inscripción): claro por defecto, igual que el resto del sitio — usa la
+ * MISMA paleta y componentes semánticos (panel-*) que admin y /publico, así
+ * que alcanza con panel-card/panel-input/panel-label normales en los hijos.
+ * Antes forzaba `.dark` siempre (pensado para mesa de jueces/acreditación);
+ * se sacó a pedido explícito: todo el sistema arranca en claro sin
+ * excepción. */
 export function KioskShell({
   eyebrow,
   title,
@@ -21,7 +19,7 @@ export function KioskShell({
   children: React.ReactNode;
 }) {
   return (
-    <div className="dark panel-page min-h-screen">
+    <div className="panel-page min-h-screen">
       <div className={`${maxWidthClassName} mx-auto p-4`}>
         <header className="py-4 flex items-center gap-2.5 panel-enter">
           <span className="flex gap-0.5 shrink-0 panel-brand-dots" aria-hidden="true">
@@ -47,7 +45,7 @@ export function KioskShell({
  * juez y acreditación (antes estaba duplicada a mano en cada page.tsx). */
 export function KioskInvalidLink({ message }: { message: string }) {
   return (
-    <div className="dark panel-page min-h-screen flex items-center justify-center p-6 text-center">
+    <div className="panel-page min-h-screen flex items-center justify-center p-6 text-center">
       <p className="max-w-sm">{message}</p>
     </div>
   );

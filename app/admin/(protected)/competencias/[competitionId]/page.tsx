@@ -23,6 +23,7 @@ import {
   submitResult,
   generateBracket,
   setRegistrationOpen,
+  deleteCompetition,
 } from "./actions";
 import { GroupAssignSelect } from "./group-assign-select";
 import { StandingsTable } from "./standings-table";
@@ -30,6 +31,7 @@ import { MatchResultForm } from "./match-result-form";
 import { MatchScheduleForm } from "./match-schedule-form";
 import { TeamAccreditationControls } from "./team-accreditation-controls";
 import { BracketView, type BracketDisplayMatch } from "./bracket-view";
+import { TeamSeedInput } from "./team-seed-input";
 import { RealtimeRefresh } from "./realtime-refresh";
 import { CopyLinkButton } from "@/app/components/copy-link-button";
 import { Breadcrumbs } from "@/app/components/breadcrumbs";
@@ -175,6 +177,11 @@ export default async function CompetitionPage({
     team_a_name: m.team_a_id ? teamsById.get(m.team_a_id)?.name ?? null : null,
     team_b_name: m.team_b_id ? teamsById.get(m.team_b_id)?.name ?? null : null,
   }));
+  // 'single_elimination'/'groups_only'/'bracket_only' arman un único cuadro
+  // sin tipo (bracket_type null); 'gold_silver' arma dos en paralelo.
+  const plainMatches = bracketDisplayMatches.filter((m) => m.bracket_type === null);
+  const goldMatches = bracketDisplayMatches.filter((m) => m.bracket_type === "gold");
+  const silverMatches = bracketDisplayMatches.filter((m) => m.bracket_type === "silver");
 
   const colors = disciplineColor(discipline);
   const teamsReadyCount = (teams ?? []).filter((t: Team) => t.accredited && t.homologated).length;
@@ -190,17 +197,35 @@ export default async function CompetitionPage({
       id: "formato",
       label: "Formato",
       content: (
-        <section className={`panel-card rounded-xl p-4 space-y-4 border-l-4 ${colors.border}`}>
-          <h2 className="font-medium">Formato del torneo</h2>
-          <FormatAdvisory teamCount={(teams ?? []).length} courtCount={(courts ?? []).length} />
-          {competition.status === "setup" ? (
-            <EditFormatForm competitionId={competitionId} competition={competition} />
-          ) : (
+        <div className="space-y-4">
+          <section className={`panel-card rounded-xl p-4 space-y-4 border-l-4 ${colors.border}`}>
+            <h2 className="font-medium">Formato del torneo</h2>
+            <FormatAdvisory teamCount={(teams ?? []).length} courtCount={(courts ?? []).length} />
+            {competition.status === "setup" ? (
+              <EditFormatForm competitionId={competitionId} competition={competition} />
+            ) : (
+              <p className="text-xs panel-label">
+                Ya se generaron los partidos de grupo, así que el formato quedó fijo para este torneo.
+              </p>
+            )}
+          </section>
+
+          <section className="rounded-xl p-4 space-y-3 border border-red-500/30 bg-red-500/[0.03]">
+            <h2 className="font-medium text-red-600 dark:text-red-400">Zona de peligro</h2>
             <p className="text-xs panel-label">
-              Ya se generaron los partidos de grupo, así que el formato quedó fijo para este torneo.
+              Borra este torneo y todo lo que tiene adentro: equipos, grupos, partidos y resultados. No
+              se puede deshacer.
             </p>
-          )}
-        </section>
+            <form action={deleteCompetition.bind(null, competitionId)}>
+              <ConfirmSubmitButton
+                confirmMessage={`¿Eliminar el torneo "${discipline?.name} — ${category?.name}"? Se borran sus equipos, grupos y partidos. No se puede deshacer.`}
+                className="text-sm rounded-md panel-button-danger px-4 py-2 border border-red-500/30 hover:bg-red-500/10"
+              >
+                🗑️ Eliminar torneo
+              </ConfirmSubmitButton>
+            </form>
+          </section>
+        </div>
       ),
     },
     {
@@ -293,6 +318,13 @@ export default async function CompetitionPage({
                     <TeamAccreditationControls competitionId={competitionId} team={t} />
                   </div>
                   <div className="flex items-center gap-2 shrink-0">
+                    {competition.format_type === "bracket_only" && (
+                      <TeamSeedInput
+                        competitionId={competitionId}
+                        teamId={t.id}
+                        defaultValue={t.seed_order}
+                      />
+                    )}
                     {groupsList.length > 0 && ready && (
                       <GroupAssignSelect
                         competitionId={competitionId}
@@ -317,6 +349,13 @@ export default async function CompetitionPage({
         </section>
       ),
     },
+  ];
+
+  // El formato "solo cuadro" no tiene fase de grupos — sin Grupos,
+  // Posiciones ni Participantes (que dependen de grupos), directo a Equipos
+  // + Cuadro (ver más abajo).
+  if (competition.format_type !== "bracket_only") {
+    tabs.push(
     {
       id: "grupos",
       label: "Grupos",
@@ -508,7 +547,8 @@ export default async function CompetitionPage({
         </section>
       ),
     },
-  ];
+    );
+  }
 
   if (standingsByGroup.length > 0) {
     tabs.push({
@@ -540,7 +580,8 @@ export default async function CompetitionPage({
     });
   }
 
-  tabs.push({
+  if (competition.format_type !== "bracket_only") {
+    tabs.push({
     id: "partidos",
     label: "Partidos",
     badge: (groupMatches ?? []).length || undefined,
@@ -602,18 +643,19 @@ export default async function CompetitionPage({
         </div>
       </section>
     ),
-  });
+    });
+  }
 
   if (competition.format_type === "single_elimination") {
     tabs.push({
       id: "fase-final",
       label: "Fase Final",
-      badge: bracketDisplayMatches.length || undefined,
+      badge: plainMatches.length || undefined,
       content: (
         <section className="panel-card rounded-xl p-4 space-y-4">
           <div className="flex items-center justify-between gap-3">
             <h2 className="font-medium">Cuadro de eliminatoria simple</h2>
-            {bracketDisplayMatches.length === 0 && (
+            {plainMatches.length === 0 && (
               <form action={generateBracketAction}>
                 <button
                   type="submit"
@@ -625,7 +667,7 @@ export default async function CompetitionPage({
               </form>
             )}
           </div>
-          {bracketDisplayMatches.length === 0 ? (
+          {plainMatches.length === 0 ? (
             <p className="text-sm panel-label">
               Se arma solo, con los clasificados de cada grupo ({competition.qualifiers_per_group} por
               grupo), apenas se carga el resultado del último partido de la fase de grupos — no hace
@@ -633,7 +675,129 @@ export default async function CompetitionPage({
               falta.
             </p>
           ) : (
-            <BracketView competitionId={competitionId} matches={bracketDisplayMatches} />
+            <BracketView competitionId={competitionId} matches={plainMatches} />
+          )}
+        </section>
+      ),
+    });
+  }
+
+  if (competition.format_type === "groups_only" && groupsList.length > 0) {
+    tabs.push({
+      id: "fase-final",
+      label: "Fase Final",
+      badge: plainMatches.length || undefined,
+      content: (
+        <section className="panel-card rounded-xl p-4 space-y-4">
+          <div className="flex items-center justify-between gap-3">
+            <h2 className="font-medium">Cuadro de eliminatoria (opcional)</h2>
+            {plainMatches.length === 0 && (
+              <form action={generateBracketAction}>
+                <button
+                  type="submit"
+                  className="text-xs rounded-md panel-button-accent px-3 py-1.5 font-medium whitespace-nowrap"
+                >
+                  Generar fase final
+                </button>
+              </form>
+            )}
+          </div>
+          {plainMatches.length === 0 ? (
+            <p className="text-sm panel-label">
+              Este torneo es solo fase de grupos — no arma cuadro solo. Si después (o incluso antes de
+              terminar los grupos) querés jugar una final entre los mejores de cada grupo, apretá
+              &ldquo;Generar fase final&rdquo; ({competition.qualifiers_per_group} clasificados por
+              grupo).
+            </p>
+          ) : (
+            <BracketView competitionId={competitionId} matches={plainMatches} />
+          )}
+        </section>
+      ),
+    });
+  }
+
+  if (competition.format_type === "gold_silver") {
+    tabs.push({
+      id: "fase-final",
+      label: "Fase Final",
+      badge: goldMatches.length + silverMatches.length || undefined,
+      content: (
+        <section className="panel-card rounded-xl p-4 space-y-6">
+          <div className="flex items-center justify-between gap-3">
+            <h2 className="font-medium">Copa Oro / Copa Plata</h2>
+            {goldMatches.length === 0 && (
+              <form action={generateBracketAction}>
+                <button
+                  type="submit"
+                  className="text-xs rounded-md panel-button-accent px-3 py-1.5 font-medium whitespace-nowrap"
+                  title="Normalmente no hace falta: se arman solos apenas se completa el último partido de grupos."
+                >
+                  Generar ahora
+                </button>
+              </form>
+            )}
+          </div>
+          {goldMatches.length === 0 ? (
+            <p className="text-sm panel-label">
+              Se arman solas apenas se completa la fase de grupos: copa oro con los clasificados de cada
+              grupo ({competition.qualifiers_per_group} por grupo), copa plata con el resto de cada grupo.
+              El botón de arriba es solo para forzarlo antes de tiempo si hiciera falta.
+            </p>
+          ) : (
+            <div className="space-y-3">
+              <h3 className="text-sm font-semibold text-brand-orange">🥇 Copa Oro</h3>
+              <BracketView competitionId={competitionId} matches={goldMatches} />
+            </div>
+          )}
+          {silverMatches.length > 0 && (
+            <div className="space-y-3 pt-4 border-t border-neutral-200 dark:border-neutral-800">
+              <h3 className="text-sm font-semibold text-neutral-500">🥈 Copa Plata</h3>
+              <BracketView competitionId={competitionId} matches={silverMatches} />
+            </div>
+          )}
+        </section>
+      ),
+    });
+  }
+
+  if (competition.format_type === "bracket_only") {
+    tabs.push({
+      id: "cuadro",
+      label: "Cuadro",
+      badge: plainMatches.length || undefined,
+      content: (
+        <section className="panel-card rounded-xl p-4 space-y-4">
+          <div className="flex items-center justify-between gap-3">
+            <h2 className="font-medium">Cuadro de eliminación</h2>
+            {plainMatches.length === 0 ? (
+              <form action={generateBracketAction}>
+                <button
+                  type="submit"
+                  className="text-sm rounded-md panel-button-primary font-medium px-4 py-2 whitespace-nowrap"
+                >
+                  ▶️ Generar cuadro
+                </button>
+              </form>
+            ) : (
+              <form action={restartTournamentAction}>
+                <ConfirmSubmitButton
+                  confirmMessage="Esto borra el cuadro completo y todos sus resultados, y vuelve el torneo a 'Armando'. Los equipos no se tocan. ¿Reiniciar?"
+                  className="text-xs rounded-md panel-button-danger px-3 py-1.5 whitespace-nowrap"
+                >
+                  🔄 Reiniciar cuadro
+                </ConfirmSubmitButton>
+              </form>
+            )}
+          </div>
+          {plainMatches.length === 0 ? (
+            <p className="text-sm panel-label">
+              {(teams ?? []).length < 2
+                ? "Cargá al menos 2 equipos en la pestaña Equipos antes de generar el cuadro."
+                : "Ordená la semilla de cada equipo en la pestaña Equipos (opcional — si no la tocás, se usa el orden en que los cargaste) y generá el cuadro cuando estén todos."}
+            </p>
+          ) : (
+            <BracketView competitionId={competitionId} matches={plainMatches} />
           )}
         </section>
       ),

@@ -68,7 +68,7 @@ export function TeamCheckinRow({ eventToken, team }: { eventToken: string; team:
       <div className="min-w-[160px] flex-1">
         <p className="font-medium">{team.name}</p>
         {team.institution && <p className="text-xs panel-label">{team.institution}</p>}
-        {error && <p className="text-xs text-red-400">{error}</p>}
+        {error && <p className="text-xs text-red-500 dark:text-red-400">{error}</p>}
       </div>
 
       <label className="flex items-center gap-1.5 text-xs">
@@ -107,7 +107,7 @@ export function TeamCheckinRow({ eventToken, team }: { eventToken: string; team:
           min={0}
           defaultValue={team.participants_present ?? team.member_count ?? ""}
           disabled={pending}
-          className="w-16 rounded bg-neutral-950 border border-neutral-700 px-1.5 py-1 text-xs outline-none focus:ring-2 focus:ring-brand-teal focus:border-brand-teal"
+          className="w-16 rounded panel-input px-1.5 py-1 text-xs"
         />
         <button
           type="button"

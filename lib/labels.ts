@@ -4,7 +4,8 @@ import type { Competition } from "./database.types";
 export const formatLabel: Record<Competition["format_type"], string> = {
   groups_only: "Solo fase de grupos",
   single_elimination: "Grupos + eliminatoria simple",
-  gold_silver: "Grupos + oro/plata (próximamente)",
+  gold_silver: "Grupos + oro/plata",
+  bracket_only: "Solo cuadro de eliminación (sin grupos)",
 };
 
 export const competitionStatusLabel: Record<Competition["status"], string> = {

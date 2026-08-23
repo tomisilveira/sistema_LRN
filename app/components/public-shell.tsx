@@ -1,22 +1,18 @@
 import Link from "next/link";
-import Script from "next/script";
 import { PublicThemeToggle } from "./public-theme-toggle";
 
 /** Shell compartido entre el inicio (app/page.tsx) y toda la sección
  * /publico — mismo header (logo, "Todos los eventos", toggle de tema,
  * "Ingresar como administrador") y mismo root de tema claro/oscuro
  * (id="public-theme-root"), para que se vean como una sola cosa en vez de
- * cada página con su propio estilo. */
+ * cada página con su propio estilo. Arranca en claro; si el usuario ya
+ * había elegido oscuro, el script `beforeInteractive` del root layout
+ * (app/layout.tsx) lo aplica antes del primer paint — no puede vivir acá,
+ * `beforeInteractive` solo se permite en el root layout (mismo patrón
+ * invertido que admin, ver app/admin/layout.tsx). */
 export function PublicShell({ children }: { children: React.ReactNode }) {
   return (
     <div id="public-theme-root" className="panel-page min-h-screen" suppressHydrationWarning>
-      {/* Arranca en claro; si el usuario ya había elegido oscuro, este
-          script lo aplica antes del primer paint (ver theme-toggle del
-          admin para el mismo patrón, invertido). */}
-      <Script id="public-theme-init" strategy="beforeInteractive">
-        {"try{if(localStorage.getItem('lrn-public-theme')==='dark'){document.getElementById('public-theme-root').classList.add('dark');}}catch(e){}"}
-      </Script>
-
       <header className="panel-nav panel-page border-b shadow-sm sticky top-0 z-20">
         <div className="max-w-4xl mx-auto flex flex-wrap items-center justify-between gap-3 px-4 sm:px-6 py-3">
           <Link href="/" className="flex items-center gap-2">

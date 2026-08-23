@@ -1,9 +1,10 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { EventRow } from "@/lib/database.types";
 import { buildEventTabItems, type CompetitionWithNames } from "@/lib/build-event-tab-items";
+import { buildCourtBoards } from "@/lib/build-court-boards";
 import { PublicEventSwitcher } from "./public-event-switcher";
 import { PublicRealtime } from "./public-realtime";
-import { PublicLiveNowPanel } from "./public-live-now-panel";
+import { CourtBoards } from "./court-boards";
 import { HomeDisciplineMenu } from "@/app/home-discipline-menu";
 
 /** Cuerpo compartido de "ver un evento" en la sección pública — switcher de
@@ -28,7 +29,10 @@ export async function PublicEventBody({
   /** Texto chico arriba del título (ej. "Jornada de hoy") — solo lo usa el inicio. */
   eyebrow?: string;
 }) {
-  const { tabItems, liveMatches } = await buildEventTabItems(supabase, event.id, competitions);
+  const [{ tabItems }, courtBoards] = await Promise.all([
+    buildEventTabItems(supabase, event.id, competitions),
+    buildCourtBoards(supabase, event.id, competitions),
+  ]);
   const liveIndex = tabItems.findIndex((t) => t.isLive);
   const defaultId =
     (defaultCompetitionId && tabItems.some((t) => t.id === defaultCompetitionId)
@@ -60,7 +64,7 @@ export async function PublicEventBody({
         )}
       </div>
 
-      <PublicLiveNowPanel matches={liveMatches} />
+      <CourtBoards boards={courtBoards} />
 
       {tabItems.length === 0 ? (
         <p className="text-sm panel-label">Todavía no hay torneos cargados en esta jornada.</p>

@@ -7,7 +7,6 @@ import type { DisciplineTabItem } from "@/app/home-discipline-menu";
 import { PublicStandingsTable } from "@/app/components/public-standings-table";
 import { PublicBracketView, type BracketDisplayMatch } from "@/app/components/public-bracket-view";
 import { PublicMatchList, type PublicMatchDisplay } from "@/app/components/public-match-list";
-import type { LiveMatchInfo } from "@/app/components/public-live-now-panel";
 
 export type CompetitionWithNames = Competition & {
   disciplines: { name: string; sort_order: number } | null;
@@ -18,9 +17,6 @@ export const LIVE_STATUSES = ["groups_in_progress", "bracket_in_progress"];
 
 export interface EventTabsResult {
   tabItems: DisciplineTabItem[];
-  /** Partidos en curso AHORA mismo en cualquier torneo del evento, para el
-   * apartado fijo de arriba (PublicLiveNowPanel) — junta grupo + cuadro. */
-  liveMatches: LiveMatchInfo[];
 }
 
 /** Arma el contenido (fixture + posiciones + fase final) de cada torneo de
@@ -36,19 +32,16 @@ export async function buildEventTabItems(
   const { data: courts } = await supabase.from("courts").select("id, name").eq("event_id", eventId);
   const courtNameById = new Map((courts ?? []).map((c: Pick<Court, "id" | "name">) => [c.id, c.name]));
 
-  const built = await Promise.all(competitions.map((c) => buildTabItem(supabase, c, courtNameById)));
+  const tabItems = await Promise.all(competitions.map((c) => buildTabItem(supabase, c, courtNameById)));
 
-  return {
-    tabItems: built.map((b) => b.tabItem),
-    liveMatches: built.flatMap((b) => b.liveMatches),
-  };
+  return { tabItems };
 }
 
 async function buildTabItem(
   supabase: SupabaseClient,
   competition: CompetitionWithNames,
   courtNameById: Map<string, string>
-): Promise<{ tabItem: DisciplineTabItem; liveMatches: LiveMatchInfo[] }> {
+): Promise<DisciplineTabItem> {
   const [{ data: teams }, { data: groups }, { data: groupMatches }, { data: bracketMatches }] =
     await Promise.all([
       supabase.from("teams").select("*").eq("competition_id", competition.id),
@@ -96,35 +89,16 @@ async function buildTabItem(
     team_a_name: m.team_a_id ? teamsById.get(m.team_a_id)?.name ?? null : null,
     team_b_name: m.team_b_id ? teamsById.get(m.team_b_id)?.name ?? null : null,
   }));
+  // 'gold_silver' arma dos cuadros en paralelo (oro/plata) — hay que
+  // separarlos por bracket_type o sus finales (ambas ronda "F") quedarían
+  // mezcladas en la misma columna del cuadro.
+  const isGoldSilver = competition.format_type === "gold_silver";
+  const goldMatches = bracketDisplayMatches.filter((m) => m.bracket_type === "gold");
+  const silverMatches = bracketDisplayMatches.filter((m) => m.bracket_type === "silver");
 
   const colors = disciplineColor(competition.disciplines);
   const isLive = LIVE_STATUSES.includes(competition.status);
   const disciplineCategory = `${competition.disciplines?.name ?? "?"} — ${competition.categories?.name ?? "?"}`;
-
-  const liveMatches: LiveMatchInfo[] = [
-    ...groupMatchDisplays
-      .filter((m) => m.status === "in_progress")
-      .map((m) => ({
-        matchId: m.id,
-        disciplineCategory,
-        dotClass: colors.dot,
-        teamAName: m.team_a_name,
-        teamBName: m.team_b_name,
-        courtName: m.court_name,
-        startedAt: m.started_at,
-      })),
-    ...bracketDisplayMatches
-      .filter((m) => m.status === "in_progress")
-      .map((m) => ({
-        matchId: m.id,
-        disciplineCategory,
-        dotClass: colors.dot,
-        teamAName: m.team_a_name ?? "?",
-        teamBName: m.team_b_name ?? "?",
-        courtName: m.court_id ? courtNameById.get(m.court_id) ?? null : null,
-        startedAt: m.started_at,
-      })),
-  ];
 
   const content = (
     <div className="space-y-6">
@@ -159,11 +133,28 @@ async function buildTabItem(
         </section>
       )}
 
-      {bracketDisplayMatches.length > 0 && (
-        <section className="space-y-3">
-          <h3 className="text-xs font-semibold panel-label uppercase tracking-wide">Fase Final</h3>
-          <PublicBracketView matches={bracketDisplayMatches} />
-        </section>
+      {isGoldSilver ? (
+        <>
+          {goldMatches.length > 0 && (
+            <section className="space-y-3">
+              <h3 className="text-xs font-semibold panel-label uppercase tracking-wide">🥇 Copa Oro</h3>
+              <PublicBracketView matches={goldMatches} />
+            </section>
+          )}
+          {silverMatches.length > 0 && (
+            <section className="space-y-3">
+              <h3 className="text-xs font-semibold panel-label uppercase tracking-wide">🥈 Copa Plata</h3>
+              <PublicBracketView matches={silverMatches} />
+            </section>
+          )}
+        </>
+      ) : (
+        bracketDisplayMatches.length > 0 && (
+          <section className="space-y-3">
+            <h3 className="text-xs font-semibold panel-label uppercase tracking-wide">Fase Final</h3>
+            <PublicBracketView matches={bracketDisplayMatches} />
+          </section>
+        )
       )}
 
       {standingsByGroup.length === 0 && bracketDisplayMatches.length === 0 && groupMatchDisplays.length === 0 && (
@@ -173,13 +164,10 @@ async function buildTabItem(
   );
 
   return {
-    tabItem: {
-      id: competition.id,
-      label: disciplineCategory,
-      dotClass: colors.dot,
-      isLive,
-      content,
-    },
-    liveMatches,
+    id: competition.id,
+    label: disciplineCategory,
+    dotClass: colors.dot,
+    isLive,
+    content,
   };
 }

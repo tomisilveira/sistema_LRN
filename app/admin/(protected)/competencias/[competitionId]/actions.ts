@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { generateRoundRobinPairs } from "@/lib/round-robin";
 import { advanceWinner } from "@/lib/bracket-actions";
@@ -36,6 +37,22 @@ export async function updateCompetitionFormat(competitionId: string, formData: F
   const pointsLoss = Number(formData.get("points_loss") ?? 0);
   const qualifiersPerGroup = Number(formData.get("qualifiers_per_group") ?? 2);
 
+  const timerMode = String(formData.get("timer_mode") ?? "periods");
+  if (timerMode !== "periods" && timerMode !== "rounds") {
+    throw new Error("Modo de timer inválido.");
+  }
+  const periodSecondsRaw = formData.get("period_seconds");
+  const periodSeconds = periodSecondsRaw && String(periodSecondsRaw).trim() !== "" ? Number(periodSecondsRaw) : null;
+  const periodsCount = Math.max(1, Number(formData.get("periods_count") ?? 1));
+  const roundsToWinRaw = formData.get("rounds_to_win");
+  const roundsToWin =
+    timerMode === "rounds" && roundsToWinRaw && String(roundsToWinRaw).trim() !== ""
+      ? Number(roundsToWinRaw)
+      : null;
+  if (timerMode === "rounds" && (!roundsToWin || roundsToWin < 1)) {
+    throw new Error("Definí cuántos rounds ganados definen el partido.");
+  }
+
   const { error } = await supabase
     .from("competitions")
     .update({
@@ -45,6 +62,10 @@ export async function updateCompetitionFormat(competitionId: string, formData: F
       points_draw: pointsDraw,
       points_loss: pointsLoss,
       qualifiers_per_group: qualifiersPerGroup,
+      timer_mode: timerMode,
+      period_seconds: periodSeconds,
+      periods_count: periodsCount,
+      rounds_to_win: roundsToWin,
     })
     .eq("id", competitionId);
   if (error) throw new Error(error.message);
@@ -60,6 +81,28 @@ export async function setRegistrationOpen(competitionId: string, open: boolean) 
     .eq("id", competitionId);
   if (error) throw new Error(error.message);
   revalidateCompetition(competitionId);
+}
+
+/** Borra el torneo entero: equipos, grupos y partidos se van con él (todos
+ * con ON DELETE CASCADE desde `competitions`, ver 0001_init.sql) —
+ * irreversible, por eso el confirm fuerte en la UI. */
+export async function deleteCompetition(competitionId: string) {
+  const supabase = await createServerSupabaseClient();
+  const { data: competition } = await supabase
+    .from("competitions")
+    .select("event_id")
+    .eq("id", competitionId)
+    .maybeSingle<Pick<Competition, "event_id">>();
+  if (!competition) throw new Error("Competencia no encontrada.");
+
+  const { error } = await supabase.from("competitions").delete().eq("id", competitionId);
+  if (error) throw new Error(error.message);
+
+  revalidatePath(`/admin/eventos/${competition.event_id}`);
+  revalidatePath("/admin");
+  revalidatePath("/publico");
+  revalidatePath("/");
+  redirect(`/admin/eventos/${competition.event_id}`);
 }
 
 export async function addTeam(competitionId: string, formData: FormData) {
@@ -238,6 +281,9 @@ export async function startTournament(competitionId: string) {
     .eq("id", competitionId)
     .single<Competition>();
   if (!competition) throw new Error("Competencia no encontrada.");
+  if (competition.format_type === "bracket_only") {
+    throw new Error("Este torneo es \"solo cuadro\" — no tiene fase de grupos, generá el cuadro directo desde la pestaña Cuadro.");
+  }
 
   const { count: existingMatches } = await supabase
     .from("matches")
@@ -437,19 +483,34 @@ export async function setManualRankOverride(
   revalidateCompetition(competitionId);
 }
 
+/**
+ * Genera el/los cuadro(s) de eliminación que correspondan según el
+ * `format_type` de la competencia (ver generateBracketForCompetition). Es
+ * idempotente por `bracket_type`, así que se puede volver a invocar sin
+ * problema — por ejemplo si en 'gold_silver' la copa oro ya se generó (por
+ * el avance automático) y solo falta la plata.
+ */
 export async function generateBracket(competitionId: string) {
   const supabase = await createServerSupabaseClient();
-
-  const { count: existingBracketMatches } = await supabase
-    .from("matches")
-    .select("id", { count: "exact", head: true })
-    .eq("competition_id", competitionId)
-    .eq("phase", "bracket");
-  if ((existingBracketMatches ?? 0) > 0) {
-    throw new Error("El cuadro eliminatorio ya fue generado para esta competencia.");
-  }
-
   await generateBracketForCompetition(supabase, competitionId);
+  revalidateCompetition(competitionId);
+}
+
+/** Orden de siembra manual de un equipo, solo usado en `format_type =
+ * 'bracket_only'` (cuadro sin fase de grupos) — ver
+ * generateBracketForCompetition. Vacío = sin semilla forzada, se ordena por
+ * fecha de carga. */
+export async function setTeamSeed(competitionId: string, teamId: string, formData: FormData) {
+  const raw = String(formData.get("seed") ?? "").trim();
+  const seed = raw === "" ? null : Number(raw);
+
+  const supabase = await createServerSupabaseClient();
+  const { error } = await supabase
+    .from("teams")
+    .update({ seed_order: seed })
+    .eq("id", teamId)
+    .eq("competition_id", competitionId);
+  if (error) throw new Error(error.message);
 
   revalidateCompetition(competitionId);
 }

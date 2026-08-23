@@ -1,10 +1,9 @@
 import { createAdminClient } from "@/lib/supabase/admin";
-import type { Match } from "@/lib/database.types";
-import { ResultForm } from "./result-form";
+import type { Competition, Match } from "@/lib/database.types";
 import { JudgeRealtime } from "./judge-realtime";
 import { StartMatchButton } from "./start-match-button";
-import { MatchTimer } from "./match-timer";
-import { KioskShell, KioskInvalidLink } from "@/app/components/kiosk-shell";
+import { MatchTimerPanel } from "./match-timer-panel";
+import { KioskInvalidLink } from "@/app/components/kiosk-shell";
 
 export const dynamic = "force-dynamic";
 
@@ -32,8 +31,11 @@ export default async function JudgePage({ params }: { params: Promise<{ courtTok
     .order("turno", { ascending: true, nullsFirst: false });
 
   const list = (matches ?? []) as Match[];
-  const current = list[0] ?? null;
-  const upcoming = list.slice(1, 4);
+  // Una cancha física corre un partido a la vez: si ya hay uno en curso,
+  // queda forzado como activo — el juez recién elige entre los pendientes
+  // cuando no hay ninguno corriendo.
+  const current = list.find((m) => m.status === "in_progress") ?? null;
+  const scheduled = list.filter((m) => m.status === "scheduled");
 
   const teamIds = list.flatMap((m) => [m.team_a_id, m.team_b_id]).filter((x): x is string => !!x);
   const { data: teams } = teamIds.length
@@ -41,64 +43,77 @@ export default async function JudgePage({ params }: { params: Promise<{ courtTok
     : { data: [] as { id: string; name: string }[] };
   const teamName = new Map((teams ?? []).map((t) => [t.id, t.name]));
 
-  let allowDraws = true;
+  let competition: Competition | null = null;
   if (current) {
-    const { data: competition } = await supabase
+    const { data } = await supabase
       .from("competitions")
-      .select("allow_draws")
+      .select("*")
       .eq("id", current.competition_id)
-      .single();
-    allowDraws = competition?.allow_draws ?? true;
+      .single<Competition>();
+    competition = data ?? null;
   }
 
   return (
-    <KioskShell eyebrow={event?.name} title={court.name}>
-      <JudgeRealtime courtId={court.id} />
+    <div className="panel-page min-h-screen">
+      <div className="max-w-md mx-auto p-4 space-y-4">
+        <JudgeRealtime courtId={court.id} />
 
-      {current ? (
-        <section className="panel-card rounded-xl p-4 space-y-4 panel-enter">
-          <p className="text-xs panel-label uppercase tracking-wide font-medium">Próximo partido</p>
-          <p className="text-lg font-semibold">
-            {teamName.get(current.team_a_id ?? "") ?? "?"} vs{" "}
-            {teamName.get(current.team_b_id ?? "") ?? "?"}
-          </p>
-          {!current.team_a_id || !current.team_b_id ? (
-            <p className="text-sm panel-label">Todavía no están definidos los dos equipos.</p>
-          ) : current.status === "scheduled" ? (
-            <StartMatchButton courtToken={courtToken} matchId={current.id} />
+        <header className="py-3 panel-enter">
+          <p className="text-sm panel-label truncate">{event?.name}</p>
+          <h1 className="text-2xl font-display font-bold tracking-wide truncate">{court.name}</h1>
+        </header>
+        <div className="h-0.5 w-full rounded-full bg-gradient-to-r from-brand-teal via-brand-orange to-brand-pink opacity-70" />
+
+        {current && competition ? (
+          <MatchTimerPanel
+            courtToken={courtToken}
+            match={current}
+            competition={competition}
+            teamAName={teamName.get(current.team_a_id ?? "") ?? "Equipo A"}
+            teamBName={teamName.get(current.team_b_id ?? "") ?? "Equipo B"}
+          />
+        ) : null}
+
+        {current && scheduled.length > 0 && (
+          <section className="pt-2">
+            <p className="text-xs uppercase tracking-wide panel-label font-display font-semibold mb-2">Después</p>
+            <ul className="space-y-1 text-sm panel-label panel-enter-stagger">
+              {scheduled.slice(0, 3).map((m) => (
+                <li key={m.id}>
+                  {teamName.get(m.team_a_id ?? "") ?? "?"} vs {teamName.get(m.team_b_id ?? "") ?? "?"}
+                </li>
+              ))}
+            </ul>
+          </section>
+        )}
+
+        {!current &&
+          (scheduled.length > 0 ? (
+            <section className="space-y-3">
+              <p className="text-xs uppercase tracking-wide panel-label font-display font-semibold">
+                Elegí qué partido arrancar
+              </p>
+              <div className="space-y-2 panel-enter-stagger">
+                {scheduled.map((m) => (
+                  <div key={m.id} className="panel-card rounded-xl p-4 space-y-3">
+                    <p className="text-lg font-display font-semibold">
+                      {teamName.get(m.team_a_id ?? "") ?? "?"}{" "}
+                      <span className="panel-label font-normal">vs</span>{" "}
+                      {teamName.get(m.team_b_id ?? "") ?? "?"}
+                    </p>
+                    {!m.team_a_id || !m.team_b_id ? (
+                      <p className="text-sm panel-label">Todavía no están definidos los dos equipos.</p>
+                    ) : (
+                      <StartMatchButton courtToken={courtToken} matchId={m.id} />
+                    )}
+                  </div>
+                ))}
+              </div>
+            </section>
           ) : (
-            <>
-              {current.started_at && (
-                <MatchTimer courtToken={courtToken} matchId={current.id} startedAt={current.started_at} />
-              )}
-              <ResultForm
-                courtToken={courtToken}
-                matchId={current.id}
-                teamAId={current.team_a_id}
-                teamBId={current.team_b_id}
-                teamAName={teamName.get(current.team_a_id) ?? "Equipo A"}
-                teamBName={teamName.get(current.team_b_id) ?? "Equipo B"}
-                allowDraws={allowDraws}
-              />
-            </>
-          )}
-        </section>
-      ) : (
-        <p className="text-sm panel-label">No hay partidos pendientes asignados a esta cancha.</p>
-      )}
-
-      {upcoming.length > 0 && (
-        <section className="mt-6">
-          <p className="text-xs panel-label uppercase tracking-wide font-medium mb-2">Después</p>
-          <ul className="space-y-1 text-sm panel-label panel-enter-stagger">
-            {upcoming.map((m) => (
-              <li key={m.id}>
-                {teamName.get(m.team_a_id ?? "") ?? "?"} vs {teamName.get(m.team_b_id ?? "") ?? "?"}
-              </li>
-            ))}
-          </ul>
-        </section>
-      )}
-    </KioskShell>
+            <p className="text-sm panel-label">No hay partidos pendientes asignados a esta cancha.</p>
+          ))}
+      </div>
+    </div>
   );
 }

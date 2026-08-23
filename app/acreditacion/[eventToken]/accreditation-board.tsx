@@ -43,7 +43,7 @@ export function AccreditationBoard({
 
   return (
     <div className="space-y-5">
-      <div className="flex flex-wrap items-center gap-3 sticky top-0 -mx-4 px-4 py-2 bg-neutral-950/95 backdrop-blur z-10">
+      <div className="flex flex-wrap items-center gap-3 sticky top-0 -mx-4 px-4 py-2 bg-neutral-50/95 dark:bg-neutral-950/95 backdrop-blur z-10">
         <input
           type="search"
           value={query}

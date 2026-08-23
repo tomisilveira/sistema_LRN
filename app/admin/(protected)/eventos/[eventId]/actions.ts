@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 
 export async function addCourt(eventId: string, formData: FormData) {
@@ -32,6 +33,32 @@ export async function setCourtDiscipline(eventId: string, courtId: string, formD
   if (error) throw new Error(error.message);
 
   revalidatePath(`/admin/eventos/${eventId}`);
+}
+
+/** Borra una cancha. Los partidos que la tenían asignada quedan sin cancha
+ * (ya es un estado soportado — "Sin cancha asignada"/turno null — igual que
+ * cuando todavía no se asignó ninguna) en vez de bloquear el borrado;
+ * `matches.court_id` no tiene ON DELETE CASCADE, así que hay que soltarlos
+ * a mano antes de borrar la fila o Postgres rechaza el borrado por la FK. */
+export async function deleteCourt(eventId: string, courtId: string) {
+  const supabase = await createServerSupabaseClient();
+  await supabase.from("matches").update({ court_id: null, turno: null }).eq("court_id", courtId);
+  const { error } = await supabase.from("courts").delete().eq("id", courtId);
+  if (error) throw new Error(error.message);
+  revalidatePath(`/admin/eventos/${eventId}`);
+}
+
+/** Borra el evento entero: torneos, canchas, equipos, grupos y partidos se
+ * van con él (todos con ON DELETE CASCADE desde `events`/`competitions`, ver
+ * 0001_init.sql) — irreversible, por eso el confirm fuerte en la UI. */
+export async function deleteEvent(eventId: string) {
+  const supabase = await createServerSupabaseClient();
+  const { error } = await supabase.from("events").delete().eq("id", eventId);
+  if (error) throw new Error(error.message);
+  revalidatePath("/admin");
+  revalidatePath("/publico");
+  revalidatePath("/");
+  redirect("/admin");
 }
 
 export async function createCompetition(eventId: string, formData: FormData) {
@@ -78,6 +105,15 @@ export async function createCompetition(eventId: string, formData: FormData) {
     if (courtsError) throw new Error(courtsError.message);
   }
 
+  // Config de timer de la disciplina (rounds para sumo, períodos para
+  // fútbol) — se copia como punto de partida del torneo, editable después
+  // en "Formato del torneo" mientras siga en 'setup'.
+  const { data: discipline } = await supabase
+    .from("disciplines")
+    .select("timer_mode_default, period_seconds_default, periods_count_default, rounds_to_win_default")
+    .eq("id", disciplineId)
+    .maybeSingle();
+
   const { error } = await supabase.from("competitions").insert({
     event_id: eventId,
     discipline_id: disciplineId,
@@ -88,6 +124,10 @@ export async function createCompetition(eventId: string, formData: FormData) {
     points_draw: pointsDraw,
     points_loss: pointsLoss,
     qualifiers_per_group: qualifiersPerGroup,
+    timer_mode: discipline?.timer_mode_default ?? "periods",
+    period_seconds: discipline?.period_seconds_default ?? null,
+    periods_count: discipline?.periods_count_default ?? 1,
+    rounds_to_win: discipline?.rounds_to_win_default ?? null,
   });
   if (error) throw new Error(error.message);
 

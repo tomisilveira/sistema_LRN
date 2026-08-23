@@ -70,5 +70,5 @@ export async function createDiscipline(formData: FormData) {
   });
   if (error) throw new Error(error.message);
 
-  revalidatePath("/admin");
+  revalidatePath("/admin/disciplinas");
 }

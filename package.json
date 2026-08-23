@@ -7,7 +7,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "seed:demo": "node --env-file=.env.local --import tsx scripts/seed-demo.ts"
+    "seed:demo": "node --env-file=.env.local --import tsx scripts/seed-demo.ts",
+    "seed:full-demo": "node --env-file=.env.local --import tsx scripts/seed-full-demo.ts"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.4",

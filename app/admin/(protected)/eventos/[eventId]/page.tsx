@@ -2,12 +2,21 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import type { Competition, Court, Discipline, Category, EventRow } from "@/lib/database.types";
-import { addCourt, createCompetition, setEventStatusAction, setEventPublicAction } from "./actions";
+import {
+  addCourt,
+  createCompetition,
+  setEventStatusAction,
+  setEventPublicAction,
+  deleteCourt,
+  deleteEvent,
+} from "./actions";
+import { deleteCompetition } from "@/app/admin/(protected)/competencias/[competitionId]/actions";
 import { CourtDisciplineSelect } from "./court-discipline-select";
 import { CopyLinkButton } from "@/app/components/copy-link-button";
 import { Breadcrumbs } from "@/app/components/breadcrumbs";
 import { TabbedLayout, type TabItem } from "@/app/components/tabbed-layout";
 import { ModalFormButton } from "@/app/components/modal-form";
+import { ConfirmSubmitButton } from "@/app/components/confirm-submit-button";
 import { formatLabel, competitionStatusLabel, competitionStatusChipClass } from "@/lib/labels";
 import { disciplineColor } from "@/lib/discipline-colors";
 
@@ -99,7 +108,17 @@ export default async function EventPage({ params }: { params: Promise<{ eventId:
                   >
                     <div className="flex items-center justify-between gap-2">
                       <span className="text-sm font-medium">{court.name}</span>
-                      <CopyLinkButton path={`/juez/${court.access_token}`} label="Link de juez" />
+                      <div className="flex items-center gap-1.5 shrink-0">
+                        <CopyLinkButton path={`/juez/${court.access_token}`} label="Link de juez" />
+                        <form action={deleteCourt.bind(null, eventId, court.id)}>
+                          <ConfirmSubmitButton
+                            confirmMessage={`¿Eliminar "${court.name}"? Los partidos que la tenían asignada quedan sin cancha.`}
+                            className="text-xs panel-button-danger"
+                          >
+                            Eliminar
+                          </ConfirmSubmitButton>
+                        </form>
+                      </div>
                     </div>
                     <div className="flex items-center gap-1.5">
                       <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${colors.dot}`} aria-hidden="true" />
@@ -197,6 +216,8 @@ export default async function EventPage({ params }: { params: Promise<{ eventId:
                 >
                   <option value="groups_only">Solo fase de grupos (sin eliminatoria)</option>
                   <option value="single_elimination">Grupos + eliminatoria simple</option>
+                  <option value="gold_silver">Grupos + oro/plata</option>
+                  <option value="bracket_only">Solo cuadro de eliminación (sin grupos)</option>
                 </select>
               </div>
               <div className="grid grid-cols-4 gap-3">
@@ -256,11 +277,11 @@ export default async function EventPage({ params }: { params: Promise<{ eventId:
               ) => {
                 const colors = disciplineColor(c.disciplines);
                 return (
-                  <Link
-                    key={c.id}
-                    href={`/admin/competencias/${c.id}`}
-                    className={`group flex items-center justify-between gap-3 rounded-lg border-l-4 ${colors.border} ${colors.bg} px-3.5 py-2.5 shadow-sm transition duration-200 hover:shadow-lg hover:-translate-y-0.5 hover:brightness-95 active:translate-y-0 active:scale-[0.99]`}
-                  >
+                  <div key={c.id} className="flex items-stretch gap-2">
+                    <Link
+                      href={`/admin/competencias/${c.id}`}
+                      className={`flex-1 min-w-0 group flex items-center justify-between gap-3 rounded-lg border-l-4 ${colors.border} ${colors.bg} px-3.5 py-2.5 shadow-sm transition duration-200 hover:shadow-lg hover:-translate-y-0.5 hover:brightness-95 active:translate-y-0 active:scale-[0.99]`}
+                    >
                     <div className="min-w-0">
                       <p className="text-sm font-medium truncate">
                         {c.disciplines?.name} — {c.categories?.name}
@@ -280,7 +301,16 @@ export default async function EventPage({ params }: { params: Promise<{ eventId:
                         →
                       </span>
                     </div>
-                  </Link>
+                    </Link>
+                    <form action={deleteCompetition.bind(null, c.id)} className="shrink-0">
+                      <ConfirmSubmitButton
+                        confirmMessage={`¿Eliminar el torneo "${c.disciplines?.name} — ${c.categories?.name}"? Se borran sus equipos, grupos y partidos. No se puede deshacer.`}
+                        className="h-full text-xs rounded-lg panel-button-danger px-3 border border-red-500/30 hover:bg-red-500/10"
+                      >
+                        Eliminar
+                      </ConfirmSubmitButton>
+                    </form>
+                  </div>
                 );
               }
             )}
@@ -320,6 +350,17 @@ export default async function EventPage({ params }: { params: Promise<{ eventId:
                 label="Copiar link de acreditación"
               />
             )}
+            {event.is_public && (
+              <a
+                href={`/evento/${eventId}/pantalla`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="panel-chip text-xs rounded-full px-3 py-1.5 transition-colors"
+                title="Vista para proyector/TV — todas las canchas en vivo, sin navegación"
+              >
+                🖥️ Abrir modo pantalla
+              </a>
+            )}
             <a
               href={`/api/eventos/${eventId}/export`}
               className="panel-chip text-xs rounded-full px-3 py-1.5 transition-colors"
@@ -339,6 +380,14 @@ export default async function EventPage({ params }: { params: Promise<{ eventId:
               <button type="submit" className="panel-chip text-xs rounded-full px-3 py-1.5 transition-colors">
                 {event.status === "active" ? "Marcar finalizado" : "Marcar activo"}
               </button>
+            </form>
+            <form action={deleteEvent.bind(null, eventId)}>
+              <ConfirmSubmitButton
+                confirmMessage={`¿Eliminar el evento "${event.name}"? Se borran TODOS sus torneos, canchas, equipos, grupos y partidos. No se puede deshacer.`}
+                className="text-xs rounded-full panel-button-danger px-3 py-1.5 border border-red-500/30 hover:bg-red-500/10"
+              >
+                🗑️ Eliminar evento
+              </ConfirmSubmitButton>
             </form>
           </div>
         </div>

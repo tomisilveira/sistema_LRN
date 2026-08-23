@@ -3,7 +3,7 @@
 // Si el schema cambia, actualizar este archivo a mano (no se generó con
 // `supabase gen types` porque el proyecto Supabase todavía no existe).
 
-export type FormatType = "groups_only" | "single_elimination" | "gold_silver";
+export type FormatType = "groups_only" | "single_elimination" | "gold_silver" | "bracket_only";
 export type CompetitionStatus =
   | "setup"
   | "groups_in_progress"
@@ -14,6 +14,7 @@ export type MatchPhase = "group" | "bracket";
 export type BracketType = "gold" | "silver";
 export type MatchStatus = "pending_teams" | "scheduled" | "in_progress" | "completed";
 export type EventStatus = "draft" | "active" | "finished";
+export type TimerMode = "periods" | "rounds";
 
 export interface Discipline {
   id: string;
@@ -21,6 +22,13 @@ export interface Discipline {
   name: string;
   allow_draws_default: boolean;
   sort_order: number;
+  // Config de timer por defecto, copiada a la competencia al crear el
+  // torneo (ver 0006_match_timer.sql) — 'rounds' para sumo/mini sumo
+  // (mejor de 3), 'periods' para fútbol (tiempos configurables).
+  timer_mode_default: TimerMode;
+  period_seconds_default: number | null;
+  periods_count_default: number;
+  rounds_to_win_default: number | null;
 }
 
 export interface Category {
@@ -62,6 +70,12 @@ export interface Competition {
   status: CompetitionStatus;
   registration_open: boolean;
   created_at: string;
+  // Config de timer de este torneo puntual (copiada del discipline al
+  // crearlo, editable en "Formato del torneo" mientras status='setup').
+  timer_mode: TimerMode;
+  period_seconds: number | null;
+  periods_count: number;
+  rounds_to_win: number | null;
 }
 
 export interface Team {
@@ -78,6 +92,9 @@ export interface Team {
   homologated: boolean;
   homologated_at: string | null;
   participants_present: number | null;
+  // Orden de siembra manual, solo relevante en format_type = 'bracket_only'
+  // (ver 0007_bracket_formats.sql) — null = se usa el orden de created_at.
+  seed_order: number | null;
   created_at: string;
 }
 
@@ -134,6 +151,13 @@ export interface Match {
   started_at: string | null;
   created_at: string;
   updated_at: string;
+  // Reloj pausable del período/ronda actual (ver 0006_match_timer.sql y
+  // lib/match-timer.ts) — independiente de `started_at`, que sigue
+  // significando "cuándo se abrió el partido por primera vez".
+  timer_running_since: string | null;
+  timer_elapsed_seconds: number;
+  current_period: number;
+  round_winner_ids: string[];
 }
 
 export interface GroupStandingRow {
