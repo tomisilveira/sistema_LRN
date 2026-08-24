@@ -1,5 +1,8 @@
 import type { CourtBoard } from "@/lib/build-court-boards";
 import { MatchClock } from "./match-clock";
+import { TeamLabel } from "./team-label";
+import { TeamCardBadges } from "./team-card-badges";
+import { cardsByTeam } from "@/lib/match-cards";
 
 /** Pantalla pública organizada por cancha (no por torneo): una tarjeta por
  * cancha con el partido en curso — reloj, marcador, pausado si corresponde —
@@ -19,17 +22,24 @@ export function CourtBoards({ boards }: { boards: CourtBoard[] }) {
             className={`rounded-2xl overflow-hidden border-l-4 panel-card ${board.colorBorder} ${board.live ? board.colorBg : ""}`}
           >
             <div className="p-4 space-y-3">
-              <div className="flex items-center gap-1.5">
+              <div className="flex items-center justify-between gap-1.5">
+                <span className="text-[11px] uppercase tracking-wide font-display font-semibold panel-label">
+                  {board.courtName}
+                </span>
                 <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${board.colorDot}`} aria-hidden="true" />
-                <p className="text-sm font-display font-semibold">{board.courtName}</p>
               </div>
 
               {board.live ? (
-                <div className="space-y-3">
-                  <p className="text-xs panel-label truncate">{board.live.disciplineCategory}</p>
-                  <p className="text-base font-display font-medium text-center">
-                    {board.live.teamAName} <span className="panel-label font-normal">vs</span>{" "}
-                    {board.live.teamBName}
+                <div className="space-y-2.5">
+                  <p className={`text-base font-display font-bold leading-tight ${board.colorText}`}>
+                    {board.live.disciplineCategory}
+                  </p>
+                  <p className="text-sm font-display font-medium text-center">
+                    <TeamLabel name={board.live.teamAName} memberNames={board.live.teamAMemberNames} />{" "}
+                    <TeamCardBadges summary={cardsByTeam(board.live.cards, board.live.match.team_a_id, board.live.match.team_b_id).a} />{" "}
+                    <span className="panel-label font-normal">vs</span>{" "}
+                    <TeamLabel name={board.live.teamBName} memberNames={board.live.teamBMemberNames} />{" "}
+                    <TeamCardBadges summary={cardsByTeam(board.live.cards, board.live.match.team_a_id, board.live.match.team_b_id).b} />
                   </p>
                   <MatchClock match={board.live.match} competition={board.live.competition} size="compact" />
                   {board.live.competition.timer_mode === "periods" && (

@@ -1,9 +1,10 @@
 import { createAdminClient } from "@/lib/supabase/admin";
-import type { Competition, Match } from "@/lib/database.types";
+import type { Competition, Match, MatchCard, Team } from "@/lib/database.types";
 import { JudgeRealtime } from "./judge-realtime";
 import { StartMatchButton } from "./start-match-button";
 import { MatchTimerPanel } from "./match-timer-panel";
 import { KioskInvalidLink } from "@/app/components/kiosk-shell";
+import { TeamLabel } from "@/app/components/team-label";
 
 export const dynamic = "force-dynamic";
 
@@ -39,18 +40,20 @@ export default async function JudgePage({ params }: { params: Promise<{ courtTok
 
   const teamIds = list.flatMap((m) => [m.team_a_id, m.team_b_id]).filter((x): x is string => !!x);
   const { data: teams } = teamIds.length
-    ? await supabase.from("teams").select("id, name").in("id", teamIds)
-    : { data: [] as { id: string; name: string }[] };
+    ? await supabase.from("teams").select("id, name, member_names").in("id", teamIds)
+    : { data: [] as Pick<Team, "id" | "name" | "member_names">[] };
+  const teamById = new Map((teams ?? []).map((t) => [t.id, t]));
   const teamName = new Map((teams ?? []).map((t) => [t.id, t.name]));
 
   let competition: Competition | null = null;
+  let currentCards: MatchCard[] = [];
   if (current) {
-    const { data } = await supabase
-      .from("competitions")
-      .select("*")
-      .eq("id", current.competition_id)
-      .single<Competition>();
-    competition = data ?? null;
+    const [{ data: competitionData }, { data: cardsData }] = await Promise.all([
+      supabase.from("competitions").select("*").eq("id", current.competition_id).single<Competition>(),
+      supabase.from("match_cards").select("*").eq("match_id", current.id).order("created_at"),
+    ]);
+    competition = competitionData ?? null;
+    currentCards = (cardsData ?? []) as MatchCard[];
   }
 
   return (
@@ -71,6 +74,9 @@ export default async function JudgePage({ params }: { params: Promise<{ courtTok
             competition={competition}
             teamAName={teamName.get(current.team_a_id ?? "") ?? "Equipo A"}
             teamBName={teamName.get(current.team_b_id ?? "") ?? "Equipo B"}
+            teamAMemberNames={teamById.get(current.team_a_id ?? "")?.member_names ?? null}
+            teamBMemberNames={teamById.get(current.team_b_id ?? "")?.member_names ?? null}
+            cards={currentCards}
           />
         ) : null}
 
@@ -97,9 +103,9 @@ export default async function JudgePage({ params }: { params: Promise<{ courtTok
                 {scheduled.map((m) => (
                   <div key={m.id} className="panel-card rounded-xl p-4 space-y-3">
                     <p className="text-lg font-display font-semibold">
-                      {teamName.get(m.team_a_id ?? "") ?? "?"}{" "}
+                      <TeamLabel name={teamName.get(m.team_a_id ?? "") ?? "?"} memberNames={teamById.get(m.team_a_id ?? "")?.member_names} />{" "}
                       <span className="panel-label font-normal">vs</span>{" "}
-                      {teamName.get(m.team_b_id ?? "") ?? "?"}
+                      <TeamLabel name={teamName.get(m.team_b_id ?? "") ?? "?"} memberNames={teamById.get(m.team_b_id ?? "")?.member_names} />
                     </p>
                     {!m.team_a_id || !m.team_b_id ? (
                       <p className="text-sm panel-label">Todavía no están definidos los dos equipos.</p>

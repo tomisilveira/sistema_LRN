@@ -3,6 +3,7 @@
 import { useRef, useState, useTransition } from "react";
 import { setAccredited, setHomologated, setParticipantsPresent } from "./actions";
 import type { Team } from "@/lib/database.types";
+import { TeamLabel } from "@/app/components/team-label";
 
 export function TeamCheckinRow({ eventToken, team }: { eventToken: string; team: Team }) {
   const [pending, startTransition] = useTransition();
@@ -66,7 +67,9 @@ export function TeamCheckinRow({ eventToken, team }: { eventToken: string; team:
       }`}
     >
       <div className="min-w-[160px] flex-1">
-        <p className="font-medium">{team.name}</p>
+        <p className="font-medium">
+          <TeamLabel name={team.name} memberNames={team.member_names} />
+        </p>
         {team.institution && <p className="text-xs panel-label">{team.institution}</p>}
         {error && <p className="text-xs text-red-500 dark:text-red-400">{error}</p>}
       </div>

@@ -1,6 +1,6 @@
 import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
-import type { BracketType, Group, GroupStandingRow, Match, Team } from "./database.types";
+import type { BracketType, Group, GroupStandingRow, Match, MatchCard, Team } from "./database.types";
 import type { CompetitionWithNames } from "./build-event-tab-items";
 import type { BracketDisplayMatch } from "@/app/components/public-bracket-view";
 import { disciplineColor } from "./discipline-colors";
@@ -54,7 +54,7 @@ async function buildOne(
   competition: CompetitionWithNames
 ): Promise<PantallaCompetitionBoard | null> {
   const [{ data: teams }, { data: groups }, { data: bracketMatches }] = await Promise.all([
-    supabase.from("teams").select("id, name").eq("competition_id", competition.id),
+    supabase.from("teams").select("id, name, member_names").eq("competition_id", competition.id),
     supabase.from("groups").select("*").eq("competition_id", competition.id).order("sort_order"),
     supabase
       .from("matches")
@@ -64,7 +64,7 @@ async function buildOne(
       .order("bracket_slot"),
   ]);
 
-  const teamsById = new Map((teams ?? []).map((t: Pick<Team, "id" | "name">) => [t.id, t]));
+  const teamsById = new Map((teams ?? []).map((t: Pick<Team, "id" | "name" | "member_names">) => [t.id, t]));
   const groupsList = (groups ?? []) as Group[];
   const bracketMatchList = (bracketMatches ?? []) as Match[];
 
@@ -72,10 +72,22 @@ async function buildOne(
   const colors = disciplineColor(competition.disciplines);
 
   if (bracketMatchList.length > 0) {
+    const bracketMatchIds = bracketMatchList.map((m) => m.id);
+    const { data: cardsData } = await supabase.from("match_cards").select("*").in("match_id", bracketMatchIds);
+    const cardsByMatchId = new Map<string, MatchCard[]>();
+    for (const c of (cardsData ?? []) as MatchCard[]) {
+      const list = cardsByMatchId.get(c.match_id) ?? [];
+      list.push(c);
+      cardsByMatchId.set(c.match_id, list);
+    }
+
     const toDisplay = (m: Match): BracketDisplayMatch => ({
       ...m,
       team_a_name: m.team_a_id ? teamsById.get(m.team_a_id)?.name ?? null : null,
       team_b_name: m.team_b_id ? teamsById.get(m.team_b_id)?.name ?? null : null,
+      team_a_member_names: m.team_a_id ? teamsById.get(m.team_a_id)?.member_names ?? null : null,
+      team_b_member_names: m.team_b_id ? teamsById.get(m.team_b_id)?.member_names ?? null : null,
+      cards: cardsByMatchId.get(m.id) ?? [],
     });
 
     const types = [...new Set(bracketMatchList.map((m) => m.bracket_type))];

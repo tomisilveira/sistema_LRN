@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useState, useTransition } from "react";
-import { setTeamAccredited, setTeamHomologated, setTeamParticipantsPresent } from "./actions";
+import { setTeamAccredited, setTeamHomologated, setTeamParticipantsPresent, setTeamMemberNames } from "./actions";
 import type { Team } from "@/lib/database.types";
 
 /** Acreditar/homologar un equipo directo desde la pestaña Equipos del panel
@@ -66,10 +66,25 @@ export function TeamAccreditationControls({
     });
   }
 
+  function handleMemberNamesBlur(value: string) {
+    setError(null);
+    const formData = new FormData();
+    formData.set("member_names", value);
+    startTransition(async () => {
+      try {
+        await setTeamMemberNames(competitionId, team.id, formData);
+        flashSaved();
+      } catch (err) {
+        setError((err as Error).message ?? "No se pudo guardar.");
+      }
+    });
+  }
+
   const ready = team.accredited && team.homologated;
 
   return (
-    <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-1">
+    <div className="mt-1 space-y-1.5">
+    <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
       <label className="flex items-center gap-1 text-xs panel-label">
         <input
           ref={accreditedRef}
@@ -117,6 +132,22 @@ export function TeamAccreditationControls({
       {pending && <span className="text-xs panel-label">…</span>}
       {saved && <span className="text-xs text-brand-green panel-enter">✓</span>}
       {error && <span className="text-xs text-red-500 dark:text-red-400 panel-enter">{error}</span>}
+    </div>
+    <input
+      type="text"
+      defaultValue={team.member_names ?? ""}
+      disabled={pending}
+      placeholder="Integrantes, separados por coma"
+      title="Nombres de las personas de este equipo — se muestran públicamente entre paréntesis debajo del nombre del robot"
+      className="w-full rounded panel-input px-2 py-1 text-xs disabled:opacity-50"
+      onBlur={(e) => handleMemberNamesBlur(e.currentTarget.value.trim())}
+      onKeyDown={(e) => {
+        if (e.key === "Enter") {
+          e.preventDefault();
+          e.currentTarget.blur();
+        }
+      }}
+    />
     </div>
   );
 }

@@ -1,5 +1,6 @@
 import type { GroupStandingRow } from "@/lib/database.types";
 import { ManualRankInput } from "./manual-rank-input";
+import { TeamLabel } from "@/app/components/team-label";
 
 export function StandingsTable({
   competitionId,
@@ -48,7 +49,7 @@ export function StandingsTable({
                   <RankBadge rank={i + 1} />
                 </td>
                 <td className="py-1.5 pr-2 font-medium">
-                  {r.team_name}
+                  <TeamLabel name={r.team_name} memberNames={r.member_names} />
                   {r.manual_rank_override !== null && (
                     <span
                       className="ml-1 text-brand-orange"

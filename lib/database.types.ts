@@ -86,6 +86,10 @@ export interface Team {
   mentor_name: string | null;
   mentor_contact: string | null;
   member_count: number | null;
+  // Nombres de las personas inscriptas con este equipo/robot — texto libre,
+  // una por línea o separadas por coma (ver 0008_team_member_names.sql).
+  // Se muestran en todo el sistema como "Robot (Fulano, Mengano)".
+  member_names: string | null;
   notes: string | null;
   accredited: boolean;
   accredited_at: string | null;
@@ -160,9 +164,25 @@ export interface Match {
   round_winner_ids: string[];
 }
 
+export type CardType = "yellow" | "red";
+
+// Tarjeta amarilla/roja a un equipo dentro de un partido puntual (ver
+// 0009_match_cards.sql). Doble amarilla = roja es una regla de
+// visualización (lib/match-cards.ts), no se guarda una fila 'red' aparte
+// cuando pasa eso — el historial real son 2 filas 'yellow'.
+export interface MatchCard {
+  id: string;
+  match_id: string;
+  team_id: string;
+  card_type: CardType;
+  reason: string | null;
+  created_at: string;
+}
+
 export interface GroupStandingRow {
   team_id: string;
   team_name: string;
+  member_names: string | null;
   played: number;
   won: number;
   drawn: number;

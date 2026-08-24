@@ -108,10 +108,13 @@ export async function deleteCompetition(competitionId: string) {
 export async function addTeam(competitionId: string, formData: FormData) {
   const name = String(formData.get("name") ?? "").trim();
   const institution = String(formData.get("institution") ?? "").trim() || null;
+  const memberNames = String(formData.get("member_names") ?? "").trim() || null;
   if (!name) throw new Error("Falta el nombre del equipo.");
 
   const supabase = await createServerSupabaseClient();
-  const { error } = await supabase.from("teams").insert({ competition_id: competitionId, name, institution });
+  const { error } = await supabase
+    .from("teams")
+    .insert({ competition_id: competitionId, name, institution, member_names: memberNames });
   if (error) throw new Error(error.message);
 
   revalidateCompetition(competitionId);
@@ -148,6 +151,23 @@ export async function setTeamHomologated(competitionId: string, teamId: string, 
   const { error } = await supabase
     .from("teams")
     .update({ homologated: value, homologated_at: value ? new Date().toISOString() : null })
+    .eq("id", teamId)
+    .eq("competition_id", competitionId);
+  if (error) throw new Error(error.message);
+  revalidateCompetition(competitionId);
+}
+
+/** Editar los nombres de las personas de un equipo desde el panel admin —
+ * mismo campo que carga el propio equipo al inscribirse (ver
+ * app/inscripcion/[competitionId]/actions.ts), acá para poder corregirlo o
+ * completarlo cuando el equipo lo cargó a mano en la mesa de acreditación
+ * en vez de por el form público. */
+export async function setTeamMemberNames(competitionId: string, teamId: string, formData: FormData) {
+  const raw = String(formData.get("member_names") ?? "").trim();
+  const supabase = await createServerSupabaseClient();
+  const { error } = await supabase
+    .from("teams")
+    .update({ member_names: raw || null })
     .eq("id", teamId)
     .eq("competition_id", competitionId);
   if (error) throw new Error(error.message);

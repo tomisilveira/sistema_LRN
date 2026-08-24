@@ -2,7 +2,7 @@ import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { disciplineColor } from "./discipline-colors";
 import { competitionStatusLabel, competitionStatusChipClass } from "./labels";
-import type { Competition, Court, Group, GroupStandingRow, Match, Team } from "./database.types";
+import type { Competition, Court, Group, GroupStandingRow, Match, MatchCard, Team } from "./database.types";
 import type { DisciplineTabItem } from "@/app/home-discipline-menu";
 import { PublicStandingsTable } from "@/app/components/public-standings-table";
 import { PublicBracketView, type BracketDisplayMatch } from "@/app/components/public-bracket-view";
@@ -60,9 +60,21 @@ async function buildTabItem(
         .order("bracket_slot"),
     ]);
 
+  const allMatchIds = [...(groupMatches ?? []), ...(bracketMatches ?? [])].map((m: Match) => m.id);
+  const { data: allCards } = allMatchIds.length
+    ? await supabase.from("match_cards").select("*").in("match_id", allMatchIds)
+    : { data: [] as MatchCard[] };
+  const cardsByMatchId = new Map<string, MatchCard[]>();
+  for (const c of (allCards ?? []) as MatchCard[]) {
+    const list = cardsByMatchId.get(c.match_id) ?? [];
+    list.push(c);
+    cardsByMatchId.set(c.match_id, list);
+  }
+
   const teamsById = new Map((teams ?? []).map((t: Team) => [t.id, t]));
   const groupsList = (groups ?? []) as Group[];
   const teamName = (id: string | null) => (id ? teamsById.get(id)?.name ?? "?" : "?");
+  const teamMemberNames = (id: string | null) => (id ? teamsById.get(id)?.member_names ?? null : null);
 
   const standingsByGroup = await Promise.all(
     groupsList.map(async (g) => {
@@ -81,13 +93,19 @@ async function buildTabItem(
     ...m,
     team_a_name: teamName(m.team_a_id),
     team_b_name: teamName(m.team_b_id),
+    team_a_member_names: teamMemberNames(m.team_a_id),
+    team_b_member_names: teamMemberNames(m.team_b_id),
     court_name: m.court_id ? courtNameById.get(m.court_id) ?? null : null,
+    cards: cardsByMatchId.get(m.id) ?? [],
   }));
 
   const bracketDisplayMatches: BracketDisplayMatch[] = (bracketMatches ?? []).map((m: Match) => ({
     ...m,
     team_a_name: m.team_a_id ? teamsById.get(m.team_a_id)?.name ?? null : null,
     team_b_name: m.team_b_id ? teamsById.get(m.team_b_id)?.name ?? null : null,
+    team_a_member_names: teamMemberNames(m.team_a_id),
+    team_b_member_names: teamMemberNames(m.team_b_id),
+    cards: cardsByMatchId.get(m.id) ?? [],
   }));
   // 'gold_silver' arma dos cuadros en paralelo (oro/plata) — hay que
   // separarlos por bracket_type o sus finales (ambas ronda "F") quedarían

@@ -26,6 +26,7 @@ export async function registerTeam(competitionId: string, formData: FormData) {
   const mentorName = String(formData.get("mentor_name") ?? "").trim();
   const mentorContact = String(formData.get("mentor_contact") ?? "").trim();
   const memberCountRaw = String(formData.get("member_count") ?? "").trim();
+  const memberNames = String(formData.get("member_names") ?? "").trim() || null;
   const notes = String(formData.get("notes") ?? "").trim() || null;
 
   if (!name) throw new Error("Falta el nombre del equipo.");
@@ -39,6 +40,7 @@ export async function registerTeam(competitionId: string, formData: FormData) {
     mentor_name: mentorName,
     mentor_contact: mentorContact,
     member_count: memberCountRaw ? Number(memberCountRaw) : null,
+    member_names: memberNames,
     notes,
   });
   if (error) throw new Error(error.message);

@@ -85,13 +85,32 @@ export async function persistBracket(
  * siguiente ronda (team_a_id o team_b_id del match apuntado por
  * next_match_id/next_match_slot). No hace nada si el partido no pertenece
  * a un cuadro (next_match_id null, ej. la final, o fase de grupos).
+ *
+ * El partido siguiente nace en status "pending_teams" (ver persistBracket)
+ * porque todavía no se sabe quién juega. Acá, además de cargar el equipo que
+ * acaba de clasificar, hay que fijarse si con este ya están los DOS equipos
+ * — si es así, pasa a "scheduled" para que quede disponible para el juez de
+ * cancha (que solo lista partidos scheduled/in_progress, ver
+ * app/juez/[courtToken]/page.tsx). Antes se quedaba en pending_teams para
+ * siempre y la final nunca aparecía en la cancha aunque ya tuviera los dos
+ * clasificados y cancha asignada.
  */
 export async function advanceWinner(supabase: SupabaseClient, match: Match): Promise<void> {
   if (!match.next_match_id || !match.winner_id) return;
   const field = match.next_match_slot === "a" ? "team_a_id" : "team_b_id";
-  const { error } = await supabase
+  const { data: nextMatch, error } = await supabase
     .from("matches")
     .update({ [field]: match.winner_id })
-    .eq("id", match.next_match_id);
+    .eq("id", match.next_match_id)
+    .select("id, status, team_a_id, team_b_id")
+    .single();
   if (error) throw error;
+
+  if (nextMatch && nextMatch.status === "pending_teams" && nextMatch.team_a_id && nextMatch.team_b_id) {
+    const { error: statusError } = await supabase
+      .from("matches")
+      .update({ status: "scheduled" })
+      .eq("id", nextMatch.id);
+    if (statusError) throw statusError;
+  }
 }

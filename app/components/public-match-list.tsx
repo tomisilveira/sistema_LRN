@@ -1,10 +1,16 @@
-import type { Match } from "@/lib/database.types";
+import type { Match, MatchCard } from "@/lib/database.types";
 import { LiveMatchElapsed } from "./live-match-elapsed";
+import { TeamLabel } from "./team-label";
+import { TeamCardBadges } from "./team-card-badges";
+import { cardsByTeam } from "@/lib/match-cards";
 
 export interface PublicMatchDisplay extends Match {
   team_a_name: string;
   team_b_name: string;
+  team_a_member_names: string | null;
+  team_b_member_names: string | null;
   court_name: string | null;
+  cards: MatchCard[];
 }
 
 /** Fixture (partidos de fase de grupos) de solo lectura para el público —
@@ -16,7 +22,9 @@ export function PublicMatchList({ matches }: { matches: PublicMatchDisplay[] }) 
 
   return (
     <div className="space-y-1.5 panel-enter-stagger">
-      {matches.map((m) => (
+      {matches.map((m) => {
+        const teamCards = cardsByTeam(m.cards, m.team_a_id, m.team_b_id);
+        return (
         <div
           key={m.id}
           className={`rounded-md px-3 py-2 flex flex-wrap items-center justify-between gap-2 text-sm border transition-colors ${
@@ -26,9 +34,19 @@ export function PublicMatchList({ matches }: { matches: PublicMatchDisplay[] }) 
           }`}
         >
           <div className="min-w-[160px]">
-            <span className={m.winner_id === m.team_a_id ? "font-semibold" : ""}>{m.team_a_name}</span>
+            <TeamLabel
+              name={m.team_a_name}
+              memberNames={m.team_a_member_names}
+              className={m.winner_id === m.team_a_id ? "font-semibold" : ""}
+            />{" "}
+            <TeamCardBadges summary={teamCards.a} />
             {" vs "}
-            <span className={m.winner_id === m.team_b_id ? "font-semibold" : ""}>{m.team_b_name}</span>
+            <TeamLabel
+              name={m.team_b_name}
+              memberNames={m.team_b_member_names}
+              className={m.winner_id === m.team_b_id ? "font-semibold" : ""}
+            />{" "}
+            <TeamCardBadges summary={teamCards.b} />
             {m.status === "completed" && m.score_a !== null && m.score_b !== null && (
               <span className="panel-label"> · {m.score_a}-{m.score_b}</span>
             )}
@@ -56,7 +74,8 @@ export function PublicMatchList({ matches }: { matches: PublicMatchDisplay[] }) 
             )}
           </div>
         </div>
-      ))}
+        );
+      })}
     </div>
   );
 }

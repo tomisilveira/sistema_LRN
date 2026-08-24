@@ -2,8 +2,11 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import type { Competition, Match } from "@/lib/database.types";
+import type { Competition, Match, MatchCard, CardType } from "@/lib/database.types";
 import { MatchClock } from "@/app/components/match-clock";
+import { TeamLabel } from "@/app/components/team-label";
+import { TeamCardBadges } from "@/app/components/team-card-badges";
+import { cardsByTeam } from "@/lib/match-cards";
 import { isStopped } from "@/lib/match-timer";
 import { ResultForm } from "./result-form";
 
@@ -18,12 +21,18 @@ export function MatchTimerPanel({
   competition,
   teamAName,
   teamBName,
+  teamAMemberNames,
+  teamBMemberNames,
+  cards,
 }: {
   courtToken: string;
   match: Match;
   competition: Competition;
   teamAName: string;
   teamBName: string;
+  teamAMemberNames?: string | null;
+  teamBMemberNames?: string | null;
+  cards: MatchCard[];
 }) {
   const router = useRouter();
   const [pending, setPending] = useState(false);
@@ -77,6 +86,16 @@ export function MatchTimerPanel({
     await call("live-score", { scoreA: a, scoreB: b });
   }
 
+  async function handleCard(teamId: string, cardType: CardType, teamName: string) {
+    if (cardType === "red" && !window.confirm(`¿Tarjeta roja a ${teamName}? Queda registrada en el partido.`)) return;
+    await call("card", { teamId, cardType });
+  }
+
+  async function handleRoundTie() {
+    if (!window.confirm("¿Empataron este round? Se repite desde cero, no cuenta para ninguno de los dos.")) return;
+    await call("round-tie");
+  }
+
   // `periodEnded` es estado local: si el juez refresca la página justo
   // después de terminar el último tiempo (antes de cerrar el partido), vuelve
   // a ver el marcador en vivo — tocar "Terminar el partido" de nuevo es
@@ -128,10 +147,16 @@ export function MatchTimerPanel({
     );
   }
 
+  const teamCards = cardsByTeam(cards, teamAId, teamBId);
+
   return (
     <section className="panel-card rounded-xl p-5 space-y-5 panel-enter">
       <p className="text-lg font-display font-semibold text-center">
-        {teamAName} <span className="panel-label font-normal">vs</span> {teamBName}
+        <TeamLabel name={teamAName} memberNames={teamAMemberNames} />{" "}
+        <TeamCardBadges summary={teamCards.a} className="align-middle" />{" "}
+        <span className="panel-label font-normal">vs</span>{" "}
+        <TeamLabel name={teamBName} memberNames={teamBMemberNames} />{" "}
+        <TeamCardBadges summary={teamCards.b} className="align-middle" />
       </p>
 
       <MatchClock match={match} competition={competition} size="hero" />
@@ -181,6 +206,13 @@ export function MatchTimerPanel({
           >
             Ganó {teamBName}
           </button>
+          <button
+            onClick={handleRoundTie}
+            disabled={pending}
+            className="col-span-2 rounded-lg py-2.5 text-sm font-display font-semibold border border-neutral-300 dark:border-neutral-700 panel-label hover:bg-neutral-200 dark:hover:bg-neutral-800 transition active:scale-[0.97] disabled:opacity-50"
+          >
+            🤝 Empate — repetir este round
+          </button>
         </div>
       ) : (
         <div className="space-y-3">
@@ -214,6 +246,54 @@ export function MatchTimerPanel({
           </button>
         </div>
       )}
+
+      <div className="border-t border-neutral-200 dark:border-neutral-800 pt-4 space-y-2">
+        <p className="text-xs uppercase tracking-wide panel-label font-display font-semibold">
+          Tarjetas — en caso de problemas
+        </p>
+        <div className="grid grid-cols-2 gap-2">
+          <div className="flex items-center justify-center gap-1.5">
+            <button
+              onClick={() => handleCard(teamAId, "yellow", teamAName)}
+              disabled={pending}
+              className="text-lg leading-none rounded-md border border-neutral-300 dark:border-neutral-700 px-2.5 py-1.5 hover:bg-yellow-400/20 active:scale-90 transition disabled:opacity-50"
+              title={`Amarilla a ${teamAName}`}
+              aria-label={`Amarilla a ${teamAName}`}
+            >
+              🟨
+            </button>
+            <button
+              onClick={() => handleCard(teamAId, "red", teamAName)}
+              disabled={pending}
+              className="text-lg leading-none rounded-md border border-neutral-300 dark:border-neutral-700 px-2.5 py-1.5 hover:bg-red-500/20 active:scale-90 transition disabled:opacity-50"
+              title={`Roja a ${teamAName}`}
+              aria-label={`Roja a ${teamAName}`}
+            >
+              🟥
+            </button>
+          </div>
+          <div className="flex items-center justify-center gap-1.5">
+            <button
+              onClick={() => handleCard(teamBId, "yellow", teamBName)}
+              disabled={pending}
+              className="text-lg leading-none rounded-md border border-neutral-300 dark:border-neutral-700 px-2.5 py-1.5 hover:bg-yellow-400/20 active:scale-90 transition disabled:opacity-50"
+              title={`Amarilla a ${teamBName}`}
+              aria-label={`Amarilla a ${teamBName}`}
+            >
+              🟨
+            </button>
+            <button
+              onClick={() => handleCard(teamBId, "red", teamBName)}
+              disabled={pending}
+              className="text-lg leading-none rounded-md border border-neutral-300 dark:border-neutral-700 px-2.5 py-1.5 hover:bg-red-500/20 active:scale-90 transition disabled:opacity-50"
+              title={`Roja a ${teamBName}`}
+              aria-label={`Roja a ${teamBName}`}
+            >
+              🟥
+            </button>
+          </div>
+        </div>
+      </div>
 
       <button onClick={handleCancel} className="text-xs panel-label hover:opacity-80 transition-opacity underline block mx-auto">
         Abrí mal, volver

@@ -94,6 +94,22 @@ export function RegistrationForm({ competitionId }: { competitionId: string }) {
         />
       </div>
       <div>
+        <label className="block text-sm panel-label mb-1" htmlFor="member_names">
+          Nombres de los integrantes (opcional, uno por línea)
+        </label>
+        <textarea
+          id="member_names"
+          name="member_names"
+          rows={3}
+          placeholder={"Ada Lovelace\nGrace Hopper"}
+          className="w-full rounded-md panel-input px-3 py-2 text-sm"
+        />
+        <p className="text-xs panel-label mt-1">
+          Se van a mostrar públicamente (en /publico, el modo pantalla y la cancha del juez), debajo
+          del nombre del robot. Cargá solo los nombres que la organización pueda mostrar.
+        </p>
+      </div>
+      <div>
         <label className="block text-sm panel-label mb-1" htmlFor="notes">
           Notas (opcional)
         </label>
@@ -107,9 +123,6 @@ export function RegistrationForm({ competitionId }: { competitionId: string }) {
       >
         {pending ? "Enviando..." : "Inscribir equipo"}
       </button>
-      <p className="text-xs panel-label">
-        No pidas datos de menores acá — solo del adulto responsable del equipo.
-      </p>
     </form>
   );
 }

@@ -1,6 +1,8 @@
 import ExcelJS from "exceljs";
 import { NextResponse } from "next/server";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
+import { formatTeamWithMembers } from "@/lib/team-display";
+import { cardsByTeam, formatCardSummary } from "@/lib/match-cards";
 import type {
   Category,
   Court,
@@ -9,6 +11,7 @@ import type {
   GroupStandingRow,
   GroupTeam,
   Match,
+  MatchCard,
   Team,
 } from "@/lib/database.types";
 
@@ -102,6 +105,7 @@ export async function GET(_req: Request, context: { params: Promise<{ eventId: s
   equipos.columns = [
     { header: "Torneo", key: "torneo", width: 32 },
     { header: "Equipo", key: "equipo", width: 26 },
+    { header: "Integrantes", key: "integrantes", width: 32 },
     { header: "Institución", key: "institucion", width: 26 },
     { header: "Grupo", key: "grupo", width: 12 },
     { header: "Acreditado", key: "acreditado", width: 12 },
@@ -123,6 +127,7 @@ export async function GET(_req: Request, context: { params: Promise<{ eventId: s
     { header: "Cancha", key: "cancha", width: 16 },
     { header: "Turno", key: "turno", width: 8 },
     { header: "Estado", key: "estado", width: 16 },
+    { header: "Tarjetas", key: "tarjetas", width: 28 },
   ];
   partidos.getRow(1).font = { bold: true };
 
@@ -154,13 +159,26 @@ export async function GET(_req: Request, context: { params: Promise<{ eventId: s
       supabase.from("matches").select("*").eq("competition_id", competition.id).order("turno"),
     ]);
 
+    const matchIds = ((matches ?? []) as Match[]).map((m) => m.id);
+    const { data: cardsData } = matchIds.length
+      ? await supabase.from("match_cards").select("*").in("match_id", matchIds)
+      : { data: [] as MatchCard[] };
+    const cardsByMatchId = new Map<string, MatchCard[]>();
+    for (const c of (cardsData ?? []) as MatchCard[]) {
+      const list = cardsByMatchId.get(c.match_id) ?? [];
+      list.push(c);
+      cardsByMatchId.set(c.match_id, list);
+    }
+
     const teamsList = (teams ?? []) as Team[];
     const groupsList = (groups ?? []) as Group[];
     const groupTeamsList = (groupTeams ?? []) as GroupTeam[];
     const groupNameByTeamId = new Map(
       groupTeamsList.map((gt) => [gt.team_id, groupsList.find((g) => g.id === gt.group_id)?.name ?? ""])
     );
-    const teamNameById = new Map(teamsList.map((t) => [t.id, t.name]));
+    const teamNameById = new Map(
+      teamsList.map((t) => [t.id, formatTeamWithMembers(t.name, t.member_names)])
+    );
 
     resumen.addRow({
       torneo: label,
@@ -173,6 +191,7 @@ export async function GET(_req: Request, context: { params: Promise<{ eventId: s
       equipos.addRow({
         torneo: label,
         equipo: t.name,
+        integrantes: (t.member_names ?? "").replace(/\n/g, ", "),
         institucion: t.institution ?? "",
         grupo: groupNameByTeamId.get(t.id) ?? "",
         acreditado: t.accredited ? "Sí" : "No",
@@ -182,6 +201,17 @@ export async function GET(_req: Request, context: { params: Promise<{ eventId: s
     }
 
     for (const m of (matches ?? []) as Match[]) {
+      const cards = cardsByMatchId.get(m.id) ?? [];
+      const teamCards = cardsByTeam(cards, m.team_a_id, m.team_b_id);
+      const cardParts = [
+        teamCards.a && (teamCards.a.yellow > 0 || teamCards.a.red > 0)
+          ? `${teamNameById.get(m.team_a_id ?? "") ?? "Equipo A"}: ${formatCardSummary(teamCards.a)}`
+          : null,
+        teamCards.b && (teamCards.b.yellow > 0 || teamCards.b.red > 0)
+          ? `${teamNameById.get(m.team_b_id ?? "") ?? "Equipo B"}: ${formatCardSummary(teamCards.b)}`
+          : null,
+      ].filter((x): x is string => !!x);
+
       partidos.addRow({
         torneo: label,
         fase: m.phase === "group" ? "Grupos" : "Cuadro",
@@ -194,6 +224,7 @@ export async function GET(_req: Request, context: { params: Promise<{ eventId: s
         cancha: m.court_id ? courtById.get(m.court_id)?.name ?? "" : "",
         turno: m.turno,
         estado: statusLabel[m.status] ?? m.status,
+        tarjetas: cardParts.join(" · "),
       });
     }
 
@@ -206,7 +237,7 @@ export async function GET(_req: Request, context: { params: Promise<{ eventId: s
             torneo: label,
             grupo: g.name,
             pos: i + 1,
-            equipo: row.team_name,
+            equipo: formatTeamWithMembers(row.team_name, row.member_names),
             pj: row.played,
             g: row.won,
             e: row.drawn,

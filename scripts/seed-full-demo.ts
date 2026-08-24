@@ -87,9 +87,29 @@ async function persistBracket(supabase: SupabaseClient, competitionId: string, r
   const { data: round1Matches } = await supabase.from("matches").select("*").in("id", round1Ids);
   for (const m of round1Matches ?? []) {
     if (m.status === "completed" && m.winner_id && m.next_match_id) {
-      const field = m.next_match_slot === "a" ? "team_a_id" : "team_b_id";
-      await supabase.from("matches").update({ [field]: m.winner_id }).eq("id", m.next_match_id);
+      await advanceWinnerDemo(supabase, m);
     }
+  }
+}
+
+/** Igual que lib/bracket-actions.ts advanceWinner: empuja el ganador a la
+ * siguiente ronda y, si con eso ya están los dos equipos, pasa esa ronda de
+ * "pending_teams" a "scheduled" (si no, el partido queda invisible para el
+ * juez de cancha aunque ya tenga rival y cancha asignada). */
+async function advanceWinnerDemo(
+  supabase: SupabaseClient,
+  match: { next_match_id: string | null; next_match_slot: "a" | "b" | null; winner_id: string | null }
+): Promise<void> {
+  if (!match.next_match_id || !match.winner_id) return;
+  const field = match.next_match_slot === "a" ? "team_a_id" : "team_b_id";
+  const { data: nextMatch } = await supabase
+    .from("matches")
+    .update({ [field]: match.winner_id })
+    .eq("id", match.next_match_id)
+    .select("id, status, team_a_id, team_b_id")
+    .single();
+  if (nextMatch && nextMatch.status === "pending_teams" && nextMatch.team_a_id && nextMatch.team_b_id) {
+    await supabase.from("matches").update({ status: "scheduled" }).eq("id", nextMatch.id);
   }
 }
 

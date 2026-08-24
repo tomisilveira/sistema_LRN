@@ -1,6 +1,6 @@
 import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
-import type { Match, Team } from "./database.types";
+import type { Match, MatchCard, Team } from "./database.types";
 import type { CompetitionWithNames } from "./build-event-tab-items";
 import { disciplineColor } from "./discipline-colors";
 
@@ -9,6 +9,9 @@ export interface CourtBoardMatch {
   competition: CompetitionWithNames;
   teamAName: string;
   teamBName: string;
+  teamAMemberNames: string | null;
+  teamBMemberNames: string | null;
+  cards: MatchCard[];
   disciplineCategory: string;
 }
 
@@ -18,6 +21,7 @@ export interface CourtBoard {
   colorDot: string;
   colorBorder: string;
   colorBg: string;
+  colorText: string;
   live: CourtBoardMatch | null;
   upcoming: CourtBoardMatch[];
 }
@@ -55,9 +59,20 @@ export async function buildCourtBoards(
 
   const teamIds = matchList.flatMap((m) => [m.team_a_id, m.team_b_id]).filter((x): x is string => !!x);
   const { data: teams } = teamIds.length
-    ? await supabase.from("teams").select("id, name").in("id", teamIds)
-    : { data: [] as { id: string; name: string }[] };
-  const teamName = new Map((teams ?? []).map((t: Pick<Team, "id" | "name">) => [t.id, t.name]));
+    ? await supabase.from("teams").select("id, name, member_names").in("id", teamIds)
+    : { data: [] as Pick<Team, "id" | "name" | "member_names">[] };
+  const teamById = new Map((teams ?? []).map((t: Pick<Team, "id" | "name" | "member_names">) => [t.id, t]));
+
+  const matchIds = matchList.map((m) => m.id);
+  const { data: cardsData } = matchIds.length
+    ? await supabase.from("match_cards").select("*").in("match_id", matchIds)
+    : { data: [] as MatchCard[] };
+  const cardsByMatchId = new Map<string, MatchCard[]>();
+  for (const c of (cardsData ?? []) as MatchCard[]) {
+    const list = cardsByMatchId.get(c.match_id) ?? [];
+    list.push(c);
+    cardsByMatchId.set(c.match_id, list);
+  }
 
   const byCourt = new Map<string, Match[]>();
   for (const m of matchList) {
@@ -73,8 +88,11 @@ export async function buildCourtBoards(
     return {
       match: m,
       competition,
-      teamAName: teamName.get(m.team_a_id ?? "") ?? "?",
-      teamBName: teamName.get(m.team_b_id ?? "") ?? "?",
+      teamAName: teamById.get(m.team_a_id ?? "")?.name ?? "?",
+      teamBName: teamById.get(m.team_b_id ?? "")?.name ?? "?",
+      teamAMemberNames: teamById.get(m.team_a_id ?? "")?.member_names ?? null,
+      teamBMemberNames: teamById.get(m.team_b_id ?? "")?.member_names ?? null,
+      cards: cardsByMatchId.get(m.id) ?? [],
       disciplineCategory: `${competition.disciplines?.name ?? "?"} — ${competition.categories?.name ?? "?"}`,
     };
   };
@@ -95,6 +113,7 @@ export async function buildCourtBoards(
         colorDot: colors.dot,
         colorBorder: colors.border,
         colorBg: colors.bg,
+        colorText: colors.text,
         live: liveMatch ? toDisplay(liveMatch) : null,
         upcoming: upcoming.map(toDisplay).filter((x): x is CourtBoardMatch => !!x),
       };

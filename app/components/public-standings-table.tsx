@@ -1,4 +1,5 @@
 import type { GroupStandingRow } from "@/lib/database.types";
+import { TeamLabel } from "./team-label";
 
 /** Tabla de posiciones clara/oscura compartida entre el inicio y
  * /publico/[eventId]/[competitionId] — ambos usan el mismo root de tema
@@ -34,7 +35,9 @@ export function PublicStandingsTable({ groupName, rows }: { groupName: string; r
                 <td className="py-2 pl-3 pr-2">
                   <RankBadge rank={i + 1} />
                 </td>
-                <td className="py-2 pr-2 font-semibold truncate max-w-[9rem]">{r.team_name}</td>
+                <td className="py-2 pr-2 font-semibold max-w-[11rem]">
+                  <TeamLabel name={r.team_name} memberNames={r.member_names} className="block truncate" />
+                </td>
                 <td className="text-center py-2 px-1.5 tabular-nums">{r.played}</td>
                 <td className="text-center py-2 px-1.5 tabular-nums">{r.won}</td>
                 <td className="text-center py-2 px-1.5 tabular-nums">{r.drawn}</td>

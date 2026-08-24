@@ -1,9 +1,15 @@
-import type { Match } from "@/lib/database.types";
+import type { Match, MatchCard } from "@/lib/database.types";
 import { submitResult } from "./actions";
+import { TeamLabel } from "@/app/components/team-label";
+import { TeamCardBadges } from "@/app/components/team-card-badges";
+import { cardsByTeam } from "@/lib/match-cards";
 
 export interface BracketDisplayMatch extends Match {
   team_a_name: string | null;
   team_b_name: string | null;
+  team_a_member_names: string | null;
+  team_b_member_names: string | null;
+  cards: MatchCard[];
 }
 
 const ROUND_ORDER = ["R32", "R16", "QF", "SF", "F"];
@@ -53,13 +59,17 @@ export function BracketView({
                 >
                   <TeamLine
                     name={m.team_a_name}
+                    memberNames={m.team_a_member_names}
                     won={m.winner_id !== null && m.winner_id === m.team_a_id}
                     score={m.score_a}
+                    cardSummary={m.team_a_id ? cardsByTeam(m.cards, m.team_a_id, m.team_b_id).a : null}
                   />
                   <TeamLine
                     name={m.team_b_name}
+                    memberNames={m.team_b_member_names}
                     won={m.winner_id !== null && m.winner_id === m.team_b_id}
                     score={m.score_b}
+                    cardSummary={m.team_b_id ? cardsByTeam(m.cards, m.team_a_id, m.team_b_id).b : null}
                   />
                   {decided ? (
                     <p className="text-[10px] panel-label">✅ Jugado</p>
@@ -108,10 +118,26 @@ export function BracketView({
   );
 }
 
-function TeamLine({ name, won, score }: { name: string | null; won: boolean; score: number | null }) {
+function TeamLine({
+  name,
+  memberNames,
+  won,
+  score,
+  cardSummary,
+}: {
+  name: string | null;
+  memberNames: string | null;
+  won: boolean;
+  score: number | null;
+  cardSummary?: ReturnType<typeof cardsByTeam>["a"];
+}) {
   return (
-    <div className={`flex items-center justify-between text-sm ${won ? "font-semibold text-brand-green" : "panel-label"}`}>
-      <span className="truncate">{won && "🏆 "}{name ?? "Por definir"}</span>
+    <div className={`flex items-start justify-between gap-2 text-sm ${won ? "font-semibold text-brand-green" : "panel-label"}`}>
+      <span className="truncate">
+        {won && "🏆 "}
+        {name ? <TeamLabel name={name} memberNames={memberNames} /> : "Por definir"}{" "}
+        <TeamCardBadges summary={cardSummary} />
+      </span>
       {score !== null && <span className="shrink-0 ml-2">{score}</span>}
     </div>
   );

@@ -109,7 +109,7 @@ export default async function EventPage({ params }: { params: Promise<{ eventId:
                     <div className="flex items-center justify-between gap-2">
                       <span className="text-sm font-medium">{court.name}</span>
                       <div className="flex items-center gap-1.5 shrink-0">
-                        <CopyLinkButton path={`/juez/${court.access_token}`} label="Link de juez" />
+                        <CopyLinkButton path={`/juez/${court.access_token}`} label="Link de juez" compact />
                         <form action={deleteCourt.bind(null, eventId, court.id)}>
                           <ConfirmSubmitButton
                             confirmMessage={`¿Eliminar "${court.name}"? Los partidos que la tenían asignada quedan sin cancha.`}
@@ -343,7 +343,11 @@ export default async function EventPage({ params }: { params: Promise<{ eventId:
             </div>
             <p className="text-sm panel-label">{event.event_date}</p>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
+            {/* Acciones de uso frecuente, no destructivas — mismo estilo
+                (pill con borde teal) para que se lean como un solo grupo en
+                vez de tres formas distintas (antes "Copiar link" tenía su
+                propio look de outline y el resto eran chips grises lisos). */}
             {event.accreditation_token && (
               <CopyLinkButton
                 path={`/acreditacion/${event.accreditation_token}`}
@@ -355,7 +359,7 @@ export default async function EventPage({ params }: { params: Promise<{ eventId:
                 href={`/evento/${eventId}/pantalla`}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="panel-chip text-xs rounded-full px-3 py-1.5 transition-colors"
+                className="panel-button-secondary text-xs rounded-full px-3 py-1.5 whitespace-nowrap"
                 title="Vista para proyector/TV — todas las canchas en vivo, sin navegación"
               >
                 🖥️ Abrir modo pantalla
@@ -363,28 +367,40 @@ export default async function EventPage({ params }: { params: Promise<{ eventId:
             )}
             <a
               href={`/api/eventos/${eventId}/export`}
-              className="panel-chip text-xs rounded-full px-3 py-1.5 transition-colors"
+              className="panel-button-secondary text-xs rounded-full px-3 py-1.5 whitespace-nowrap"
             >
               📊 Exportar a Excel
             </a>
+
+            {/* Cambios de estado del evento — chip neutro a propósito, para
+                que no compitan visualmente con las acciones de arriba. */}
+            <span className="w-px h-5 bg-neutral-300 dark:bg-neutral-700 mx-0.5" aria-hidden="true" />
             <form action={setPublic.bind(null, !event.is_public)}>
               <button
                 type="submit"
-                className="panel-chip text-xs rounded-full px-3 py-1.5 transition-colors"
+                className="panel-chip text-xs rounded-full px-3 py-1.5 transition-colors whitespace-nowrap"
                 title="Mostrar/ocultar este evento en /publico y en el inicio"
               >
                 {event.is_public ? "🔒 Hacer privado" : "🌐 Hacer público"}
               </button>
             </form>
             <form action={setStatus.bind(null, event.status === "active" ? "finished" : "active")}>
-              <button type="submit" className="panel-chip text-xs rounded-full px-3 py-1.5 transition-colors">
+              <button
+                type="submit"
+                className="panel-chip text-xs rounded-full px-3 py-1.5 transition-colors whitespace-nowrap"
+              >
                 {event.status === "active" ? "Marcar finalizado" : "Marcar activo"}
               </button>
             </form>
+
+            {/* Destructiva: separada del resto y con fondo rojo suave ya en
+                reposo (no solo al pasar el mouse) para que se note que es
+                zona de peligro antes de tocarla. */}
+            <span className="w-px h-5 bg-neutral-300 dark:bg-neutral-700 mx-0.5" aria-hidden="true" />
             <form action={deleteEvent.bind(null, eventId)}>
               <ConfirmSubmitButton
                 confirmMessage={`¿Eliminar el evento "${event.name}"? Se borran TODOS sus torneos, canchas, equipos, grupos y partidos. No se puede deshacer.`}
-                className="text-xs rounded-full panel-button-danger px-3 py-1.5 border border-red-500/30 hover:bg-red-500/10"
+                className="text-xs rounded-full panel-button-danger px-3 py-1.5 border border-red-500/30 bg-red-500/5 whitespace-nowrap"
               >
                 🗑️ Eliminar evento
               </ConfirmSubmitButton>

@@ -10,6 +10,7 @@ import type {
   Group,
   GroupTeam,
   Match,
+  MatchCard,
   GroupStandingRow,
 } from "@/lib/database.types";
 import {
@@ -34,6 +35,9 @@ import { BracketView, type BracketDisplayMatch } from "./bracket-view";
 import { TeamSeedInput } from "./team-seed-input";
 import { RealtimeRefresh } from "./realtime-refresh";
 import { CopyLinkButton } from "@/app/components/copy-link-button";
+import { TeamLabel } from "@/app/components/team-label";
+import { TeamCardBadges } from "@/app/components/team-card-badges";
+import { cardsByTeam } from "@/lib/match-cards";
 import { Breadcrumbs } from "@/app/components/breadcrumbs";
 import { TabbedLayout, type TabItem } from "@/app/components/tabbed-layout";
 import { ConfirmSubmitButton } from "@/app/components/confirm-submit-button";
@@ -102,6 +106,17 @@ export default async function CompetitionPage({
       .eq("event_id", competition.event_id)
       .order("created_at"),
   ]);
+  const allMatchIds = [...(groupMatches ?? []), ...(bracketMatches ?? [])].map((m: Match) => m.id);
+  const { data: allCards } = allMatchIds.length
+    ? await supabase.from("match_cards").select("*").in("match_id", allMatchIds)
+    : { data: [] as MatchCard[] };
+  const cardsByMatchId = new Map<string, MatchCard[]>();
+  for (const c of (allCards ?? []) as MatchCard[]) {
+    const list = cardsByMatchId.get(c.match_id) ?? [];
+    list.push(c);
+    cardsByMatchId.set(c.match_id, list);
+  }
+
   const disciplineNameById = new Map((allDisciplines ?? []).map((d: { id: string; name: string }) => [d.id, d.name]));
   const siblingCompetitions = (siblingCompetitionsRaw ?? []) as unknown as (Pick<Competition, "id" | "status"> & {
     disciplines: { name: string; sort_order: number } | null;
@@ -176,6 +191,9 @@ export default async function CompetitionPage({
     ...m,
     team_a_name: m.team_a_id ? teamsById.get(m.team_a_id)?.name ?? null : null,
     team_b_name: m.team_b_id ? teamsById.get(m.team_b_id)?.name ?? null : null,
+    team_a_member_names: m.team_a_id ? teamsById.get(m.team_a_id)?.member_names ?? null : null,
+    team_b_member_names: m.team_b_id ? teamsById.get(m.team_b_id)?.member_names ?? null : null,
+    cards: cardsByMatchId.get(m.id) ?? [],
   }));
   // 'single_elimination'/'groups_only'/'bracket_only' arman un único cuadro
   // sin tipo (bracket_type null); 'gold_silver' arma dos en paralelo.
@@ -293,6 +311,20 @@ export default async function CompetitionPage({
                   className="w-full rounded-md panel-input px-3 py-2 text-sm"
                 />
               </div>
+              <div>
+                <label className="block text-sm panel-label mb-1">
+                  Integrantes (opcional, uno por línea)
+                </label>
+                <textarea
+                  name="member_names"
+                  rows={2}
+                  placeholder={"Ada Lovelace\nGrace Hopper"}
+                  className="w-full rounded-md panel-input px-3 py-2 text-sm"
+                />
+                <p className="text-xs panel-label mt-1">
+                  Se muestran públicamente debajo del nombre del equipo, entre paréntesis.
+                </p>
+              </div>
             </ModalFormButton>
           </div>
           <p className="text-xs panel-label -mt-1">
@@ -308,7 +340,9 @@ export default async function CompetitionPage({
                   className="panel-surface flex items-start justify-between gap-2 rounded-md px-3 py-2 text-sm transition-colors hover:border-brand-teal/40"
                 >
                   <div className="min-w-0">
-                    <p className="truncate">{t.name}</p>
+                    <p className="truncate">
+                      <TeamLabel name={t.name} memberNames={t.member_names} />
+                    </p>
                     {t.institution && <p className="text-xs panel-label">{t.institution}</p>}
                     {t.mentor_name && (
                       <p className="text-xs panel-label opacity-80">
@@ -434,7 +468,7 @@ export default async function CompetitionPage({
                           {groupTeams.map((t) => (
                             <li key={t.id} className="flex items-center justify-between gap-2">
                               <div className="min-w-0">
-                                <span className="truncate">{t.name}</span>
+                                <TeamLabel name={t.name} memberNames={t.member_names} className="truncate" />
                                 {t.institution && (
                                   <span className="text-xs panel-label ml-1">· {t.institution}</span>
                                 )}
@@ -469,7 +503,7 @@ export default async function CompetitionPage({
                       key={t.id}
                       className="panel-surface flex items-center justify-between gap-2 rounded-md px-2.5 py-1.5 text-sm"
                     >
-                      <span className="truncate">{t.name}</span>
+                      <TeamLabel name={t.name} memberNames={t.member_names} className="truncate" />
                       {groupsList.length > 0 && ready ? (
                         <GroupAssignSelect
                           competitionId={competitionId}
@@ -632,6 +666,9 @@ export default async function CompetitionPage({
               match={m}
               teamAName={m.team_a_id ? teamsById.get(m.team_a_id)?.name ?? "?" : "?"}
               teamBName={m.team_b_id ? teamsById.get(m.team_b_id)?.name ?? "?" : "?"}
+              teamAMemberNames={m.team_a_id ? teamsById.get(m.team_a_id)?.member_names ?? null : null}
+              teamBMemberNames={m.team_b_id ? teamsById.get(m.team_b_id)?.member_names ?? null : null}
+              cards={cardsByMatchId.get(m.id) ?? []}
               courts={(courts ?? []) as Court[]}
               competitionDisciplineId={competition.discipline_id}
               disciplineNameById={disciplineNameById}
@@ -655,7 +692,7 @@ export default async function CompetitionPage({
         <section className="panel-card rounded-xl p-4 space-y-4">
           <div className="flex items-center justify-between gap-3">
             <h2 className="font-medium">Cuadro de eliminatoria simple</h2>
-            {plainMatches.length === 0 && (
+            {plainMatches.length === 0 ? (
               <form action={generateBracketAction}>
                 <button
                   type="submit"
@@ -664,6 +701,15 @@ export default async function CompetitionPage({
                 >
                   Generar ahora
                 </button>
+              </form>
+            ) : (
+              <form action={restartTournamentAction}>
+                <ConfirmSubmitButton
+                  confirmMessage="Esto borra TODOS los partidos y resultados de este torneo (grupos y cuadro) y vuelve a 'Armando'. Los equipos y grupos no se tocan. ¿Reiniciar?"
+                  className="text-xs rounded-md panel-button-danger px-3 py-1.5 whitespace-nowrap"
+                >
+                  🔄 Reiniciar torneo
+                </ConfirmSubmitButton>
               </form>
             )}
           </div>
@@ -691,7 +737,7 @@ export default async function CompetitionPage({
         <section className="panel-card rounded-xl p-4 space-y-4">
           <div className="flex items-center justify-between gap-3">
             <h2 className="font-medium">Cuadro de eliminatoria (opcional)</h2>
-            {plainMatches.length === 0 && (
+            {plainMatches.length === 0 ? (
               <form action={generateBracketAction}>
                 <button
                   type="submit"
@@ -699,6 +745,15 @@ export default async function CompetitionPage({
                 >
                   Generar fase final
                 </button>
+              </form>
+            ) : (
+              <form action={restartTournamentAction}>
+                <ConfirmSubmitButton
+                  confirmMessage="Esto borra TODOS los partidos y resultados de este torneo (grupos y cuadro) y vuelve a 'Armando'. Los equipos y grupos no se tocan. ¿Reiniciar?"
+                  className="text-xs rounded-md panel-button-danger px-3 py-1.5 whitespace-nowrap"
+                >
+                  🔄 Reiniciar torneo
+                </ConfirmSubmitButton>
               </form>
             )}
           </div>
@@ -726,7 +781,7 @@ export default async function CompetitionPage({
         <section className="panel-card rounded-xl p-4 space-y-6">
           <div className="flex items-center justify-between gap-3">
             <h2 className="font-medium">Copa Oro / Copa Plata</h2>
-            {goldMatches.length === 0 && (
+            {goldMatches.length === 0 ? (
               <form action={generateBracketAction}>
                 <button
                   type="submit"
@@ -735,6 +790,15 @@ export default async function CompetitionPage({
                 >
                   Generar ahora
                 </button>
+              </form>
+            ) : (
+              <form action={restartTournamentAction}>
+                <ConfirmSubmitButton
+                  confirmMessage="Esto borra TODOS los partidos y resultados de este torneo (grupos y cuadro) y vuelve a 'Armando'. Los equipos y grupos no se tocan. ¿Reiniciar?"
+                  className="text-xs rounded-md panel-button-danger px-3 py-1.5 whitespace-nowrap"
+                >
+                  🔄 Reiniciar torneo
+                </ConfirmSubmitButton>
               </form>
             )}
           </div>
@@ -867,6 +931,9 @@ function MatchRow({
   match,
   teamAName,
   teamBName,
+  teamAMemberNames,
+  teamBMemberNames,
+  cards,
   courts,
   competitionDisciplineId,
   disciplineNameById,
@@ -877,6 +944,9 @@ function MatchRow({
   match: Match;
   teamAName: string;
   teamBName: string;
+  teamAMemberNames: string | null;
+  teamBMemberNames: string | null;
+  cards: MatchCard[];
   courts: Court[];
   competitionDisciplineId: string;
   disciplineNameById: Map<string, string>;
@@ -885,6 +955,7 @@ function MatchRow({
   onResult: (formData: FormData) => Promise<void>;
 }) {
   const courtName = match.court_id ? courts.find((c) => c.id === match.court_id)?.name : null;
+  const teamCards = cardsByTeam(cards, match.team_a_id, match.team_b_id);
 
   return (
     <div
@@ -896,9 +967,19 @@ function MatchRow({
     >
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="min-w-[180px]">
-          <span className={match.winner_id === match.team_a_id ? "font-semibold" : ""}>{teamAName}</span>
+          <TeamLabel
+            name={teamAName}
+            memberNames={teamAMemberNames}
+            className={match.winner_id === match.team_a_id ? "font-semibold" : ""}
+          />{" "}
+          <TeamCardBadges summary={teamCards.a} />
           {" vs "}
-          <span className={match.winner_id === match.team_b_id ? "font-semibold" : ""}>{teamBName}</span>
+          <TeamLabel
+            name={teamBName}
+            memberNames={teamBMemberNames}
+            className={match.winner_id === match.team_b_id ? "font-semibold" : ""}
+          />{" "}
+          <TeamCardBadges summary={teamCards.b} />
           {match.status === "completed" && match.score_a !== null && match.score_b !== null && (
             <span className="panel-label"> · {match.score_a}-{match.score_b}</span>
           )}

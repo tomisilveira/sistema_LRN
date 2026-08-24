@@ -1,5 +1,8 @@
 import type { CourtBoard } from "@/lib/build-court-boards";
 import { MatchClock } from "@/app/components/match-clock";
+import { TeamLabel } from "@/app/components/team-label";
+import { TeamCardBadges } from "@/app/components/team-card-badges";
+import { cardsByTeam } from "@/lib/match-cards";
 import { GoalFlash } from "./goal-flash";
 
 /** Grilla grande para Modo Pantalla — mismo dato que CourtBoards
@@ -16,17 +19,24 @@ export function ScreenBoards({ boards }: { boards: CourtBoard[] }) {
       {boards.map((board) => (
         <div key={board.courtId} className={`panel-card rounded-2xl overflow-hidden border-l-8 ${board.colorBorder} ${board.colorBg}`}>
           <div className="p-5 space-y-4">
-            <div className="flex items-center gap-2">
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-xs uppercase tracking-wide font-display font-semibold panel-label">
+                {board.courtName}
+              </span>
               <span className={`w-2.5 h-2.5 rounded-full shrink-0 ${board.colorDot}`} aria-hidden="true" />
-              <p className="text-lg font-display font-bold">{board.courtName}</p>
             </div>
 
             {board.live ? (
-              <div className="space-y-4">
-                <p className="text-sm panel-label truncate">{board.live.disciplineCategory}</p>
-                <p className="text-2xl font-display font-semibold text-center">
-                  {board.live.teamAName} <span className="panel-label font-normal">vs</span>{" "}
-                  {board.live.teamBName}
+              <div className="space-y-3">
+                <p className={`text-2xl font-display font-extrabold leading-tight ${board.colorText}`}>
+                  {board.live.disciplineCategory}
+                </p>
+                <p className="text-lg font-display font-medium text-center">
+                  <TeamLabel name={board.live.teamAName} memberNames={board.live.teamAMemberNames} />{" "}
+                  <TeamCardBadges summary={cardsByTeam(board.live.cards, board.live.match.team_a_id, board.live.match.team_b_id).a} />{" "}
+                  <span className="panel-label font-normal text-base">vs</span>{" "}
+                  <TeamLabel name={board.live.teamBName} memberNames={board.live.teamBMemberNames} />{" "}
+                  <TeamCardBadges summary={cardsByTeam(board.live.cards, board.live.match.team_a_id, board.live.match.team_b_id).b} />
                 </p>
                 <div className="flex justify-center">
                   <MatchClock match={board.live.match} competition={board.live.competition} size="hero" />
