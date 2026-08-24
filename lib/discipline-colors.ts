@@ -18,31 +18,31 @@ export interface DisciplineColorSet {
 
 const PALETTE: DisciplineColorSet[] = [
   {
-    bg: "bg-brand-teal/10",
+    bg: "bg-brand-teal/12",
     border: "border-brand-teal",
     text: "text-brand-teal-dark dark:text-brand-teal",
     dot: "bg-brand-teal",
   },
   {
-    bg: "bg-brand-orange/10",
+    bg: "bg-brand-orange/12",
     border: "border-brand-orange",
     text: "text-brand-orange",
     dot: "bg-brand-orange",
   },
   {
-    bg: "bg-brand-pink/10",
+    bg: "bg-brand-pink/12",
     border: "border-brand-pink",
     text: "text-brand-pink",
     dot: "bg-brand-pink",
   },
   {
-    bg: "bg-brand-green/10",
+    bg: "bg-brand-green/12",
     border: "border-brand-green",
     text: "text-brand-green",
     dot: "bg-brand-green",
   },
   {
-    bg: "bg-brand-violet/10",
+    bg: "bg-brand-violet/12",
     border: "border-brand-violet",
     text: "text-brand-violet",
     dot: "bg-brand-violet",

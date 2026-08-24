@@ -14,7 +14,7 @@ export function ScreenBoards({ boards }: { boards: CourtBoard[] }) {
   return (
     <div className={`grid gap-4 sm:grid-cols-2 ${cols} panel-enter-stagger`}>
       {boards.map((board) => (
-        <div key={board.courtId} className={`panel-card rounded-2xl overflow-hidden border-l-8 ${board.colorBorder}`}>
+        <div key={board.courtId} className={`panel-card rounded-2xl overflow-hidden border-l-8 ${board.colorBorder} ${board.colorBg}`}>
           <div className="p-5 space-y-4">
             <div className="flex items-center gap-2">
               <span className={`w-2.5 h-2.5 rounded-full shrink-0 ${board.colorDot}`} aria-hidden="true" />

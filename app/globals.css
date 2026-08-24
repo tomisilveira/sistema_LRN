@@ -52,14 +52,35 @@ body {
 /* ==========================================================================
    Panel admin: clases semánticas de tema (modo claro/oscuro por .dark) +
    paleta de marca.
+
+   Vuelta de rosca visual (ago 2026): el fondo de página, las tarjetas y los
+   botones pasaron de planos (gris/blanco liso) a tener un lavado de color
+   de marca muy sutil — mismo layout y mismos tokens de siempre, más
+   presencia de color sin perder legibilidad. Todo sigue siendo claro por
+   defecto (ver comentario grande más abajo): estos washes son igual de
+   suaves en dark, no cambia el mecanismo de tema.
    ========================================================================== */
 
 .panel-page {
-  @apply bg-neutral-50 text-neutral-900 dark:bg-neutral-950 dark:text-neutral-100;
+  @apply text-neutral-900 dark:text-neutral-100;
+  background-color: #fafaf9;
+  background-image:
+    radial-gradient(ellipse 70% 45% at 12% -8%, color-mix(in srgb, var(--color-brand-teal) 9%, transparent), transparent 70%),
+    radial-gradient(ellipse 55% 40% at 105% 0%, color-mix(in srgb, var(--color-brand-pink) 7%, transparent), transparent 70%),
+    radial-gradient(ellipse 60% 45% at 50% 115%, color-mix(in srgb, var(--color-brand-orange) 5%, transparent), transparent 70%);
+  background-attachment: fixed;
+}
+:where(.dark) .panel-page {
+  background-color: #0a0a0a;
+  background-image:
+    radial-gradient(ellipse 70% 45% at 12% -8%, color-mix(in srgb, var(--color-brand-teal) 14%, transparent), transparent 70%),
+    radial-gradient(ellipse 55% 40% at 105% 0%, color-mix(in srgb, var(--color-brand-pink) 10%, transparent), transparent 70%),
+    radial-gradient(ellipse 60% 45% at 50% 115%, color-mix(in srgb, var(--color-brand-orange) 7%, transparent), transparent 70%);
 }
 
 .panel-card {
-  @apply bg-white border border-neutral-200 shadow-sm dark:bg-neutral-900 dark:border-neutral-800 dark:shadow-none;
+  @apply bg-white border border-neutral-200/80 dark:bg-neutral-900 dark:border-neutral-800 dark:shadow-none;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04), 0 1px 1px rgba(15, 23, 42, 0.03);
 }
 
 .panel-surface {
@@ -68,7 +89,7 @@ body {
 
 .panel-input {
   @apply bg-white border border-neutral-300 text-neutral-900 placeholder-neutral-400 outline-none transition
-    focus:ring-2 focus:ring-brand-teal focus:border-brand-teal
+    focus:ring-2 focus:ring-brand-teal/40 focus:border-brand-teal
     dark:bg-neutral-900 dark:border-neutral-700 dark:text-neutral-100 dark:placeholder-neutral-500;
 }
 
@@ -77,13 +98,25 @@ body {
 }
 
 .panel-button-primary {
-  @apply bg-brand-teal text-white transition duration-150 hover:brightness-90 active:scale-[0.97]
-    disabled:opacity-50 disabled:hover:brightness-100 disabled:active:scale-100;
+  @apply text-white transition-all duration-150 active:scale-[0.97]
+    disabled:opacity-50 disabled:shadow-none disabled:active:scale-100;
+  background-image: linear-gradient(135deg, var(--color-brand-teal), color-mix(in srgb, var(--color-brand-teal) 68%, #06232a));
+  box-shadow: 0 1px 2px color-mix(in srgb, var(--color-brand-teal) 35%, transparent);
+}
+.panel-button-primary:hover:not(:disabled) {
+  box-shadow: 0 6px 18px -4px color-mix(in srgb, var(--color-brand-teal) 55%, transparent);
+  filter: brightness(1.04);
 }
 
 .panel-button-accent {
-  @apply bg-brand-orange text-neutral-900 transition duration-150 hover:brightness-90 active:scale-[0.97]
-    disabled:opacity-50 disabled:hover:brightness-100 disabled:active:scale-100;
+  @apply text-neutral-900 transition-all duration-150 active:scale-[0.97]
+    disabled:opacity-50 disabled:shadow-none disabled:active:scale-100;
+  background-image: linear-gradient(135deg, var(--color-brand-orange), color-mix(in srgb, var(--color-brand-orange) 75%, #7a3d00));
+  box-shadow: 0 1px 2px color-mix(in srgb, var(--color-brand-orange) 35%, transparent);
+}
+.panel-button-accent:hover:not(:disabled) {
+  box-shadow: 0 6px 18px -4px color-mix(in srgb, var(--color-brand-orange) 50%, transparent);
+  filter: brightness(1.04);
 }
 
 .panel-button-secondary {
@@ -92,7 +125,8 @@ body {
 }
 
 .panel-button-danger {
-  @apply text-red-500 hover:text-red-600 dark:text-red-400 dark:hover:text-red-300 transition duration-150 active:scale-95;
+  @apply text-red-500 hover:text-red-600 hover:bg-red-500/10 dark:text-red-400 dark:hover:text-red-300 dark:hover:bg-red-400/10
+    transition duration-150 active:scale-95;
 }
 
 .panel-chip {
@@ -101,15 +135,18 @@ body {
 }
 
 .panel-chip-success {
-  @apply bg-brand-green/15 text-brand-green;
+  @apply text-brand-green border border-brand-green/25 dark:border-brand-green/35;
+  background-color: color-mix(in srgb, var(--color-brand-green) 16%, transparent);
 }
 
 .panel-chip-warning {
-  @apply bg-brand-orange/15 text-brand-orange;
+  @apply text-brand-orange border border-brand-orange/25 dark:border-brand-orange/35;
+  background-color: color-mix(in srgb, var(--color-brand-orange) 16%, transparent);
 }
 
 .panel-chip-brand {
-  @apply bg-brand-teal/15 text-brand-teal;
+  @apply text-brand-teal-dark dark:text-brand-teal border border-brand-teal/25 dark:border-brand-teal/35;
+  background-color: color-mix(in srgb, var(--color-brand-teal) 14%, transparent);
 }
 
 .panel-link-card {
@@ -118,16 +155,43 @@ body {
 }
 
 .panel-nav {
-  @apply border-neutral-200 dark:border-neutral-800;
+  @apply border-neutral-200/80 dark:border-neutral-800;
+  background-image: linear-gradient(
+    120deg,
+    color-mix(in srgb, var(--color-brand-teal) 5%, transparent),
+    transparent 55%
+  );
+}
+
+/* Franja de marca (teal → naranja → rosa) que remata el header de cada
+   shell — admin, /publico, kiosco de campo y el header propio del juez.
+   Antes era `h-0.5 bg-gradient-to-r from-brand-teal via-brand-orange
+   to-brand-pink` copiado a mano en cuatro archivos distintos. */
+.panel-brand-stripe {
+  @apply w-full rounded-full;
+  height: 3px;
+  background-image: linear-gradient(
+    90deg,
+    var(--color-brand-teal),
+    var(--color-brand-orange),
+    var(--color-brand-pink)
+  );
 }
 
 /* Tarjeta que hace de botón completo (fila clickeable entera) — usada en
    listas de selección (eventos, jornadas, torneos) en vez de una fila plana,
    para que se note a simple vista que es interactiva. */
 .panel-card-button {
-  @apply bg-white border border-neutral-200 shadow-sm dark:bg-neutral-900 dark:border-neutral-800
-    transition duration-200 hover:shadow-lg hover:border-brand-teal/50 hover:-translate-y-0.5 active:translate-y-0 active:scale-[0.99]
+  @apply bg-white border border-neutral-200/80 dark:bg-neutral-900 dark:border-neutral-800
+    transition duration-200 hover:border-brand-teal/50 hover:-translate-y-0.5 active:translate-y-0 active:scale-[0.99]
     dark:hover:shadow-none dark:hover:bg-neutral-800/60;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+}
+.panel-card-button:hover {
+  box-shadow: 0 10px 24px -8px color-mix(in srgb, var(--color-brand-teal) 30%, transparent);
+}
+:where(.dark) .panel-card-button:hover {
+  box-shadow: none;
 }
 
 /* Botón chico para acciones inline dentro de filas/tablas (guardar,

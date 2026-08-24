@@ -62,7 +62,7 @@ export default async function JudgePage({ params }: { params: Promise<{ courtTok
           <p className="text-sm panel-label truncate">{event?.name}</p>
           <h1 className="text-2xl font-display font-bold tracking-wide truncate">{court.name}</h1>
         </header>
-        <div className="h-0.5 w-full rounded-full bg-gradient-to-r from-brand-teal via-brand-orange to-brand-pink opacity-70" />
+        <div className="panel-brand-stripe" />
 
         {current && competition ? (
           <MatchTimerPanel

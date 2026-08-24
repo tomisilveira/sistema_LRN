@@ -40,7 +40,7 @@ export function PublicShell({ children }: { children: React.ReactNode }) {
             </Link>
           </nav>
         </div>
-        <div className="h-0.5 w-full bg-gradient-to-r from-brand-teal via-brand-orange to-brand-pink" />
+        <div className="panel-brand-stripe" />
       </header>
 
       <main className="max-w-4xl mx-auto p-4 sm:p-6 panel-enter">{children}</main>

@@ -34,7 +34,7 @@ export function KioskShell({
             {subtitle && <p className="text-sm panel-label mt-0.5">{subtitle}</p>}
           </div>
         </header>
-        <div className="h-0.5 w-full rounded-full bg-gradient-to-r from-brand-teal via-brand-orange to-brand-pink mb-4 opacity-70" />
+        <div className="panel-brand-stripe mb-4" />
         <div className="panel-enter">{children}</div>
       </div>
     </div>

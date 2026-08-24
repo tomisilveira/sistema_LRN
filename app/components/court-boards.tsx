@@ -16,7 +16,7 @@ export function CourtBoards({ boards }: { boards: CourtBoard[] }) {
         {boards.map((board) => (
           <div
             key={board.courtId}
-            className={`rounded-2xl overflow-hidden border-l-4 panel-card ${board.colorBorder}`}
+            className={`rounded-2xl overflow-hidden border-l-4 panel-card ${board.colorBorder} ${board.live ? board.colorBg : ""}`}
           >
             <div className="p-4 space-y-3">
               <div className="flex items-center gap-1.5">

@@ -17,6 +17,7 @@ export interface CourtBoard {
   courtName: string;
   colorDot: string;
   colorBorder: string;
+  colorBg: string;
   live: CourtBoardMatch | null;
   upcoming: CourtBoardMatch[];
 }
@@ -93,6 +94,7 @@ export async function buildCourtBoards(
         courtName: court.name,
         colorDot: colors.dot,
         colorBorder: colors.border,
+        colorBg: colors.bg,
         live: liveMatch ? toDisplay(liveMatch) : null,
         upcoming: upcoming.map(toDisplay).filter((x): x is CourtBoardMatch => !!x),
       };

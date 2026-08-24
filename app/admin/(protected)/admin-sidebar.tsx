@@ -125,7 +125,7 @@ export function AdminSidebar({ userEmail }: { userEmail: string }) {
             ))}
           </nav>
         )}
-        <div className="h-0.5 w-full bg-gradient-to-r from-brand-teal via-brand-orange to-brand-pink" />
+        <div className="panel-brand-stripe" />
       </header>
 
       <aside className="hidden md:flex md:flex-col md:w-56 md:shrink-0 md:sticky md:top-0 md:h-screen panel-nav border-r">
@@ -136,7 +136,7 @@ export function AdminSidebar({ userEmail }: { userEmail: string }) {
             <span className="block text-[11px] panel-label leading-tight">Panel de administración</span>
           </span>
         </Link>
-        <div className="h-0.5 w-full bg-gradient-to-r from-brand-teal via-brand-orange to-brand-pink" />
+        <div className="panel-brand-stripe" />
 
         <nav className="flex-1 p-3 space-y-1 overflow-y-auto" aria-label="Secciones del admin">
           {NAV_ITEMS.map((item) => {

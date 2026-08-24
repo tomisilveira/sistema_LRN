@@ -16,7 +16,7 @@ export function StandingsTable({
 }) {
   return (
     <div>
-      <h3 className="text-sm font-medium mb-2">{groupName}</h3>
+      <h3 className="inline-block text-sm font-semibold mb-2 panel-chip-brand rounded-md px-2 py-0.5">{groupName}</h3>
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
           <thead>
