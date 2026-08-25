@@ -44,7 +44,7 @@ export default async function InscripcionPage({
     >
       <div className="space-y-6">
         {effectivelyOpen ? (
-          <RegistrationForm competitionId={competitionId} />
+          <RegistrationForm competitionId={competitionId} disciplineSlug={discipline?.slug ?? ""} />
         ) : (
           <p className="text-sm panel-label panel-surface rounded-lg p-4">
             {alreadyStarted

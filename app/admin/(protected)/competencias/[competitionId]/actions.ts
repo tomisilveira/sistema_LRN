@@ -8,6 +8,7 @@ import { advanceWinner } from "@/lib/bracket-actions";
 import { computeMatchOutcome } from "@/lib/match-logic";
 import { generateBracketForCompetition } from "@/lib/generate-bracket-for-competition";
 import { maybeAdvanceCompetitionPhase } from "@/lib/advance-competition-phase";
+import { joinNameList } from "@/lib/team-display";
 import { autoScheduleAndPersist } from "@/lib/apply-auto-schedule";
 import type { SchedulableMatch } from "@/lib/auto-schedule";
 import type { Competition, Match } from "@/lib/database.types";
@@ -108,13 +109,63 @@ export async function deleteCompetition(competitionId: string) {
 export async function addTeam(competitionId: string, formData: FormData) {
   const name = String(formData.get("name") ?? "").trim();
   const institution = String(formData.get("institution") ?? "").trim() || null;
+  const memberCountRaw = String(formData.get("member_count") ?? "").trim();
   const memberNames = String(formData.get("member_names") ?? "").trim() || null;
+  const robotNames = joinNameList([
+    formData.get("robot_1") as string | null,
+    formData.get("robot_2") as string | null,
+    formData.get("robot_3") as string | null,
+  ]);
+  const notes = String(formData.get("notes") ?? "").trim() || null;
+  if (!name) throw new Error("Falta el nombre del equipo.");
+
+  const supabase = await createServerSupabaseClient();
+  const { error } = await supabase.from("teams").insert({
+    competition_id: competitionId,
+    name,
+    institution,
+    member_count: memberCountRaw ? Number(memberCountRaw) : null,
+    member_names: memberNames,
+    robot_names: robotNames,
+    notes,
+  });
+  if (error) throw new Error(error.message);
+
+  revalidateCompetition(competitionId);
+}
+
+/** Edita un equipo ya cargado (nombre, robots, institución, cantidad de
+ * integrantes, integrantes y notas) — mismos campos que `addTeam`, más
+ * `member_count` que ahí nunca se pedía. No toca mentor_name/mentor_contact:
+ * quedaron con formatos mezclados entre equipos cargados antes y después de
+ * separar celular/email (ver registration-form.tsx), así que forzar ese
+ * campo acá podría pisar datos válidos con un parseo adivinado. */
+export async function updateTeam(competitionId: string, teamId: string, formData: FormData) {
+  const name = String(formData.get("name") ?? "").trim();
+  const institution = String(formData.get("institution") ?? "").trim() || null;
+  const memberCountRaw = String(formData.get("member_count") ?? "").trim();
+  const memberNames = String(formData.get("member_names") ?? "").trim() || null;
+  const robotNames = joinNameList([
+    formData.get("robot_1") as string | null,
+    formData.get("robot_2") as string | null,
+    formData.get("robot_3") as string | null,
+  ]);
+  const notes = String(formData.get("notes") ?? "").trim() || null;
   if (!name) throw new Error("Falta el nombre del equipo.");
 
   const supabase = await createServerSupabaseClient();
   const { error } = await supabase
     .from("teams")
-    .insert({ competition_id: competitionId, name, institution, member_names: memberNames });
+    .update({
+      name,
+      institution,
+      member_count: memberCountRaw ? Number(memberCountRaw) : null,
+      member_names: memberNames,
+      robot_names: robotNames,
+      notes,
+    })
+    .eq("id", teamId)
+    .eq("competition_id", competitionId);
   if (error) throw new Error(error.message);
 
   revalidateCompetition(competitionId);

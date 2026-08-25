@@ -90,6 +90,14 @@ export interface Team {
   // una por línea o separadas por coma (ver 0008_team_member_names.sql).
   // Se muestran en todo el sistema como "Robot (Fulano, Mengano)".
   member_names: string | null;
+  // Nombres de los robots del equipo — solo se pide en fútbol robótico
+  // (2 titulares + 1 suplente opcional), mismo criterio de texto libre que
+  // member_names (ver 0010_team_robots_and_terms.sql).
+  robot_names: string | null;
+  // Cuándo se tildó "Leí y acepto las bases y condiciones" en la
+  // inscripción pública — null si el equipo se cargó a mano desde el panel
+  // admin (ese formulario no pide el checkbox).
+  accepted_terms_at: string | null;
   notes: string | null;
   accredited: boolean;
   accredited_at: string | null;

@@ -15,6 +15,7 @@ import type {
 } from "@/lib/database.types";
 import {
   addTeam,
+  updateTeam,
   removeTeam,
   createGroup,
   randomDraw,
@@ -36,6 +37,8 @@ import { TeamSeedInput } from "./team-seed-input";
 import { RealtimeRefresh } from "./realtime-refresh";
 import { CopyLinkButton } from "@/app/components/copy-link-button";
 import { TeamLabel } from "@/app/components/team-label";
+import { MemberListInput } from "@/app/components/member-list-input";
+import { parseRobotNames } from "@/lib/team-display";
 import { TeamCardBadges } from "@/app/components/team-card-badges";
 import { cardsByTeam } from "@/lib/match-cards";
 import { Breadcrumbs } from "@/app/components/breadcrumbs";
@@ -46,6 +49,98 @@ import { competitionStatusLabel, competitionStatusChipClass } from "@/lib/labels
 import { disciplineColor } from "@/lib/discipline-colors";
 import { FormatAdvisory } from "./format-advisory";
 import { EditFormatForm } from "./edit-format-form";
+
+/** Campos de equipo compartidos entre "Agregar equipo" y "Editar equipo" —
+ * mismo set de inputs, la única diferencia es si vienen con valor inicial
+ * (edición) o vacíos (alta). Robots solo se muestra para fútbol robótico
+ * (ver isFutbol más abajo); se prellenan por posición ya que robot_names
+ * solo guarda una lista de texto, no cuál era titular 1/2/suplente. */
+function TeamFormFields({
+  isFutbol,
+  defaults,
+}: {
+  isFutbol: boolean;
+  defaults?: {
+    name: string;
+    institution: string;
+    robots: string[];
+    memberCount: number | null;
+    memberNames: string | null;
+    notes: string;
+  };
+}) {
+  const robots = defaults?.robots ?? [];
+  return (
+    <>
+      <div>
+        <label className="block text-sm panel-label mb-1">{isFutbol ? "Nombre del equipo" : "Nombre del robot"}</label>
+        <input
+          name="name"
+          required
+          defaultValue={defaults?.name}
+          placeholder={isFutbol ? "Nombre del equipo" : "Nombre del robot"}
+          className="w-full rounded-md panel-input px-3 py-2 text-sm"
+        />
+      </div>
+      {isFutbol && (
+        <div className="rounded-md panel-surface p-3 space-y-2.5">
+          <p className="text-sm font-medium">Robots del equipo (opcional)</p>
+          <input
+            name="robot_1"
+            defaultValue={robots[0] ?? ""}
+            placeholder="Robot 1"
+            className="w-full rounded-md panel-input px-3 py-2 text-sm"
+          />
+          <input
+            name="robot_2"
+            defaultValue={robots[1] ?? ""}
+            placeholder="Robot 2"
+            className="w-full rounded-md panel-input px-3 py-2 text-sm"
+          />
+          <input
+            name="robot_3"
+            defaultValue={robots[2] ?? ""}
+            placeholder="Robot suplente"
+            className="w-full rounded-md panel-input px-3 py-2 text-sm"
+          />
+        </div>
+      )}
+      <div>
+        <label className="block text-sm panel-label mb-1">Institución (opcional)</label>
+        <input
+          name="institution"
+          defaultValue={defaults?.institution}
+          placeholder="Institución"
+          className="w-full rounded-md panel-input px-3 py-2 text-sm"
+        />
+      </div>
+      <div>
+        <label className="block text-sm panel-label mb-1">Cantidad de integrantes (opcional)</label>
+        <input
+          name="member_count"
+          type="number"
+          min={1}
+          defaultValue={defaults?.memberCount ?? undefined}
+          className="w-32 rounded-md panel-input px-3 py-2 text-sm"
+        />
+      </div>
+      <MemberListInput
+        label="Integrantes (opcional)"
+        initialValue={defaults?.memberNames}
+        helpText="Se muestran públicamente debajo del nombre del equipo, entre paréntesis."
+      />
+      <div>
+        <label className="block text-sm panel-label mb-1">Notas (opcional)</label>
+        <textarea
+          name="notes"
+          rows={2}
+          defaultValue={defaults?.notes}
+          className="w-full rounded-md panel-input px-3 py-2 text-sm"
+        />
+      </div>
+    </>
+  );
+}
 
 export default async function CompetitionPage({
   params,
@@ -118,6 +213,9 @@ export default async function CompetitionPage({
   }
 
   const disciplineNameById = new Map((allDisciplines ?? []).map((d: { id: string; name: string }) => [d.id, d.name]));
+  // Mismo criterio que registration-form.tsx: solo fútbol robótico arma el
+  // equipo con más de un robot (2 titulares + suplente opcional).
+  const isFutbol = discipline?.slug === "futbol";
   const siblingCompetitions = (siblingCompetitionsRaw ?? []) as unknown as (Pick<Competition, "id" | "status"> & {
     disciplines: { name: string; sort_order: number } | null;
     categories: { name: string } | null;
@@ -294,37 +392,7 @@ export default async function CompetitionPage({
               action={addTeamAction}
               submitLabel="Agregar"
             >
-              <div>
-                <label className="block text-sm panel-label mb-1">Nombre del robot</label>
-                <input
-                  name="name"
-                  required
-                  placeholder="Nombre del robot"
-                  className="w-full rounded-md panel-input px-3 py-2 text-sm"
-                />
-              </div>
-              <div>
-                <label className="block text-sm panel-label mb-1">Institución (opcional)</label>
-                <input
-                  name="institution"
-                  placeholder="Institución"
-                  className="w-full rounded-md panel-input px-3 py-2 text-sm"
-                />
-              </div>
-              <div>
-                <label className="block text-sm panel-label mb-1">
-                  Integrantes (opcional, uno por línea)
-                </label>
-                <textarea
-                  name="member_names"
-                  rows={2}
-                  placeholder={"Ada Lovelace\nGrace Hopper"}
-                  className="w-full rounded-md panel-input px-3 py-2 text-sm"
-                />
-                <p className="text-xs panel-label mt-1">
-                  Se muestran públicamente debajo del nombre del equipo, entre paréntesis.
-                </p>
-              </div>
+              <TeamFormFields isFutbol={isFutbol} />
             </ModalFormButton>
           </div>
           <p className="text-xs panel-label -mt-1">
@@ -344,6 +412,11 @@ export default async function CompetitionPage({
                       <TeamLabel name={t.name} memberNames={t.member_names} />
                     </p>
                     {t.institution && <p className="text-xs panel-label">{t.institution}</p>}
+                    {t.robot_names && (
+                      <p className="text-xs panel-label opacity-80">
+                        🤖 {parseRobotNames(t.robot_names).join(", ")}
+                      </p>
+                    )}
                     {t.mentor_name && (
                       <p className="text-xs panel-label opacity-80">
                         {t.mentor_name} · {t.mentor_contact}
@@ -367,6 +440,25 @@ export default async function CompetitionPage({
                         currentGroupId={groupIdByTeamId.get(t.id) ?? null}
                       />
                     )}
+                    <ModalFormButton
+                      buttonLabel="Editar"
+                      buttonClassName="text-xs rounded-md px-2 py-0.5 panel-button-secondary"
+                      title={`Editar ${t.name}`}
+                      action={updateTeam.bind(null, competitionId, t.id)}
+                      submitLabel="Guardar"
+                    >
+                      <TeamFormFields
+                        isFutbol={isFutbol}
+                        defaults={{
+                          name: t.name,
+                          institution: t.institution ?? "",
+                          robots: parseRobotNames(t.robot_names),
+                          memberCount: t.member_count,
+                          memberNames: t.member_names,
+                          notes: t.notes ?? "",
+                        }}
+                      />
+                    </ModalFormButton>
                     <form action={removeTeam.bind(null, competitionId, t.id)}>
                       <ConfirmSubmitButton
                         confirmMessage={`¿Quitar a ${t.name} del torneo? Si ya tiene partidos asignados, se pierden.`}
