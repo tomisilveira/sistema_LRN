@@ -47,6 +47,7 @@ import { ConfirmSubmitButton } from "@/app/components/confirm-submit-button";
 import { ModalFormButton } from "@/app/components/modal-form";
 import { competitionStatusLabel, competitionStatusChipClass } from "@/lib/labels";
 import { disciplineColor } from "@/lib/discipline-colors";
+import { disciplineCategoryLabel, disciplineDisplayName } from "@/lib/discipline-display";
 import { FormatAdvisory } from "./format-advisory";
 import { EditFormatForm } from "./edit-format-form";
 
@@ -212,7 +213,9 @@ export default async function CompetitionPage({
     cardsByMatchId.set(c.match_id, list);
   }
 
-  const disciplineNameById = new Map((allDisciplines ?? []).map((d: { id: string; name: string }) => [d.id, d.name]));
+  const disciplineNameById = new Map(
+    (allDisciplines ?? []).map((d: { id: string; name: string }) => [d.id, disciplineDisplayName(d.name)])
+  );
   // Mismo criterio que registration-form.tsx: solo fútbol robótico arma el
   // equipo con más de un robot (2 titulares + suplente opcional).
   const isFutbol = discipline?.slug === "futbol";
@@ -334,7 +337,7 @@ export default async function CompetitionPage({
             </p>
             <form action={deleteCompetition.bind(null, competitionId)}>
               <ConfirmSubmitButton
-                confirmMessage={`¿Eliminar el torneo "${discipline?.name} — ${category?.name}"? Se borran sus equipos, grupos y partidos. No se puede deshacer.`}
+                confirmMessage={`¿Eliminar el torneo "${disciplineCategoryLabel(discipline, category)}"? Se borran sus equipos, grupos y partidos. No se puede deshacer.`}
                 className="text-sm rounded-md panel-button-danger px-4 py-2"
               >
                 🗑️ Eliminar torneo
@@ -969,13 +972,13 @@ export default async function CompetitionPage({
           items={[
             { label: "Eventos", href: "/admin" },
             { label: event?.name ?? "", href: event ? `/admin/eventos/${event.id}` : undefined },
-            { label: `${discipline?.name} — ${category?.name}` },
+            { label: disciplineCategoryLabel(discipline, category) },
           ]}
         />
         <div className="flex items-center gap-2">
           <span className={`w-2.5 h-2.5 rounded-full ${colors.dot}`} aria-hidden="true" />
           <h1 className="text-lg font-semibold">
-            {discipline?.name} — {category?.name}
+            {disciplineCategoryLabel(discipline, category)}
           </h1>
           <span
             className={`text-xs rounded-full px-2 py-0.5 font-medium ${competitionStatusChipClass[competition.status]}`}
@@ -1002,7 +1005,7 @@ export default async function CompetitionPage({
                   }`}
                 >
                   <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${sColors.dot}`} aria-hidden="true" />
-                  {c.disciplines?.name} — {c.categories?.name}
+                  {disciplineCategoryLabel(c.disciplines, c.categories)}
                 </Link>
               );
             })}
@@ -1012,7 +1015,7 @@ export default async function CompetitionPage({
 
       <TabbedLayout
         items={tabs}
-        sectionTitle={`${discipline?.name} — ${category?.name}`}
+        sectionTitle={disciplineCategoryLabel(discipline, category)}
         sectionColorDot={colors.dot}
       />
     </div>

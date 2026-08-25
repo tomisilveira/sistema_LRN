@@ -3,6 +3,7 @@ import { createServerSupabaseClient } from "@/lib/supabase/server";
 import type { Competition, Discipline, Category } from "@/lib/database.types";
 import { RegistrationForm } from "./registration-form";
 import { KioskShell } from "@/app/components/kiosk-shell";
+import { disciplineCategoryLabel } from "@/lib/discipline-display";
 
 export const revalidate = 0;
 
@@ -39,7 +40,7 @@ export default async function InscripcionPage({
   return (
     <KioskShell
       eyebrow={event?.name}
-      title={`${discipline?.name} — ${category?.name}`}
+      title={disciplineCategoryLabel(discipline, category)}
       subtitle="Inscripción de equipos"
     >
       <div className="space-y-6">

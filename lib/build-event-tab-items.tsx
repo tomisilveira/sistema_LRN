@@ -1,6 +1,7 @@
 import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { disciplineColor } from "./discipline-colors";
+import { disciplineCategoryLabel } from "./discipline-display";
 import { competitionStatusLabel, competitionStatusChipClass } from "./labels";
 import type { Competition, Court, Group, GroupStandingRow, Match, MatchCard, Team } from "./database.types";
 import type { DisciplineTabItem } from "@/app/home-discipline-menu";
@@ -116,7 +117,7 @@ async function buildTabItem(
 
   const colors = disciplineColor(competition.disciplines);
   const isLive = LIVE_STATUSES.includes(competition.status);
-  const disciplineCategory = `${competition.disciplines?.name ?? "?"} — ${competition.categories?.name ?? "?"}`;
+  const disciplineCategory = disciplineCategoryLabel(competition.disciplines, competition.categories);
 
   const content = (
     <div className="space-y-6">

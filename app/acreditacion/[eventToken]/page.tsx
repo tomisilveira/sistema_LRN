@@ -2,6 +2,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import type { Team } from "@/lib/database.types";
 import { AccreditationBoard, type AccreditationGroup } from "./accreditation-board";
 import { KioskShell, KioskInvalidLink } from "@/app/components/kiosk-shell";
+import { disciplineCategoryLabel } from "@/lib/discipline-display";
 
 export const dynamic = "force-dynamic";
 
@@ -45,7 +46,7 @@ export default async function AcreditacionPage({ params }: { params: Promise<{ e
 
   const groups: AccreditationGroup[] = competitionList.map((c) => ({
     id: c.id,
-    label: `${c.disciplines?.name ?? ""} — ${c.categories?.name ?? ""}`,
+    label: disciplineCategoryLabel(c.disciplines, c.categories),
     teams: teamsByCompetition.get(c.id) ?? [],
   }));
 

@@ -2,6 +2,7 @@
 
 import { useTransition } from "react";
 import { setCourtDiscipline } from "./actions";
+import { disciplineDisplayName } from "@/lib/discipline-display";
 
 /** Guarda sola al cambiar, mismo patrón que GroupAssignSelect (competencias) —
  * antes era un <select> + botón "Guardar" con defaultValue, que en React
@@ -38,7 +39,7 @@ export function CourtDisciplineSelect({
       <option value="">Sin disciplina asignada</option>
       {disciplines.map((d) => (
         <option key={d.id} value={d.id}>
-          {d.name}
+          {disciplineDisplayName(d.name)}
         </option>
       ))}
     </select>

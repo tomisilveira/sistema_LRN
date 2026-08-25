@@ -2,6 +2,7 @@ import ExcelJS from "exceljs";
 import { NextResponse } from "next/server";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { formatTeamWithMembers } from "@/lib/team-display";
+import { disciplineCategoryLabel } from "@/lib/discipline-display";
 import { cardsByTeam, formatCardSummary } from "@/lib/match-cards";
 import type {
   Category,
@@ -79,7 +80,7 @@ export async function GET(_req: Request, context: { params: Promise<{ eventId: s
   const competitionList = (competitions ?? []) as CompetitionRow[];
 
   function competitionLabel(c: CompetitionRow) {
-    return `${disciplineById.get(c.discipline_id)?.name ?? "?"} — ${categoryById.get(c.category_id)?.name ?? "?"}`;
+    return disciplineCategoryLabel(disciplineById.get(c.discipline_id), categoryById.get(c.category_id));
   }
 
   const workbook = new ExcelJS.Workbook();

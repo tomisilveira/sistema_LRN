@@ -5,6 +5,7 @@ import type { CompetitionWithNames } from "@/lib/build-event-tab-items";
 import { buildCourtBoards, type CourtBoardMatch } from "@/lib/build-court-boards";
 import { buildPantallaFallback } from "@/lib/build-pantalla-fallback";
 import { disciplineColor, type DisciplineColorSet } from "@/lib/discipline-colors";
+import { disciplineDisplayName } from "@/lib/discipline-display";
 import { PublicRealtime } from "@/app/components/public-realtime";
 import { BrandIcon } from "@/app/components/brand-mark";
 import { ScreenBoards } from "./screen-boards";
@@ -28,7 +29,7 @@ function groupUpcomingByDiscipline(upcoming: CourtBoardMatch[]): UpcomingDiscipl
     const key = discipline?.name ?? "?";
     let group = groups.get(key);
     if (!group) {
-      group = { key, name: key, colors: disciplineColor(discipline), matches: [] };
+      group = { key, name: discipline ? disciplineDisplayName(discipline.name) : "?", colors: disciplineColor(discipline), matches: [] };
       groups.set(key, group);
     }
     group.matches.push(m);

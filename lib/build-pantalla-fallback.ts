@@ -4,6 +4,7 @@ import type { BracketType, Group, GroupStandingRow, Match, MatchCard, Team } fro
 import type { CompetitionWithNames } from "./build-event-tab-items";
 import type { BracketDisplayMatch } from "@/app/components/public-bracket-view";
 import { disciplineColor } from "./discipline-colors";
+import { disciplineCategoryLabel } from "./discipline-display";
 
 export interface PantallaBracketBoard {
   bracketType: BracketType | null;
@@ -68,7 +69,7 @@ async function buildOne(
   const groupsList = (groups ?? []) as Group[];
   const bracketMatchList = (bracketMatches ?? []) as Match[];
 
-  const title = `${competition.disciplines?.name ?? "?"} — ${competition.categories?.name ?? "?"}`;
+  const title = disciplineCategoryLabel(competition.disciplines, competition.categories);
   const colors = disciplineColor(competition.disciplines);
 
   if (bracketMatchList.length > 0) {

@@ -20,6 +20,7 @@ import { ConfirmSubmitButton } from "@/app/components/confirm-submit-button";
 import { formatLabel, competitionStatusLabel, competitionStatusChipClass } from "@/lib/labels";
 import { disciplineColor } from "@/lib/discipline-colors";
 import { courtDisplayName } from "@/lib/court-display";
+import { disciplineDisplayName, disciplineCategoryLabel } from "@/lib/discipline-display";
 
 export default async function EventPage({ params }: { params: Promise<{ eventId: string }> }) {
   const { eventId } = await params;
@@ -89,7 +90,7 @@ export default async function EventPage({ params }: { params: Promise<{ eventId:
                     <option value="">Sin disciplina asignada</option>
                     {(disciplines ?? []).map((d: Discipline) => (
                       <option key={d.id} value={d.id}>
-                        {d.name}
+                        {disciplineDisplayName(d.name)}
                       </option>
                     ))}
                   </select>
@@ -188,7 +189,7 @@ export default async function EventPage({ params }: { params: Promise<{ eventId:
                   >
                     {(disciplines ?? []).map((d: Discipline) => (
                       <option key={d.id} value={d.id}>
-                        {d.name}
+                        {disciplineDisplayName(d.name)}
                       </option>
                     ))}
                   </select>
@@ -292,7 +293,7 @@ export default async function EventPage({ params }: { params: Promise<{ eventId:
                     >
                       <div className="min-w-0">
                         <p className="text-sm font-medium truncate">
-                          {c.disciplines?.name} — {c.categories?.name}
+                          {disciplineCategoryLabel(c.disciplines, c.categories)}
                         </p>
                         <p className="text-xs panel-label">{formatLabel[c.format_type]}</p>
                       </div>
@@ -312,7 +313,7 @@ export default async function EventPage({ params }: { params: Promise<{ eventId:
                     </Link>
                     <form action={deleteCompetition.bind(null, c.id)} className="shrink-0">
                       <ConfirmSubmitButton
-                        confirmMessage={`¿Eliminar el torneo "${c.disciplines?.name} — ${c.categories?.name}"? Se borran sus equipos, grupos y partidos. No se puede deshacer.`}
+                        confirmMessage={`¿Eliminar el torneo "${disciplineCategoryLabel(c.disciplines, c.categories)}"? Se borran sus equipos, grupos y partidos. No se puede deshacer.`}
                         className="text-xs rounded-full px-3 py-1.5 panel-button-danger whitespace-nowrap"
                       >
                         Eliminar

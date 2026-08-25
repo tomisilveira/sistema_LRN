@@ -4,6 +4,7 @@ import type { Match, MatchCard, Team } from "./database.types";
 import type { CompetitionWithNames } from "./build-event-tab-items";
 import { disciplineColor } from "./discipline-colors";
 import { courtDisplayName } from "./court-display";
+import { disciplineCategoryLabel } from "./discipline-display";
 
 export interface CourtBoardMatch {
   match: Match;
@@ -94,7 +95,7 @@ export async function buildCourtBoards(
       teamAMemberNames: teamById.get(m.team_a_id ?? "")?.member_names ?? null,
       teamBMemberNames: teamById.get(m.team_b_id ?? "")?.member_names ?? null,
       cards: cardsByMatchId.get(m.id) ?? [],
-      disciplineCategory: `${competition.disciplines?.name ?? "?"} — ${competition.categories?.name ?? "?"}`,
+      disciplineCategory: disciplineCategoryLabel(competition.disciplines, competition.categories),
     };
   };
 

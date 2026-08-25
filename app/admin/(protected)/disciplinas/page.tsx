@@ -3,6 +3,7 @@ import type { Discipline } from "@/lib/database.types";
 import { createDiscipline } from "../actions";
 import { ModalFormButton } from "@/app/components/modal-form";
 import { disciplineColor } from "@/lib/discipline-colors";
+import { disciplineDisplayName } from "@/lib/discipline-display";
 
 export default async function DisciplinasPage() {
   const supabase = await createServerSupabaseClient();
@@ -51,7 +52,7 @@ export default async function DisciplinasPage() {
               className={`inline-flex items-center gap-1.5 text-sm rounded-full px-3 py-1.5 border-l-4 transition-colors hover:brightness-95 ${colors.border} ${colors.bg}`}
             >
               <span className={`w-1.5 h-1.5 rounded-full ${colors.dot}`} aria-hidden="true" />
-              {d.name}
+              {disciplineDisplayName(d.name)}
             </span>
           );
         })}
