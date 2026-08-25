@@ -3,6 +3,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Match, MatchCard, Team } from "./database.types";
 import type { CompetitionWithNames } from "./build-event-tab-items";
 import { disciplineColor } from "./discipline-colors";
+import { courtDisplayName } from "./court-display";
 
 export interface CourtBoardMatch {
   match: Match;
@@ -102,14 +103,13 @@ export async function buildCourtBoards(
       const courtMatches = byCourt.get(court.id) ?? [];
       const liveMatch = courtMatches.find((m) => m.status === "in_progress");
       const upcoming = courtMatches.filter((m) => m.status === "scheduled").slice(0, 3);
-      const colors = disciplineColor(
-        court.discipline_id
-          ? (competitions.find((c) => c.discipline_id === court.discipline_id)?.disciplines ?? null)
-          : null
-      );
+      const discipline = court.discipline_id
+        ? (competitions.find((c) => c.discipline_id === court.discipline_id)?.disciplines ?? null)
+        : null;
+      const colors = disciplineColor(discipline);
       return {
         courtId: court.id,
-        courtName: court.name,
+        courtName: courtDisplayName(court.name, discipline),
         colorDot: colors.dot,
         colorBorder: colors.border,
         colorBg: colors.bg,

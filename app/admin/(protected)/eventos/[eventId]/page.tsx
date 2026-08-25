@@ -19,6 +19,7 @@ import { ModalFormButton } from "@/app/components/modal-form";
 import { ConfirmSubmitButton } from "@/app/components/confirm-submit-button";
 import { formatLabel, competitionStatusLabel, competitionStatusChipClass } from "@/lib/labels";
 import { disciplineColor } from "@/lib/discipline-colors";
+import { courtDisplayName } from "@/lib/court-display";
 
 export default async function EventPage({ params }: { params: Promise<{ eventId: string }> }) {
   const { eventId } = await params;
@@ -107,12 +108,12 @@ export default async function EventPage({ params }: { params: Promise<{ eventId:
                     className={`rounded-md border-l-4 transition-colors hover:brightness-95 ${colors.border} ${colors.bg} px-3 py-2 space-y-2`}
                   >
                     <div className="flex items-center justify-between gap-2">
-                      <span className="text-sm font-medium">{court.name}</span>
+                      <span className="text-sm font-medium">{courtDisplayName(court.name, discipline)}</span>
                       <div className="flex items-center gap-1.5 shrink-0">
                         <CopyLinkButton path={`/juez/${court.access_token}`} label="Link de juez" compact />
                         <form action={deleteCourt.bind(null, eventId, court.id)}>
                           <ConfirmSubmitButton
-                            confirmMessage={`¿Eliminar "${court.name}"? Los partidos que la tenían asignada quedan sin cancha.`}
+                            confirmMessage={`¿Eliminar "${courtDisplayName(court.name, discipline)}"? Los partidos que la tenían asignada quedan sin cancha.`}
                             className="text-xs rounded-md px-2 py-1 panel-button-danger"
                           >
                             Eliminar

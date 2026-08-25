@@ -5,6 +5,7 @@ import { StartMatchButton } from "./start-match-button";
 import { MatchTimerPanel } from "./match-timer-panel";
 import { KioskInvalidLink } from "@/app/components/kiosk-shell";
 import { TeamLabel } from "@/app/components/team-label";
+import { courtDisplayName } from "@/lib/court-display";
 
 export const dynamic = "force-dynamic";
 
@@ -14,7 +15,7 @@ export default async function JudgePage({ params }: { params: Promise<{ courtTok
 
   const { data: court } = await supabase
     .from("courts")
-    .select("id, name, event_id")
+    .select("id, name, event_id, discipline_id")
     .eq("access_token", courtToken)
     .maybeSingle();
 
@@ -22,7 +23,12 @@ export default async function JudgePage({ params }: { params: Promise<{ courtTok
     return <KioskInvalidLink message="Link de cancha inválido. Pedile el link correcto a la mesa de jueces." />;
   }
 
-  const { data: event } = await supabase.from("events").select("name").eq("id", court.event_id).single();
+  const [{ data: event }, { data: discipline }] = await Promise.all([
+    supabase.from("events").select("name").eq("id", court.event_id).single(),
+    court.discipline_id
+      ? supabase.from("disciplines").select("name").eq("id", court.discipline_id).maybeSingle()
+      : Promise.resolve({ data: null }),
+  ]);
 
   const { data: matches } = await supabase
     .from("matches")
@@ -63,7 +69,9 @@ export default async function JudgePage({ params }: { params: Promise<{ courtTok
 
         <header className="py-3 panel-enter">
           <p className="text-sm panel-label truncate">{event?.name}</p>
-          <h1 className="text-2xl font-display font-bold tracking-wide truncate">{court.name}</h1>
+          <h1 className="text-2xl font-display font-bold tracking-wide truncate">
+            {courtDisplayName(court.name, discipline)}
+          </h1>
         </header>
         <div className="panel-brand-stripe" />
 

@@ -2,11 +2,40 @@ import { notFound } from "next/navigation";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import type { EventRow } from "@/lib/database.types";
 import type { CompetitionWithNames } from "@/lib/build-event-tab-items";
-import { buildCourtBoards } from "@/lib/build-court-boards";
+import { buildCourtBoards, type CourtBoardMatch } from "@/lib/build-court-boards";
 import { buildPantallaFallback } from "@/lib/build-pantalla-fallback";
+import { disciplineColor, type DisciplineColorSet } from "@/lib/discipline-colors";
 import { PublicRealtime } from "@/app/components/public-realtime";
 import { ScreenBoards } from "./screen-boards";
 import { ScreenFallback } from "./screen-fallback";
+
+interface UpcomingDisciplineGroup {
+  key: string;
+  name: string;
+  colors: DisciplineColorSet;
+  matches: CourtBoardMatch[];
+}
+
+/** Agrupa "próximos partidos" por disciplina (no por cancha) para que la
+ * pantalla las distinga de un vistazo — mismo color por disciplina que ya
+ * se usa en canchas/torneos (ver disciplineColor), ordenado por
+ * disciplines.sort_order. */
+function groupUpcomingByDiscipline(upcoming: CourtBoardMatch[]): UpcomingDisciplineGroup[] {
+  const groups = new Map<string, UpcomingDisciplineGroup>();
+  for (const m of upcoming) {
+    const discipline = m.competition.disciplines;
+    const key = discipline?.name ?? "?";
+    let group = groups.get(key);
+    if (!group) {
+      group = { key, name: key, colors: disciplineColor(discipline), matches: [] };
+      groups.set(key, group);
+    }
+    group.matches.push(m);
+  }
+  return [...groups.values()].sort(
+    (a, b) => (a.matches[0]?.competition.disciplines?.sort_order ?? 0) - (b.matches[0]?.competition.disciplines?.sort_order ?? 0)
+  );
+}
 
 export const revalidate = 0;
 
@@ -54,6 +83,7 @@ export default async function PantallaPage({ params }: { params: Promise<{ event
   const upcoming = hasLive ? [] : boards.flatMap((b) => b.upcoming);
 
   const fallbackBoards = hasLive ? [] : await buildPantallaFallback(supabase, eventId, competitionList);
+  const upcomingGroups = groupUpcomingByDiscipline(upcoming);
 
   return (
     <div className="panel-page min-h-screen">
@@ -74,18 +104,36 @@ export default async function PantallaPage({ params }: { params: Promise<{ event
 
         {hasLive ? <ScreenBoards boards={liveBoards} /> : <ScreenFallback boards={fallbackBoards} />}
 
-        {upcoming.length > 0 && (
+        {upcomingGroups.length > 0 && (
           <section className="panel-card rounded-xl overflow-hidden panel-enter">
             <p className="text-xs uppercase tracking-wide text-white bg-brand-teal-dark font-display font-bold px-4 py-2">
               Próximos partidos
             </p>
-            <div className="grid gap-2 p-3 sm:grid-cols-2 lg:grid-cols-3">
-              {upcoming.map((m) => (
-                <p key={m.match.id} className="text-sm panel-surface rounded-lg px-3 py-2 truncate">
-                  <span className="font-semibold">{m.teamAName}</span>{" "}
-                  <span className="panel-label">vs</span> <span className="font-semibold">{m.teamBName}</span>
-                  <span className="panel-label block text-xs mt-0.5">{m.disciplineCategory}</span>
-                </p>
+            <div className="p-3 space-y-4">
+              {upcomingGroups.map((group) => (
+                <div key={group.key}>
+                  <div className={`flex items-center gap-2 mb-2 pl-2.5 border-l-4 ${group.colors.border}`}>
+                    <span className={`w-3 h-3 rounded-full shrink-0 ${group.colors.dot}`} aria-hidden="true" />
+                    <h3 className={`text-xl sm:text-2xl font-display font-extrabold tracking-tight truncate ${group.colors.text}`}>
+                      {group.name}
+                    </h3>
+                  </div>
+                  <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+                    {group.matches.map((m) => (
+                      <div
+                        key={m.match.id}
+                        className={`panel-surface rounded-lg pl-3 pr-3 py-2 border-l-4 ${group.colors.border} ${group.colors.bg}`}
+                      >
+                        <p className="text-sm truncate">
+                          <span className="font-semibold">{m.teamAName}</span>{" "}
+                          <span className="panel-label">vs</span>{" "}
+                          <span className="font-semibold">{m.teamBName}</span>
+                        </p>
+                        <p className="panel-label text-xs mt-0.5 truncate">{m.competition.categories?.name ?? "?"}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
               ))}
             </div>
           </section>
