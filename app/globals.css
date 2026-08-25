@@ -119,19 +119,37 @@ body {
   filter: brightness(1.04);
 }
 
+/* Antes era borde solo (transparente, sin relleno) — a simple vista no se
+   leía como botón, quedaba como texto con un hilo de color alrededor. Ahora
+   lleva relleno teal suave YA en reposo (no solo al pasar el mouse), con
+   más color al tocarlo. */
 .panel-button-secondary {
-  @apply border border-brand-teal/40 text-brand-teal-dark hover:bg-brand-teal/10 transition duration-150 active:scale-[0.97]
-    dark:text-brand-teal dark:border-brand-teal/50 dark:hover:bg-brand-teal/10;
+  @apply border border-brand-teal/40 text-brand-teal-dark font-medium transition duration-150 active:scale-[0.97]
+    dark:text-brand-teal dark:border-brand-teal/50;
+  background-color: color-mix(in srgb, var(--color-brand-teal) 10%, transparent);
+}
+.panel-button-secondary:hover {
+  background-color: color-mix(in srgb, var(--color-brand-teal) 18%, transparent);
+  border-color: var(--color-brand-teal);
 }
 
+/* Mismo problema que panel-button-secondary tenía (texto suelto sin fondo)
+   — ahora lleva relleno rojo suave en reposo, para que TODA acción
+   destructiva del sistema se lea igual de "zona de peligro" a simple
+   vista, no solo la que se retocó a mano en el header del evento. */
 .panel-button-danger {
-  @apply text-red-500 hover:text-red-600 hover:bg-red-500/10 dark:text-red-400 dark:hover:text-red-300 dark:hover:bg-red-400/10
-    transition duration-150 active:scale-95;
+  @apply border border-red-500/30 text-red-600 font-medium transition duration-150 active:scale-95
+    dark:text-red-400 dark:border-red-400/40;
+  background-color: color-mix(in srgb, #ef4444 8%, transparent);
+}
+.panel-button-danger:hover {
+  background-color: color-mix(in srgb, #ef4444 16%, transparent);
+  border-color: color-mix(in srgb, #ef4444 55%, transparent);
 }
 
 .panel-chip {
-  @apply bg-neutral-200 border border-neutral-300 text-neutral-700
-    dark:bg-neutral-800 dark:border-neutral-700 dark:text-neutral-300;
+  @apply bg-neutral-100 hover:bg-neutral-200 border border-neutral-300 text-neutral-700 font-medium transition-colors duration-150
+    dark:bg-neutral-800 dark:hover:bg-neutral-700 dark:border-neutral-700 dark:text-neutral-300;
 }
 
 .panel-chip-success {
@@ -196,10 +214,16 @@ body {
 
 /* Botón chico para acciones inline dentro de filas/tablas (guardar,
    confirmar) — antes varias de estas eran texto gris (panel-label) sin
-   ningún borde ni fondo, así que no se leían como botón. */
+   ningún borde ni fondo, así que no se leían como botón. Mismo relleno
+   suave en reposo que panel-button-secondary, en formato chico. */
 .panel-button-xs {
-  @apply rounded-md border border-brand-teal/40 text-brand-teal-dark dark:text-brand-teal dark:border-brand-teal/50
-    hover:bg-brand-teal/10 transition duration-150 active:scale-[0.96] disabled:opacity-50 disabled:hover:bg-transparent;
+  @apply rounded-md border border-brand-teal/40 text-brand-teal-dark font-medium dark:text-brand-teal dark:border-brand-teal/50
+    transition duration-150 active:scale-[0.96] disabled:opacity-50 disabled:hover:bg-transparent;
+  background-color: color-mix(in srgb, var(--color-brand-teal) 10%, transparent);
+}
+.panel-button-xs:hover:not(:disabled) {
+  background-color: color-mix(in srgb, var(--color-brand-teal) 18%, transparent);
+  border-color: var(--color-brand-teal);
 }
 
 /* ==========================================================================

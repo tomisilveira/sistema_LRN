@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { ThemeToggle } from "./theme-toggle";
 import { SignOutButton } from "./sign-out-button";
 import { useSectionNav, type SectionNavItem } from "./section-nav-context";
 
@@ -36,7 +35,7 @@ function NavLink({ href, label, active }: { href: string; label: string; active:
       className={`flex items-center rounded-lg px-3 py-2 text-sm whitespace-nowrap transition-all duration-150 active:scale-[0.98] ${
         active
           ? "panel-button-primary font-medium shadow-sm"
-          : "panel-label hover:bg-neutral-200 dark:hover:bg-neutral-800"
+          : "text-neutral-600 dark:text-neutral-400 border border-transparent hover:border-brand-teal/25 hover:bg-brand-teal/8 hover:text-brand-teal-dark dark:hover:text-brand-teal dark:hover:bg-brand-teal/10"
       }`}
     >
       {label}
@@ -64,7 +63,7 @@ function SectionItemButton({
       className={`flex items-center justify-between gap-2 w-full rounded-md px-2.5 py-1.5 text-sm text-left whitespace-nowrap transition-all duration-150 active:scale-[0.98] ${
         active
           ? "panel-button-primary font-medium shadow-sm"
-          : "panel-label hover:bg-neutral-200 dark:hover:bg-neutral-800"
+          : "text-neutral-600 dark:text-neutral-400 border border-transparent hover:border-brand-teal/25 hover:bg-brand-teal/8 hover:text-brand-teal-dark dark:hover:text-brand-teal dark:hover:bg-brand-teal/10"
       }`}
     >
       <span className="truncate">{item.label}</span>
@@ -100,7 +99,6 @@ export function AdminSidebar({ userEmail }: { userEmail: string }) {
             <BrandDots />
             <span className="font-semibold text-sm">Liga Robótica Neuquina</span>
           </Link>
-          <ThemeToggle />
         </div>
         <nav className="flex gap-1 overflow-x-auto px-3 pb-2" aria-label="Secciones del admin">
           {NAV_ITEMS.map((item) => (
@@ -151,7 +149,7 @@ export function AdminSidebar({ userEmail }: { userEmail: string }) {
                     {section.href ? (
                       <Link
                         href={section.href}
-                        className="flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium panel-label hover:text-neutral-900 dark:hover:text-neutral-100 transition-colors"
+                        className="flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium panel-label hover:bg-brand-teal/8 hover:text-brand-teal-dark dark:hover:text-brand-teal transition-colors"
                       >
                         {section.colorDot && (
                           <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${section.colorDot}`} aria-hidden="true" />
@@ -177,12 +175,9 @@ export function AdminSidebar({ userEmail }: { userEmail: string }) {
         </nav>
 
         <div className="p-3 border-t panel-nav space-y-2.5">
-          <div className="flex items-center justify-between gap-2">
-            <span className="text-xs panel-label truncate" title={userEmail}>
-              {userEmail}
-            </span>
-            <ThemeToggle />
-          </div>
+          <span className="text-xs panel-label truncate block" title={userEmail}>
+            {userEmail}
+          </span>
           <SignOutButton />
         </div>
       </aside>

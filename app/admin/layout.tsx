@@ -1,17 +1,9 @@
-// El toggle de modo claro/oscuro alterna la clase `dark` en este wrapper
-// (ver theme-toggle.tsx). Arranca en claro (igual que el resto del sitio
-// público desde que tiene su propio toggle); el script `beforeInteractive`
-// que corrige antes del primer paint si el usuario había elegido oscuro
-// vive en el root layout (app/layout.tsx) — `beforeInteractive` solo puede
-// ir ahí, no en un layout anidado como este. Eso hace que el className de
-// este div pueda no coincidir con lo que renderizó el servidor, a
-// propósito; suppressHydrationWarning le avisa a React que ese mismatch
-// puntual es esperado (mismo patrón que recomiendan las libs de theme
-// toggle).
+// El admin siempre es claro — sin toggle, sin clase `dark`, sin excepción
+// (pedido explícito del usuario ago 2026: el toggle que había antes quedaba
+// pegado en oscuro entre sesiones — localStorage — y volvía casi negras
+// todas las tarjetas/superficies del panel, sin que hubiera forma fácil de
+// notar por qué. El público conserva su propio toggle en public-shell.tsx,
+// con su propio root — esto no lo afecta).
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
-  return (
-    <div id="admin-theme-root" className="panel-page min-h-full" suppressHydrationWarning>
-      {children}
-    </div>
-  );
+  return <div className="panel-page min-h-full">{children}</div>;
 }

@@ -113,7 +113,7 @@ export default async function EventPage({ params }: { params: Promise<{ eventId:
                         <form action={deleteCourt.bind(null, eventId, court.id)}>
                           <ConfirmSubmitButton
                             confirmMessage={`¿Eliminar "${court.name}"? Los partidos que la tenían asignada quedan sin cancha.`}
-                            className="text-xs panel-button-danger"
+                            className="text-xs rounded-md px-2 py-1 panel-button-danger"
                           >
                             Eliminar
                           </ConfirmSubmitButton>
@@ -277,35 +277,42 @@ export default async function EventPage({ params }: { params: Promise<{ eventId:
               ) => {
                 const colors = disciplineColor(c.disciplines);
                 return (
-                  <div key={c.id} className="flex items-stretch gap-2">
+                  // Una sola tarjeta redondeada (antes el link y el botón
+                  // Eliminar eran dos cajas pegadas de distinta altura, con
+                  // el botón estirado a h-full — se veía como un recorte
+                  // aparte en vez de una acción más de la misma fila).
+                  <div
+                    key={c.id}
+                    className={`group flex items-center gap-2 rounded-lg border-l-4 ${colors.border} ${colors.bg} pr-2 shadow-sm transition duration-200 hover:shadow-lg hover:-translate-y-0.5`}
+                  >
                     <Link
                       href={`/admin/competencias/${c.id}`}
-                      className={`flex-1 min-w-0 group flex items-center justify-between gap-3 rounded-lg border-l-4 ${colors.border} ${colors.bg} px-3.5 py-2.5 shadow-sm transition duration-200 hover:shadow-lg hover:-translate-y-0.5 hover:brightness-95 active:translate-y-0 active:scale-[0.99]`}
+                      className="flex-1 min-w-0 flex items-center justify-between gap-3 px-3.5 py-2.5 rounded-lg hover:brightness-95 active:scale-[0.99] transition"
                     >
-                    <div className="min-w-0">
-                      <p className="text-sm font-medium truncate">
-                        {c.disciplines?.name} — {c.categories?.name}
-                      </p>
-                      <p className="text-xs panel-label">{formatLabel[c.format_type]}</p>
-                    </div>
-                    <div className="flex items-center gap-2 shrink-0">
-                      <span
-                        className={`text-xs rounded-full px-2 py-0.5 font-medium ${competitionStatusChipClass[c.status]}`}
-                      >
-                        {competitionStatusLabel[c.status]}
-                      </span>
-                      <span
-                        className="panel-label text-lg leading-none transition-transform group-hover:translate-x-0.5"
-                        aria-hidden="true"
-                      >
-                        →
-                      </span>
-                    </div>
+                      <div className="min-w-0">
+                        <p className="text-sm font-medium truncate">
+                          {c.disciplines?.name} — {c.categories?.name}
+                        </p>
+                        <p className="text-xs panel-label">{formatLabel[c.format_type]}</p>
+                      </div>
+                      <div className="flex items-center gap-2 shrink-0">
+                        <span
+                          className={`text-xs rounded-full px-2 py-0.5 font-medium ${competitionStatusChipClass[c.status]}`}
+                        >
+                          {competitionStatusLabel[c.status]}
+                        </span>
+                        <span
+                          className="panel-label text-lg leading-none transition-transform group-hover:translate-x-0.5"
+                          aria-hidden="true"
+                        >
+                          →
+                        </span>
+                      </div>
                     </Link>
                     <form action={deleteCompetition.bind(null, c.id)} className="shrink-0">
                       <ConfirmSubmitButton
                         confirmMessage={`¿Eliminar el torneo "${c.disciplines?.name} — ${c.categories?.name}"? Se borran sus equipos, grupos y partidos. No se puede deshacer.`}
-                        className="h-full text-xs rounded-lg panel-button-danger px-3 border border-red-500/30 hover:bg-red-500/10"
+                        className="text-xs rounded-full px-3 py-1.5 panel-button-danger whitespace-nowrap"
                       >
                         Eliminar
                       </ConfirmSubmitButton>
@@ -400,7 +407,7 @@ export default async function EventPage({ params }: { params: Promise<{ eventId:
             <form action={deleteEvent.bind(null, eventId)}>
               <ConfirmSubmitButton
                 confirmMessage={`¿Eliminar el evento "${event.name}"? Se borran TODOS sus torneos, canchas, equipos, grupos y partidos. No se puede deshacer.`}
-                className="text-xs rounded-full panel-button-danger px-3 py-1.5 border border-red-500/30 bg-red-500/5 whitespace-nowrap"
+                className="text-xs rounded-full panel-button-danger px-3 py-1.5 whitespace-nowrap"
               >
                 🗑️ Eliminar evento
               </ConfirmSubmitButton>

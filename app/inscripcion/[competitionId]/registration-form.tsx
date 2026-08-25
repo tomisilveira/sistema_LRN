@@ -47,7 +47,7 @@ export function RegistrationForm({ competitionId }: { competitionId: string }) {
     <form onSubmit={handleSubmit} className="space-y-4">
       <div>
         <label className="block text-sm panel-label mb-1" htmlFor="name">
-          Nombre del equipo *
+          Nombre del robot *
         </label>
         <input id="name" name="name" required className="w-full rounded-md panel-input px-3 py-2 text-sm" />
       </div>

@@ -35,14 +35,15 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
     >
       <body className="min-h-full flex flex-col">
         {/* `beforeInteractive` solo puede ir en el root layout (ver
-            node_modules/next/dist/docs/.../script.md) — antes vivían, uno
-            cada uno, dentro de app/admin/layout.tsx y public-shell.tsx
-            (layouts anidados), lo que React 19 ya no deja pasar en
-            silencio. Cada script busca su propio id de root (admin-theme-root
-            / public-theme-root) y no hace nada si esa página no lo tiene. */}
-        <Script id="admin-theme-init" strategy="beforeInteractive">
-          {"try{if(localStorage.getItem('lrn-admin-theme')==='dark'){document.getElementById('admin-theme-root').classList.add('dark');}}catch(e){}"}
-        </Script>
+            node_modules/next/dist/docs/.../script.md) — antes vivía dentro
+            de public-shell.tsx (layout anidado), lo que React 19 ya no deja
+            pasar en silencio. Busca su propio id de root (public-theme-root)
+            y no hace nada si esa página no lo tiene.
+            El admin NO tiene modo oscuro (a propósito, pedido explícito del
+            usuario ago 2026 — antes tenía un toggle propio que quedaba
+            pegado en oscuro entre sesiones y volvía todo casi negro; ver
+            app/admin/layout.tsx). El público conserva el suyo; el kiosco de
+            campo (juez/inscripción/acreditación) tampoco tuvo nunca uno. */}
         <Script id="public-theme-init" strategy="beforeInteractive">
           {"try{if(localStorage.getItem('lrn-public-theme')==='dark'){document.getElementById('public-theme-root').classList.add('dark');}}catch(e){}"}
         </Script>

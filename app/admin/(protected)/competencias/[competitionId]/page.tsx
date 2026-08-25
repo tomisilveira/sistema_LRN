@@ -237,7 +237,7 @@ export default async function CompetitionPage({
             <form action={deleteCompetition.bind(null, competitionId)}>
               <ConfirmSubmitButton
                 confirmMessage={`¿Eliminar el torneo "${discipline?.name} — ${category?.name}"? Se borran sus equipos, grupos y partidos. No se puede deshacer.`}
-                className="text-sm rounded-md panel-button-danger px-4 py-2 border border-red-500/30 hover:bg-red-500/10"
+                className="text-sm rounded-md panel-button-danger px-4 py-2"
               >
                 🗑️ Eliminar torneo
               </ConfirmSubmitButton>
@@ -295,11 +295,11 @@ export default async function CompetitionPage({
               submitLabel="Agregar"
             >
               <div>
-                <label className="block text-sm panel-label mb-1">Nombre del equipo</label>
+                <label className="block text-sm panel-label mb-1">Nombre del robot</label>
                 <input
                   name="name"
                   required
-                  placeholder="Nombre del equipo"
+                  placeholder="Nombre del robot"
                   className="w-full rounded-md panel-input px-3 py-2 text-sm"
                 />
               </div>
@@ -370,7 +370,7 @@ export default async function CompetitionPage({
                     <form action={removeTeam.bind(null, competitionId, t.id)}>
                       <ConfirmSubmitButton
                         confirmMessage={`¿Quitar a ${t.name} del torneo? Si ya tiene partidos asignados, se pierden.`}
-                        className="text-xs panel-button-danger"
+                        className="text-xs rounded-md px-2 py-0.5 panel-button-danger"
                       >
                         Quitar
                       </ConfirmSubmitButton>
