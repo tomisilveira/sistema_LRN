@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { SignOutButton } from "./sign-out-button";
 import { useSectionNav, type SectionNavItem } from "./section-nav-context";
+import { BrandIcon } from "@/app/components/brand-mark";
 
 const NAV_ITEMS = [
   { href: "/admin", label: "Eventos" },
@@ -15,17 +16,6 @@ const NAV_ITEMS = [
 // secciones de la entidad activa (ver SectionNavProvider).
 const isUnderEventos = (pathname: string) =>
   pathname === "/admin" || pathname.startsWith("/admin/eventos") || pathname.startsWith("/admin/competencias");
-
-function BrandDots() {
-  return (
-    <span className="flex gap-0.5 shrink-0 panel-brand-dots" aria-hidden="true">
-      <span className="w-2 h-2 rounded-full bg-brand-teal" />
-      <span className="w-2 h-2 rounded-full bg-brand-orange" />
-      <span className="w-2 h-2 rounded-full bg-brand-pink" />
-      <span className="w-2 h-2 rounded-full bg-brand-green" />
-    </span>
-  );
-}
 
 function NavLink({ href, label, active }: { href: string; label: string; active: boolean }) {
   return (
@@ -96,7 +86,7 @@ export function AdminSidebar({ userEmail }: { userEmail: string }) {
       <header className="md:hidden panel-nav border-b sticky top-0 z-30">
         <div className="px-4 py-3 flex items-center justify-between gap-3">
           <Link href="/admin" className="flex items-center gap-2">
-            <BrandDots />
+            <BrandIcon className="h-7 w-7" priority />
             <span className="font-semibold text-sm">Liga Robótica Neuquina</span>
           </Link>
         </div>
@@ -128,7 +118,7 @@ export function AdminSidebar({ userEmail }: { userEmail: string }) {
 
       <aside className="hidden md:flex md:flex-col md:w-56 md:shrink-0 md:sticky md:top-0 md:h-screen panel-nav border-r">
         <Link href="/admin" className="flex items-center gap-2.5 p-4">
-          <BrandDots />
+          <BrandIcon className="h-8 w-8" priority />
           <span className="min-w-0">
             <span className="block font-semibold leading-tight text-sm">Liga Robótica Neuquina</span>
             <span className="block text-[11px] panel-label leading-tight">Panel de administración</span>

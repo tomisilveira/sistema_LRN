@@ -22,9 +22,32 @@ const rajdhani = Rajdhani({
   subsets: ["latin"],
 });
 
+const SITE_NAME = "Liga Robótica Neuquina";
+const SITE_DESCRIPTION = "Sistema de administración y visualización de jornada — Liga Robótica Neuquina";
+// `app/icon.png`, `app/apple-icon.png` y `app/opengraph-image.png` (+
+// `twitter-image.png`) se detectan solos por convención de archivo — no
+// hace falta declararlos acá (ver node_modules/next/dist/docs/.../app-icons.md
+// y .../opengraph-image.md). metadataBase sí hace falta: sin él, Next no
+// puede armar la URL absoluta de esas imágenes para los crawlers y tira un
+// warning en build. VERCEL_URL lo inyecta Vercel solo en cada deploy.
+const siteUrl = process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "http://localhost:3000";
+
 export const metadata: Metadata = {
-  title: "Liga Robótica Neuquina",
-  description: "Sistema de administración y visualización de jornada — Liga Robótica Neuquina",
+  metadataBase: new URL(siteUrl),
+  title: SITE_NAME,
+  description: SITE_DESCRIPTION,
+  openGraph: {
+    title: SITE_NAME,
+    description: SITE_DESCRIPTION,
+    siteName: SITE_NAME,
+    locale: "es_AR",
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: SITE_NAME,
+    description: SITE_DESCRIPTION,
+  },
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {

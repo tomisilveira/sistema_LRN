@@ -1,3 +1,5 @@
+import { BrandIcon } from "./brand-mark";
+
 /** Shell compartido por las pantallas operativas de campo (juez, acreditación,
  * inscripción): claro por defecto, igual que el resto del sitio — usa la
  * MISMA paleta y componentes semánticos (panel-*) que admin y /publico, así
@@ -22,12 +24,7 @@ export function KioskShell({
     <div className="panel-page min-h-screen">
       <div className={`${maxWidthClassName} mx-auto p-4`}>
         <header className="py-4 flex items-center gap-2.5 panel-enter">
-          <span className="flex gap-0.5 shrink-0 panel-brand-dots" aria-hidden="true">
-            <span className="w-2 h-2 rounded-full bg-brand-teal" />
-            <span className="w-2 h-2 rounded-full bg-brand-orange" />
-            <span className="w-2 h-2 rounded-full bg-brand-pink" />
-            <span className="w-2 h-2 rounded-full bg-brand-green" />
-          </span>
+          <BrandIcon className="h-8 w-8" priority />
           <div className="min-w-0">
             {eyebrow && <p className="text-sm panel-label truncate">{eyebrow}</p>}
             <h1 className="text-xl font-bold truncate">{title}</h1>

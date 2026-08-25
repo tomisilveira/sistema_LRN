@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { PublicThemeToggle } from "./public-theme-toggle";
+import { BrandIcon } from "./brand-mark";
 
 /** Shell compartido entre el inicio (app/page.tsx) y toda la sección
  * /publico — mismo header (logo, "Todos los eventos", toggle de tema,
@@ -16,12 +17,7 @@ export function PublicShell({ children }: { children: React.ReactNode }) {
       <header className="panel-nav panel-page border-b shadow-sm sticky top-0 z-20">
         <div className="max-w-4xl mx-auto flex flex-wrap items-center justify-between gap-3 px-4 sm:px-6 py-3">
           <Link href="/" className="flex items-center gap-2">
-            <span className="flex gap-1 panel-brand-dots" aria-hidden="true">
-              <span className="w-2 h-2 rounded-full bg-brand-teal" />
-              <span className="w-2 h-2 rounded-full bg-brand-orange" />
-              <span className="w-2 h-2 rounded-full bg-brand-pink" />
-              <span className="w-2 h-2 rounded-full bg-brand-green" />
-            </span>
+            <BrandIcon className="h-7 w-7" priority />
             <span className="font-semibold">Liga Robótica Neuquina</span>
           </Link>
           <nav className="flex flex-wrap items-center gap-2">

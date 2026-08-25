@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import type { EventRow } from "@/lib/database.types";
+import { BrandLockup } from "@/app/components/brand-mark";
 
 export const revalidate = 0;
 
@@ -33,8 +34,9 @@ export default async function PublicEventsPage() {
       {/* Mismo tratamiento de "portada" que el inicio (app/page.tsx) cuando
           no hay torneo en vivo — para que se sienta la misma página y no una
           lista aparte con otro estilo. */}
-      <div className="text-center space-y-2 py-6">
-        <h1 className="text-xl sm:text-2xl font-bold">Liga Robótica Neuquina</h1>
+      <div className="text-center space-y-3 py-6">
+        <h1 className="sr-only">Liga Robótica Neuquina</h1>
+        <BrandLockup className="h-10 sm:h-12 w-auto mx-auto" />
         <p className="panel-label text-sm">Todas las jornadas</p>
       </div>
       <div className="space-y-2 panel-enter-stagger">

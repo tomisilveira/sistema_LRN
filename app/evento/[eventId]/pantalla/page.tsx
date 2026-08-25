@@ -6,6 +6,7 @@ import { buildCourtBoards, type CourtBoardMatch } from "@/lib/build-court-boards
 import { buildPantallaFallback } from "@/lib/build-pantalla-fallback";
 import { disciplineColor, type DisciplineColorSet } from "@/lib/discipline-colors";
 import { PublicRealtime } from "@/app/components/public-realtime";
+import { BrandIcon } from "@/app/components/brand-mark";
 import { ScreenBoards } from "./screen-boards";
 import { ScreenFallback } from "./screen-fallback";
 
@@ -91,12 +92,7 @@ export default async function PantallaPage({ params }: { params: Promise<{ event
       <div className="p-4 sm:p-6 space-y-5">
         <header className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 pb-3 border-b-2 border-neutral-200 dark:border-neutral-800 panel-enter">
           <div className="flex items-center gap-2.5 min-w-0">
-            <span className="flex gap-1 panel-brand-dots shrink-0" aria-hidden="true">
-              <span className="w-2.5 h-2.5 rounded-full bg-brand-teal" />
-              <span className="w-2.5 h-2.5 rounded-full bg-brand-orange" />
-              <span className="w-2.5 h-2.5 rounded-full bg-brand-pink" />
-              <span className="w-2.5 h-2.5 rounded-full bg-brand-green" />
-            </span>
+            <BrandIcon className="h-9 w-9" priority />
             <h1 className="text-2xl sm:text-3xl font-display font-bold truncate">{event.name}</h1>
           </div>
           <p className="text-sm font-display font-semibold panel-label shrink-0">{event.event_date}</p>
