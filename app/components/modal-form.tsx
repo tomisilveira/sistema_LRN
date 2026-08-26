@@ -25,35 +25,50 @@ export function ModalFormButton({
   children: React.ReactNode;
   action: (formData: FormData) => Promise<void>;
   submitLabel?: string;
-  /** Si viene, antes de llamar al action pide confirmación (window.confirm)
-   * — para la opción del cuadro que sea una acción destructiva (ej. el
+  /** Si viene, antes de llamar al action pide confirmación (cartel propio
+   * en el modal, no window.confirm) — para la opción del cuadro que sea
+   * una acción destructiva (ej. el
    * sorteo aleatorio, que pisa las asignaciones de grupo actuales). */
   confirmMessage?: string;
 }) {
   const [open, setOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
+  const [armed, setArmed] = useState(false);
   const formRef = useRef<HTMLFormElement>(null);
 
   function close() {
     setOpen(false);
     setError(null);
+    setArmed(false);
     formRef.current?.reset();
   }
 
-  function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
-    e.preventDefault();
-    if (confirmMessage && !window.confirm(confirmMessage)) return;
+  function submitNow(formData: FormData) {
     setError(null);
-    const formData = new FormData(e.currentTarget);
     startTransition(async () => {
       try {
         await action(formData);
         close();
       } catch (err) {
         setError((err as Error).message ?? "No se pudo guardar.");
+        setArmed(false);
       }
     });
+  }
+
+  function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    const formData = new FormData(e.currentTarget);
+    // Cartel de confirmación propio del sistema, no `window.confirm` — se
+    // puede bloquear o no aparecer en celular/tablet (reportado en vivo
+    // 2026-08-27). Primer submit con confirmMessage arma el cartel en vez
+    // de guardar directo; el segundo click ya viene de handleConfirmedSubmit.
+    if (confirmMessage && !armed) {
+      setArmed(true);
+      return;
+    }
+    submitNow(formData);
   }
 
   return (
@@ -103,22 +118,45 @@ export function ModalFormButton({
               <form ref={formRef} onSubmit={handleSubmit} className="space-y-3">
                 {children}
                 {error && <p className="text-sm text-red-500 dark:text-red-400">{error}</p>}
-                <div className="flex gap-2 pt-1">
-                  <button
-                    type="submit"
-                    disabled={pending}
-                    className="rounded-md panel-button-primary font-medium px-4 py-2 text-sm disabled:opacity-50"
-                  >
-                    {pending ? "Guardando…" : submitLabel}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={close}
-                    className="rounded-md panel-button-secondary px-4 py-2 text-sm"
-                  >
-                    Cancelar
-                  </button>
-                </div>
+                {armed ? (
+                  <div className="rounded-md border border-red-500/30 bg-red-500/8 p-2.5 space-y-2 panel-enter">
+                    <p className="text-sm panel-label">{confirmMessage}</p>
+                    <div className="flex gap-2">
+                      <button
+                        type="submit"
+                        disabled={pending}
+                        className="flex-1 rounded-md panel-button-danger font-medium px-4 py-2 text-sm disabled:opacity-50"
+                      >
+                        {pending ? "Guardando…" : "Sí, confirmar"}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setArmed(false)}
+                        disabled={pending}
+                        className="flex-1 rounded-md panel-button-secondary px-4 py-2 text-sm disabled:opacity-50"
+                      >
+                        Volver
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex gap-2 pt-1">
+                    <button
+                      type="submit"
+                      disabled={pending}
+                      className="rounded-md panel-button-primary font-medium px-4 py-2 text-sm disabled:opacity-50"
+                    >
+                      {pending ? "Guardando…" : submitLabel}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={close}
+                      className="rounded-md panel-button-secondary px-4 py-2 text-sm"
+                    >
+                      Cancelar
+                    </button>
+                  </div>
+                )}
               </form>
             </div>
           </div>,

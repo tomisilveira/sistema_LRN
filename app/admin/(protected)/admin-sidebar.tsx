@@ -84,7 +84,7 @@ export function AdminSidebar({ userEmail }: { userEmail: string }) {
 
   return (
     <>
-      <header className="md:hidden panel-nav border-b sticky top-0 z-30">
+      <header className="md:hidden panel-nav panel-page border-b sticky top-0 z-30">
         <div className="px-4 py-3 flex items-center justify-between gap-3">
           <Link href="/admin" className="flex items-center gap-2">
             <BrandIcon className="h-7 w-7" priority />

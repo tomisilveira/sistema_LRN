@@ -40,6 +40,14 @@ export function MatchTimerPanel({
   const [liveScoreA, setLiveScoreA] = useState(String(match.score_a ?? 0));
   const [liveScoreB, setLiveScoreB] = useState(String(match.score_b ?? 0));
   const [periodEnded, setPeriodEnded] = useState(false);
+  // Carteles de confirmación propios del sistema, no `window.confirm` — se
+  // puede bloquear o no aparecer en el celular/tablet de la cancha
+  // (reportado en vivo 2026-08-27 sobre "Mover a otro torneo", mismo
+  // riesgo acá). null/false = sin armar; el valor identifica QUÉ se está
+  // por confirmar (para la tarjeta roja, de qué equipo).
+  const [confirmingCancel, setConfirmingCancel] = useState(false);
+  const [confirmingRoundTie, setConfirmingRoundTie] = useState(false);
+  const [confirmingRedCard, setConfirmingRedCard] = useState<{ teamId: string; teamName: string } | null>(null);
 
   async function call(path: string, body: Record<string, unknown> = {}) {
     setPending(true);
@@ -65,8 +73,8 @@ export function MatchTimerPanel({
     }
   }
 
-  async function handleCancel() {
-    if (!window.confirm("¿Abriste este partido por error? Se pierde el progreso del reloj y de los rounds.")) return;
+  async function confirmedCancel() {
+    setConfirmingCancel(false);
     await fetch(`/api/matches/${match.id}/start`, {
       method: "DELETE",
       headers: { "Content-Type": "application/json" },
@@ -87,12 +95,22 @@ export function MatchTimerPanel({
   }
 
   async function handleCard(teamId: string, cardType: CardType, teamName: string) {
-    if (cardType === "red" && !window.confirm(`¿Tarjeta roja a ${teamName}? Queda registrada en el partido.`)) return;
+    if (cardType === "red") {
+      setConfirmingRedCard({ teamId, teamName });
+      return;
+    }
     await call("card", { teamId, cardType });
   }
 
-  async function handleRoundTie() {
-    if (!window.confirm("¿Empataron este round? Se repite desde cero, no cuenta para ninguno de los dos.")) return;
+  async function confirmedRedCard() {
+    if (!confirmingRedCard) return;
+    const { teamId } = confirmingRedCard;
+    setConfirmingRedCard(null);
+    await call("card", { teamId, cardType: "red" });
+  }
+
+  async function confirmedRoundTie() {
+    setConfirmingRoundTie(false);
     await call("round-tie");
   }
 
@@ -206,13 +224,37 @@ export function MatchTimerPanel({
           >
             Ganó {teamBName}
           </button>
-          <button
-            onClick={handleRoundTie}
-            disabled={pending}
-            className="col-span-2 rounded-lg py-2.5 text-sm font-display font-semibold border border-neutral-300 dark:border-neutral-700 panel-label hover:bg-neutral-200 dark:hover:bg-neutral-800 transition active:scale-[0.97] disabled:opacity-50"
-          >
-            🤝 Empate — repetir este round
-          </button>
+          {confirmingRoundTie ? (
+            <div className="col-span-2 rounded-lg border border-red-500/30 bg-red-500/8 p-2.5 space-y-2 panel-enter">
+              <p className="text-sm panel-label">
+                ¿Empataron este round? Se repite desde cero, no cuenta para ninguno de los dos.
+              </p>
+              <div className="flex gap-2">
+                <button
+                  onClick={confirmedRoundTie}
+                  disabled={pending}
+                  className="flex-1 rounded-lg panel-button-danger font-display font-semibold py-2 text-sm disabled:opacity-50"
+                >
+                  Sí, empataron
+                </button>
+                <button
+                  onClick={() => setConfirmingRoundTie(false)}
+                  disabled={pending}
+                  className="flex-1 rounded-lg panel-button-secondary font-display font-semibold py-2 text-sm disabled:opacity-50"
+                >
+                  Volver
+                </button>
+              </div>
+            </div>
+          ) : (
+            <button
+              onClick={() => setConfirmingRoundTie(true)}
+              disabled={pending}
+              className="col-span-2 rounded-lg py-2.5 text-sm font-display font-semibold border border-neutral-300 dark:border-neutral-700 panel-label hover:bg-neutral-200 dark:hover:bg-neutral-800 transition active:scale-[0.97] disabled:opacity-50"
+            >
+              🤝 Empate — repetir este round
+            </button>
+          )}
         </div>
       ) : (
         <div className="space-y-3">
@@ -293,11 +335,59 @@ export function MatchTimerPanel({
             </button>
           </div>
         </div>
+        {confirmingRedCard && (
+          <div className="rounded-lg border border-red-500/30 bg-red-500/8 p-2.5 space-y-2 panel-enter">
+            <p className="text-sm panel-label">
+              ¿Tarjeta roja a {confirmingRedCard.teamName}? Queda registrada en el partido.
+            </p>
+            <div className="flex gap-2">
+              <button
+                onClick={confirmedRedCard}
+                disabled={pending}
+                className="flex-1 rounded-lg panel-button-danger font-display font-semibold py-2 text-sm disabled:opacity-50"
+              >
+                Sí, tarjeta roja
+              </button>
+              <button
+                onClick={() => setConfirmingRedCard(null)}
+                disabled={pending}
+                className="flex-1 rounded-lg panel-button-secondary font-display font-semibold py-2 text-sm disabled:opacity-50"
+              >
+                Volver
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
-      <button onClick={handleCancel} className="text-xs panel-label hover:opacity-80 transition-opacity underline block mx-auto">
-        Abrí mal, volver
-      </button>
+      {confirmingCancel ? (
+        <div className="rounded-lg border border-red-500/30 bg-red-500/8 p-2.5 space-y-2 max-w-xs mx-auto panel-enter">
+          <p className="text-sm panel-label text-center">
+            ¿Abriste este partido por error? Se pierde el progreso del reloj y de los rounds.
+          </p>
+          <div className="flex gap-2">
+            <button
+              onClick={confirmedCancel}
+              className="flex-1 rounded-lg panel-button-danger font-display font-semibold py-2 text-sm"
+            >
+              Sí, volver
+            </button>
+            <button
+              onClick={() => setConfirmingCancel(false)}
+              className="flex-1 rounded-lg panel-button-secondary font-display font-semibold py-2 text-sm"
+            >
+              Seguir acá
+            </button>
+          </div>
+        </div>
+      ) : (
+        <button
+          onClick={() => setConfirmingCancel(true)}
+          className="text-xs panel-label hover:opacity-80 transition-opacity underline block mx-auto"
+        >
+          Abrí mal, volver
+        </button>
+      )}
     </section>
   );
 }
