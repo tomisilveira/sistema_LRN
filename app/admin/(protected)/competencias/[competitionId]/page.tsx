@@ -226,10 +226,19 @@ export default async function CompetitionPage({
   })[];
   // Destinos válidos para "Mover a otro torneo" (ver move-team-select.tsx):
   // cualquier otro torneo del evento que todavía no arrancó — uno que ya
-  // tiene fixture armado no tiene dónde meter un equipo nuevo.
+  // tiene fixture armado no tiene dónde meter un equipo nuevo. No se
+  // restringe a la misma disciplina (pedido explícito: "quiero moverlos
+  // individualmente entre torneos por si se anotan mal") — se marca la
+  // opción cuando SÍ cambia de disciplina, porque ahí `robot_names` (solo
+  // tiene sentido en fútbol) puede quedar de más o vacío del otro lado; el
+  // admin lo completa/limpia a mano desde "Editar equipo" después de mover.
   const moveTargets = siblingCompetitions
     .filter((c) => c.id !== competitionId && c.status === "setup")
-    .map((c) => ({ id: c.id, label: disciplineCategoryLabel(c.disciplines, c.categories) }));
+    .map((c) => ({
+      id: c.id,
+      label: disciplineCategoryLabel(c.disciplines, c.categories),
+      crossDiscipline: c.disciplines?.name !== discipline?.name,
+    }));
 
   // Las canchas se comparten entre torneos, pero conviene ver primero las
   // que ya están armadas para esta disciplina — evita elegir por error una

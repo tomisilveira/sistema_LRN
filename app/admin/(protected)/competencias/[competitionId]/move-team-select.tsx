@@ -17,7 +17,7 @@ export function MoveTeamSelect({
 }: {
   competitionId: string;
   teamId: string;
-  options: { id: string; label: string }[];
+  options: { id: string; label: string; crossDiscipline: boolean }[];
 }) {
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
@@ -25,6 +25,11 @@ export function MoveTeamSelect({
 
   if (options.length === 0) return null;
 
+  // El equipo desaparece de esta lista apenas se mueve (queda en el torneo
+  // destino), así que un aviso post-movimiento en esta misma fila nunca
+  // llegaría a mostrarse — por eso el aviso de "cambia de disciplina" va
+  // ANTES, como parte de la opción (⚠️ + tooltip nativo del <option>), no
+  // después de moverlo.
   return (
     <div className="flex flex-col items-end gap-0.5">
       <select
@@ -49,8 +54,16 @@ export function MoveTeamSelect({
       >
         <option value="">Mover a otro torneo…</option>
         {options.map((o) => (
-          <option key={o.id} value={o.id}>
-            {o.label}
+          <option
+            key={o.id}
+            value={o.id}
+            title={
+              o.crossDiscipline
+                ? 'Cambia de disciplina: revisá los robots del equipo en "Editar equipo" después de moverlo.'
+                : undefined
+            }
+          >
+            {o.crossDiscipline ? `⚠️ ${o.label}` : o.label}
           </option>
         ))}
       </select>
