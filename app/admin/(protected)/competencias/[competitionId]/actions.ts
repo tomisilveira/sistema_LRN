@@ -635,6 +635,62 @@ export async function moveTeamToCompetition(competitionId: string, teamId: strin
   revalidatePath(`/admin/competencias/${targetCompetitionId}`);
 }
 
+/**
+ * Fusiona ESTE torneo con otro del mismo evento: mueve TODOS sus equipos
+ * de una — pedido explícito, en vez de repetir "Mover a otro torneo" fila
+ * por fila cuando son muchos equipos. Mismas reglas de seguridad que
+ * moveTeamToCompetition (ningún equipo puede tener partidos generados acá,
+ * el destino tiene que seguir en "setup"), chequeadas una sola vez para
+ * todo el torneo. El torneo de origen queda vacío (0 equipos) pero NO se
+ * borra solo — a propósito, para no tomar esa decisión por el admin; si ya
+ * no hace falta, lo borra a mano con "🗑️ Eliminar torneo".
+ */
+export async function mergeCompetitionTeams(competitionId: string, targetCompetitionId: string) {
+  if (!targetCompetitionId) return;
+
+  const supabase = await createServerSupabaseClient();
+
+  const { count: matchesHere } = await supabase
+    .from("matches")
+    .select("id", { count: "exact", head: true })
+    .eq("competition_id", competitionId);
+  if (matchesHere) {
+    throw new Error("Este torneo ya tiene partidos generados — reiniciálo antes de fusionarlo.");
+  }
+
+  const [{ data: source }, { data: target }] = await Promise.all([
+    supabase.from("competitions").select("event_id").eq("id", competitionId).single(),
+    supabase.from("competitions").select("id, event_id, status").eq("id", targetCompetitionId).maybeSingle(),
+  ]);
+  if (!target) throw new Error("Torneo de destino no encontrado.");
+  if (!source || source.event_id !== target.event_id) {
+    throw new Error("Solo se puede fusionar con otro torneo del mismo evento.");
+  }
+  if (target.status !== "setup") {
+    throw new Error("El torneo de destino ya arrancó — reiniciálo antes de recibir estos equipos.");
+  }
+
+  const { data: teams } = await supabase.from("teams").select("id").eq("competition_id", competitionId);
+  const teamIds = (teams ?? []).map((t) => t.id);
+  if (teamIds.length === 0) throw new Error("Este torneo no tiene equipos para mover.");
+
+  const { data: groupIds } = await supabase.from("groups").select("id").eq("competition_id", competitionId);
+  const ids = (groupIds ?? []).map((g) => g.id);
+  if (ids.length > 0) {
+    await supabase.from("group_teams").delete().in("team_id", teamIds).in("group_id", ids);
+  }
+
+  const { error } = await supabase
+    .from("teams")
+    .update({ competition_id: targetCompetitionId, seed_order: null })
+    .in("id", teamIds);
+  if (error) throw new Error(error.message);
+
+  revalidateCompetition(competitionId);
+  revalidatePath(`/admin/competencias/${targetCompetitionId}`);
+  return teamIds.length;
+}
+
 /** Orden de siembra manual de un equipo, solo usado en `format_type =
  * 'bracket_only'` (cuadro sin fase de grupos) — ver
  * generateBracketForCompetition. Vacío = sin semilla forzada, se ordena por

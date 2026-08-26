@@ -30,6 +30,7 @@ import { StandingsTable } from "./standings-table";
 import { MatchResultForm } from "./match-result-form";
 import { MatchScheduleForm } from "./match-schedule-form";
 import { TeamCard } from "./team-card";
+import { MergeCompetitionButton } from "./merge-competition-button";
 import { BracketView, type BracketDisplayMatch } from "./bracket-view";
 import { RealtimeRefresh } from "./realtime-refresh";
 import { CopyLinkButton } from "@/app/components/copy-link-button";
@@ -341,6 +342,13 @@ export default async function CompetitionPage({
               arrancó{blockedMoveSiblings.length > 1 ? "ron" : ""} (tiene fixture armado). Reiniciálo si
               necesitás mover equipos ahí.
             </p>
+          )}
+          {competition.status === "setup" && moveTargets.length > 0 && (teams ?? []).length > 0 && (
+            <MergeCompetitionButton
+              competitionId={competitionId}
+              teamCount={(teams ?? []).length}
+              options={moveTargets}
+            />
           )}
           <div className="grid sm:grid-cols-2 xl:grid-cols-3 gap-3 panel-enter-stagger">
             {(teams ?? []).map((t: Team) => (
