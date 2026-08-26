@@ -233,6 +233,20 @@ body {
    ========================================================================== */
 
 @media (prefers-reduced-motion: no-preference) {
+  /* Los "to" de acá terminan en `transform: none` a propósito, no en
+     translateY(0)/scale(1) — con `animation-fill-mode: both` (ver
+     .panel-enter etc. más abajo) el valor final queda pegado en el
+     elemento para siempre después de que termina la animación, y CUALQUIER
+     transform que no sea exactamente `none` arma un containing block nuevo
+     para los descendientes `position: fixed`. Como `.panel-enter` se aplica
+     al <main> de todo el panel admin (ver layout.tsx) y `.panel-enter-stagger`
+     a montones de contenedores de listas, eso rompía el backdrop
+     "fixed inset-0" de ModalFormButton apenas pasaba el pestañeo de entrada
+     de la página: el modal (ej. "Editar equipo") quedaba posicionado
+     relativo a ese contenedor en vez de a toda la pantalla, con el fondo
+     oscuro sin cubrir nada — reportado en vivo 2026-08-27. Los navegadores
+     interpolan bien de translateY/scale a `none` (se trata como la
+     transform identidad), así que la animación se ve exactamente igual. */
   @keyframes panel-fade-up {
     from {
       opacity: 0;
@@ -240,7 +254,7 @@ body {
     }
     to {
       opacity: 1;
-      transform: translateY(0);
+      transform: none;
     }
   }
 
@@ -260,7 +274,7 @@ body {
     }
     to {
       opacity: 1;
-      transform: scale(1);
+      transform: none;
     }
   }
 

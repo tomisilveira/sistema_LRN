@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef, useState, useTransition } from "react";
+import { createPortal } from "react-dom";
 
 /** Botón que abre un cuadro (modal) con un formulario adentro — al guardar,
  * llama al Server Action pasado por props y, si sale bien, cierra el cuadro
@@ -60,57 +61,69 @@ export function ModalFormButton({
       <button type="button" onClick={() => setOpen(true)} className={buttonClassName}>
         {buttonLabel}
       </button>
-      {open && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 panel-modal-backdrop"
-          onClick={close}
-        >
+      {open &&
+        createPortal(
+          // Portal a document.body a propósito: cualquier ancestro con
+          // `.panel-enter`/`.panel-enter-stagger` (la entrada animada de
+          // casi toda página/lista del panel) deja pegado un
+          // `transform: matrix(1,0,0,1,0,0)` una vez que termina la
+          // animación — visualmente es la identidad, pero para CSS sigue
+          // siendo "un transform distinto de none", así que arma un
+          // containing block nuevo para `position: fixed`. Sin el portal,
+          // este backdrop terminaba anclado a ese ancestro en vez de a la
+          // ventana entera (el modal "Editar equipo" salía mal ubicado y
+          // sin fondo oscuro real — reportado en vivo 2026-08-27).
           <div
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="modal-form-title"
-            className="panel-page panel-card rounded-xl p-5 w-full max-w-md space-y-4 shadow-lg panel-modal-panel"
-            onClick={(e) => e.stopPropagation()}
+            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 panel-modal-backdrop"
+            onClick={close}
           >
-            <div className="flex items-start justify-between gap-2">
-              <div>
-                <h3 id="modal-form-title" className="font-semibold">
-                  {title}
-                </h3>
-                {description && <p className="text-xs panel-label mt-0.5">{description}</p>}
-              </div>
-              <button
-                type="button"
-                onClick={close}
-                aria-label="Cerrar"
-                className="panel-label hover:opacity-70 hover:rotate-90 active:scale-90 transition-all duration-150 text-lg leading-none shrink-0"
-              >
-                ×
-              </button>
-            </div>
-            <form ref={formRef} onSubmit={handleSubmit} className="space-y-3">
-              {children}
-              {error && <p className="text-sm text-red-500 dark:text-red-400">{error}</p>}
-              <div className="flex gap-2 pt-1">
-                <button
-                  type="submit"
-                  disabled={pending}
-                  className="rounded-md panel-button-primary font-medium px-4 py-2 text-sm disabled:opacity-50"
-                >
-                  {pending ? "Guardando…" : submitLabel}
-                </button>
+            <div
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="modal-form-title"
+              className="panel-page panel-card rounded-xl p-5 w-full max-w-md space-y-4 shadow-lg panel-modal-panel"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex items-start justify-between gap-2">
+                <div>
+                  <h3 id="modal-form-title" className="font-semibold">
+                    {title}
+                  </h3>
+                  {description && <p className="text-xs panel-label mt-0.5">{description}</p>}
+                </div>
                 <button
                   type="button"
                   onClick={close}
-                  className="rounded-md panel-button-secondary px-4 py-2 text-sm"
+                  aria-label="Cerrar"
+                  className="panel-label hover:opacity-70 hover:rotate-90 active:scale-90 transition-all duration-150 text-lg leading-none shrink-0"
                 >
-                  Cancelar
+                  ×
                 </button>
               </div>
-            </form>
-          </div>
-        </div>
-      )}
+              <form ref={formRef} onSubmit={handleSubmit} className="space-y-3">
+                {children}
+                {error && <p className="text-sm text-red-500 dark:text-red-400">{error}</p>}
+                <div className="flex gap-2 pt-1">
+                  <button
+                    type="submit"
+                    disabled={pending}
+                    className="rounded-md panel-button-primary font-medium px-4 py-2 text-sm disabled:opacity-50"
+                  >
+                    {pending ? "Guardando…" : submitLabel}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={close}
+                    className="rounded-md panel-button-secondary px-4 py-2 text-sm"
+                  >
+                    Cancelar
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>,
+          document.body
+        )}
     </>
   );
 }
