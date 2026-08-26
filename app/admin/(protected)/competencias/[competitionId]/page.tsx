@@ -15,8 +15,6 @@ import type {
 } from "@/lib/database.types";
 import {
   addTeam,
-  updateTeam,
-  removeTeam,
   createGroup,
   randomDraw,
   startTournament,
@@ -28,18 +26,15 @@ import {
   deleteCompetition,
 } from "./actions";
 import { GroupAssignSelect } from "./group-assign-select";
-import { MoveTeamSelect } from "./move-team-select";
 import { StandingsTable } from "./standings-table";
 import { MatchResultForm } from "./match-result-form";
 import { MatchScheduleForm } from "./match-schedule-form";
-import { TeamAccreditationControls } from "./team-accreditation-controls";
+import { TeamCard } from "./team-card";
 import { BracketView, type BracketDisplayMatch } from "./bracket-view";
-import { TeamSeedInput } from "./team-seed-input";
 import { RealtimeRefresh } from "./realtime-refresh";
 import { CopyLinkButton } from "@/app/components/copy-link-button";
 import { TeamLabel } from "@/app/components/team-label";
 import { TeamFormFields } from "@/app/components/team-form-fields";
-import { parseRobotNames } from "@/lib/team-display";
 import { TeamCardBadges } from "@/app/components/team-card-badges";
 import { cardsByTeam } from "@/lib/match-cards";
 import { Breadcrumbs } from "@/app/components/breadcrumbs";
@@ -347,81 +342,19 @@ export default async function CompetitionPage({
               necesitás mover equipos ahí.
             </p>
           )}
-          <div className="grid sm:grid-cols-2 gap-2 panel-enter-stagger">
-            {(teams ?? []).map((t: Team) => {
-              const ready = t.accredited && t.homologated;
-              return (
-                <div
-                  key={t.id}
-                  className="panel-surface flex items-start justify-between gap-2 rounded-md px-3 py-2 text-sm transition-colors hover:border-brand-teal/40"
-                >
-                  <div className="min-w-0">
-                    <p className="truncate">
-                      <TeamLabel name={t.name} memberNames={t.member_names} />
-                    </p>
-                    {t.institution && <p className="text-xs panel-label">{t.institution}</p>}
-                    {t.robot_names && (
-                      <p className="text-xs panel-label opacity-80">
-                        🤖 {parseRobotNames(t.robot_names).join(", ")}
-                      </p>
-                    )}
-                    {t.mentor_name && (
-                      <p className="text-xs panel-label opacity-80">
-                        {t.mentor_name} · {t.mentor_contact}
-                      </p>
-                    )}
-                    <TeamAccreditationControls competitionId={competitionId} team={t} />
-                  </div>
-                  <div className="flex items-center gap-2 shrink-0">
-                    {competition.format_type === "bracket_only" && (
-                      <TeamSeedInput
-                        competitionId={competitionId}
-                        teamId={t.id}
-                        defaultValue={t.seed_order}
-                      />
-                    )}
-                    {groupsList.length > 0 && ready && (
-                      <GroupAssignSelect
-                        competitionId={competitionId}
-                        teamId={t.id}
-                        groups={groupsList}
-                        currentGroupId={groupIdByTeamId.get(t.id) ?? null}
-                      />
-                    )}
-                    {competition.status === "setup" && (
-                      <MoveTeamSelect competitionId={competitionId} teamId={t.id} teamName={t.name} options={moveTargets} />
-                    )}
-                    <ModalFormButton
-                      buttonLabel="Editar"
-                      buttonClassName="text-xs rounded-md px-2 py-0.5 panel-button-secondary"
-                      title={`Editar ${t.name}`}
-                      action={updateTeam.bind(null, competitionId, t.id)}
-                      submitLabel="Guardar"
-                    >
-                      <TeamFormFields
-                        isFutbol={isFutbol}
-                        defaults={{
-                          name: t.name,
-                          institution: t.institution ?? "",
-                          robots: parseRobotNames(t.robot_names),
-                          memberCount: t.member_count,
-                          memberNames: t.member_names,
-                          notes: t.notes ?? "",
-                        }}
-                      />
-                    </ModalFormButton>
-                    <form action={removeTeam.bind(null, competitionId, t.id)}>
-                      <ConfirmSubmitButton
-                        confirmMessage={`¿Quitar a ${t.name} del torneo? Si ya tiene partidos asignados, se pierden.`}
-                        className="text-xs rounded-md px-2 py-0.5 panel-button-danger"
-                      >
-                        Quitar
-                      </ConfirmSubmitButton>
-                    </form>
-                  </div>
-                </div>
-              );
-            })}
+          <div className="grid sm:grid-cols-2 xl:grid-cols-3 gap-3 panel-enter-stagger">
+            {(teams ?? []).map((t: Team) => (
+              <TeamCard
+                key={t.id}
+                competitionId={competitionId}
+                team={t}
+                isFutbol={isFutbol}
+                isBracketOnly={competition.format_type === "bracket_only"}
+                groups={groupsList}
+                currentGroupId={groupIdByTeamId.get(t.id) ?? null}
+                moveTargets={competition.status === "setup" ? moveTargets : []}
+              />
+            ))}
           </div>
         </section>
       ),

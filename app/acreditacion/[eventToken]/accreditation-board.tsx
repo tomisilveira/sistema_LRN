@@ -3,6 +3,9 @@
 import { useMemo, useState } from "react";
 import type { Team } from "@/lib/database.types";
 import { TeamCheckinRow } from "./team-checkin-row";
+import { ModalFormButton } from "@/app/components/modal-form";
+import { TeamFormFields } from "@/app/components/team-form-fields";
+import { addTeam } from "./actions";
 
 export interface AccreditationGroup {
   id: string;
@@ -69,7 +72,19 @@ export function AccreditationBoard({
 
       {filteredGroups.map((g) => (
         <section key={g.id} className="panel-card rounded-xl p-3 space-y-2 panel-enter">
-          <h2 className="text-sm font-semibold text-brand-teal uppercase tracking-wide">{g.label}</h2>
+          <div className="flex items-center justify-between gap-2">
+            <h2 className="text-sm font-semibold text-brand-teal uppercase tracking-wide">{g.label}</h2>
+            <ModalFormButton
+              buttonLabel="+ Agregar equipo"
+              buttonClassName="text-xs px-2.5 py-1 panel-button-xs shrink-0 whitespace-nowrap"
+              title={`Agregar equipo — ${g.label}`}
+              description="Para un equipo que se presenta hoy sin haberse anotado antes."
+              action={addTeam.bind(null, eventToken, g.id)}
+              submitLabel="Agregar"
+            >
+              <TeamFormFields isFutbol={g.isFutbol} />
+            </ModalFormButton>
+          </div>
           <div className="space-y-2 panel-enter-stagger">
             {g.teams.map((t) => (
               <TeamCheckinRow

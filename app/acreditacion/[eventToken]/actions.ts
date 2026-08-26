@@ -29,6 +29,27 @@ async function assertTeamBelongsToEvent(supabase: SupabaseClient, eventToken: st
   }
 }
 
+/** Misma validación que assertTeamBelongsToEvent pero para cargar un equipo
+ * NUEVO (todavía sin id) — se valida que el torneo elegido sea de este
+ * evento, no un teamId. */
+async function assertCompetitionBelongsToEvent(supabase: SupabaseClient, eventToken: string, competitionId: string) {
+  const { data: event } = await supabase
+    .from("events")
+    .select("id")
+    .eq("accreditation_token", eventToken)
+    .maybeSingle();
+  if (!event) throw new Error("Link de acreditación inválido.");
+
+  const { data: competition } = await supabase
+    .from("competitions")
+    .select("id, event_id")
+    .eq("id", competitionId)
+    .maybeSingle();
+  if (!competition || competition.event_id !== event.id) {
+    throw new Error("Ese torneo no pertenece a este evento.");
+  }
+}
+
 export async function setAccredited(eventToken: string, teamId: string, value: boolean) {
   const supabase = createAdminClient();
   await assertTeamBelongsToEvent(supabase, eventToken, teamId);
@@ -152,6 +173,43 @@ export async function moveTeamToCompetition(eventToken: string, teamId: string, 
     .from("teams")
     .update({ competition_id: targetCompetitionId, seed_order: null })
     .eq("id", teamId);
+  if (error) throw new Error(error.message);
+
+  revalidatePath(`/acreditacion/${eventToken}`);
+}
+
+/** Cargar un equipo nuevo directo desde la mesa de acreditación — para un
+ * equipo que se presenta el día del evento sin haberse anotado antes por
+ * el form público, sin que alguien tenga que ir al panel admin. Mismos
+ * campos que "+ Agregar equipo" del admin (ver TeamFormFields); a
+ * diferencia de esa versión, acá el torneo NO es fijo — se elige entre los
+ * que ya existen en este evento (pedido explícito: "que la acreditación
+ * pueda agregar equipos de los torneos que ya tiene disponibles"). */
+export async function addTeam(eventToken: string, competitionId: string, formData: FormData) {
+  const supabase = createAdminClient();
+  await assertCompetitionBelongsToEvent(supabase, eventToken, competitionId);
+
+  const name = String(formData.get("name") ?? "").trim();
+  const institution = String(formData.get("institution") ?? "").trim() || null;
+  const memberCountRaw = String(formData.get("member_count") ?? "").trim();
+  const memberNames = String(formData.get("member_names") ?? "").trim() || null;
+  const robotNames = joinNameList([
+    formData.get("robot_1") as string | null,
+    formData.get("robot_2") as string | null,
+    formData.get("robot_3") as string | null,
+  ]);
+  const notes = String(formData.get("notes") ?? "").trim() || null;
+  if (!name) throw new Error("Falta el nombre del equipo.");
+
+  const { error } = await supabase.from("teams").insert({
+    competition_id: competitionId,
+    name,
+    institution,
+    member_count: memberCountRaw ? Number(memberCountRaw) : null,
+    member_names: memberNames,
+    robot_names: robotNames,
+    notes,
+  });
   if (error) throw new Error(error.message);
 
   revalidatePath(`/acreditacion/${eventToken}`);
