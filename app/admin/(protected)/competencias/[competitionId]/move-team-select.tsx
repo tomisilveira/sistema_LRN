@@ -13,61 +13,70 @@ import { moveTeamToCompetition } from "./actions";
 export function MoveTeamSelect({
   competitionId,
   teamId,
+  teamName,
   options,
 }: {
   competitionId: string;
   teamId: string;
+  teamName: string;
   options: { id: string; label: string; crossDiscipline: boolean }[];
 }) {
   const [pending, startTransition] = useTransition();
-  const [error, setError] = useState<string | null>(null);
-  const [key, setKey] = useState(0); // fuerza que el <select> vuelva al placeholder tras mover
+  const [key, setKey] = useState(0); // fuerza que el <select> vuelva al placeholder (tras mover o cancelar)
 
   if (options.length === 0) return null;
 
   // El equipo desaparece de esta lista apenas se mueve (queda en el torneo
-  // destino), así que un aviso post-movimiento en esta misma fila nunca
-  // llegaría a mostrarse — por eso el aviso de "cambia de disciplina" va
-  // ANTES, como parte de la opción (⚠️ + tooltip nativo del <option>), no
-  // después de moverlo.
+  // destino) — un cartel post-movimiento en esta misma fila corre el riesgo
+  // de no alcanzar a verse si la lista se actualiza antes. Por eso el
+  // resultado (éxito o error) se avisa con un alert() nativo, que no
+  // depende de que esta fila siga montada — pedido explícito del usuario
+  // ("un cartel... y además después uno de éxito o no").
   return (
-    <div className="flex flex-col items-end gap-0.5">
-      <select
-        key={key}
-        defaultValue=""
-        disabled={pending}
-        onChange={(e) => {
-          const value = e.target.value;
-          if (!value) return;
-          setError(null);
-          startTransition(async () => {
-            try {
-              await moveTeamToCompetition(competitionId, teamId, value);
-            } catch (err) {
-              setError((err as Error).message ?? "No se pudo mover el equipo.");
-            } finally {
-              setKey((k) => k + 1);
-            }
-          });
-        }}
-        className="text-xs rounded-md panel-input px-2 py-1 disabled:opacity-50 max-w-[160px]"
-      >
-        <option value="">Mover a otro torneo…</option>
-        {options.map((o) => (
-          <option
-            key={o.id}
-            value={o.id}
-            title={
-              o.crossDiscipline
-                ? 'Cambia de disciplina: revisá los robots del equipo en "Editar equipo" después de moverlo.'
-                : undefined
-            }
-          >
-            {o.crossDiscipline ? `⚠️ ${o.label}` : o.label}
-          </option>
-        ))}
-      </select>
-      {error && <p className="text-[11px] text-red-500 dark:text-red-400 text-right max-w-[160px]">{error}</p>}
-    </div>
+    <select
+      key={key}
+      defaultValue=""
+      disabled={pending}
+      onChange={(e) => {
+        const opt = options.find((o) => o.id === e.target.value);
+        if (!opt) return;
+        const cleanLabel = opt.label;
+        const confirmMsg =
+          `¿Mover "${teamName}" a "${cleanLabel}"?` +
+          (opt.crossDiscipline
+            ? '\n\nCambia de disciplina: revisá los robots del equipo en "Editar equipo" después de moverlo.'
+            : "");
+        if (!window.confirm(confirmMsg)) {
+          setKey((k) => k + 1); // el <select> ya mostraba la opción elegida — lo vuelve al placeholder
+          return;
+        }
+        startTransition(async () => {
+          try {
+            await moveTeamToCompetition(competitionId, teamId, opt.id);
+            window.alert(`✅ "${teamName}" se movió a "${cleanLabel}".`);
+          } catch (err) {
+            window.alert(`❌ No se pudo mover "${teamName}": ${(err as Error).message ?? "error desconocido"}`);
+          } finally {
+            setKey((k) => k + 1);
+          }
+        });
+      }}
+      className="text-xs rounded-md panel-input px-2 py-1 disabled:opacity-50 max-w-[160px]"
+    >
+      <option value="">Mover a otro torneo…</option>
+      {options.map((o) => (
+        <option
+          key={o.id}
+          value={o.id}
+          title={
+            o.crossDiscipline
+              ? 'Cambia de disciplina: revisá los robots del equipo en "Editar equipo" después de moverlo.'
+              : undefined
+          }
+        >
+          {o.crossDiscipline ? `⚠️ ${o.label}` : o.label}
+        </option>
+      ))}
+    </select>
   );
 }

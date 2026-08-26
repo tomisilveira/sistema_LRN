@@ -107,7 +107,7 @@ export function TeamCheckinRow({
           />
         </ModalFormButton>
       </div>
-      <MoveTeamSelect eventToken={eventToken} teamId={team.id} options={moveTargets} />
+      <MoveTeamSelect eventToken={eventToken} teamId={team.id} teamName={team.name} options={moveTargets} />
 
       <label className="flex items-center gap-1.5 text-xs">
         <input

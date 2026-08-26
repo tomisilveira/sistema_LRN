@@ -389,7 +389,7 @@ export default async function CompetitionPage({
                       />
                     )}
                     {competition.status === "setup" && (
-                      <MoveTeamSelect competitionId={competitionId} teamId={t.id} options={moveTargets} />
+                      <MoveTeamSelect competitionId={competitionId} teamId={t.id} teamName={t.name} options={moveTargets} />
                     )}
                     <ModalFormButton
                       buttonLabel="Editar"
