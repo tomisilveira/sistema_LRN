@@ -37,6 +37,9 @@ yarn-error.log*
 # vercel
 .vercel
 
+# estado temporal de scripts/sim-1-setup.ts + sim-2-finish.ts (ver skill/memoria e2e-simulation-scripts)
+.sim-state.json
+
 # supabase CLI local cache
 /supabase/.temp/
 

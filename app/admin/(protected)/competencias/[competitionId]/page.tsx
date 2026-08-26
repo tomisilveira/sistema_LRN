@@ -28,6 +28,7 @@ import {
   deleteCompetition,
 } from "./actions";
 import { GroupAssignSelect } from "./group-assign-select";
+import { MoveTeamSelect } from "./move-team-select";
 import { StandingsTable } from "./standings-table";
 import { MatchResultForm } from "./match-result-form";
 import { MatchScheduleForm } from "./match-schedule-form";
@@ -223,6 +224,12 @@ export default async function CompetitionPage({
     disciplines: { name: string; sort_order: number } | null;
     categories: { name: string } | null;
   })[];
+  // Destinos válidos para "Mover a otro torneo" (ver move-team-select.tsx):
+  // cualquier otro torneo del evento que todavía no arrancó — uno que ya
+  // tiene fixture armado no tiene dónde meter un equipo nuevo.
+  const moveTargets = siblingCompetitions
+    .filter((c) => c.id !== competitionId && c.status === "setup")
+    .map((c) => ({ id: c.id, label: disciplineCategoryLabel(c.disciplines, c.categories) }));
 
   // Las canchas se comparten entre torneos, pero conviene ver primero las
   // que ya están armadas para esta disciplina — evita elegir por error una
@@ -442,6 +449,9 @@ export default async function CompetitionPage({
                         groups={groupsList}
                         currentGroupId={groupIdByTeamId.get(t.id) ?? null}
                       />
+                    )}
+                    {competition.status === "setup" && (
+                      <MoveTeamSelect competitionId={competitionId} teamId={t.id} options={moveTargets} />
                     )}
                     <ModalFormButton
                       buttonLabel="Editar"

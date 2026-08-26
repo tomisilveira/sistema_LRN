@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
+import { slugify } from "@/lib/slugify";
 
 export async function createEvent(formData: FormData) {
   const name = String(formData.get("name") ?? "").trim();
@@ -26,21 +27,6 @@ export async function setEventStatus(eventId: string, status: "draft" | "active"
   if (error) throw new Error(error.message);
   revalidatePath("/admin");
   revalidatePath(`/admin/eventos/${eventId}`);
-}
-
-const DIACRITICS_RE = new RegExp("[̀-ͯ]", "g");
-
-/** slug determinístico a partir del nombre: sin acentos, en minúscula,
- * separado por guiones bajos — igual convención que las disciplinas
- * seedeadas (ej. "sumo_autonomo"). */
-function slugify(name: string): string {
-  return name
-    .normalize("NFD")
-    .replace(DIACRITICS_RE, "")
-    .toLowerCase()
-    .trim()
-    .replace(/[^a-z0-9]+/g, "_")
-    .replace(/^_+|_+$/g, "");
 }
 
 export async function createDiscipline(formData: FormData) {

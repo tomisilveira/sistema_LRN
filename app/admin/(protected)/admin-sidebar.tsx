@@ -9,6 +9,7 @@ import { BrandIcon } from "@/app/components/brand-mark";
 const NAV_ITEMS = [
   { href: "/admin", label: "Eventos" },
   { href: "/admin/disciplinas", label: "Disciplinas" },
+  { href: "/admin/categorias", label: "Categorías" },
 ];
 
 // Eventos y Torneos son rutas anidadas conceptualmente bajo "Eventos" — acá
