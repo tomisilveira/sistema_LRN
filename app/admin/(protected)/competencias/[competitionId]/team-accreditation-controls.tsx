@@ -52,6 +52,16 @@ export function TeamAccreditationControls({
     });
   }
 
+  // Mismo relleno "chip" que panel-chip-success en reposo cuando está
+  // tildado — via has-[:checked], no estado de React aparte: el checkbox
+  // (defaultChecked, sin controlar) ya es la única fuente de verdad, así
+  // que el chip nunca puede desincronizarse de lo que el usuario ve tildado.
+  const toggleChipClass =
+    "flex items-center gap-1.5 text-xs font-medium rounded-full border pl-1.5 pr-2.5 py-1 cursor-pointer select-none transition-colors " +
+    "border-neutral-300 dark:border-neutral-700 panel-label hover:bg-neutral-100 dark:hover:bg-neutral-800 " +
+    "has-[:checked]:border-brand-green/30 has-[:checked]:text-brand-green has-[:checked]:bg-brand-green/12 dark:has-[:checked]:border-brand-green/35 " +
+    "has-[:disabled]:opacity-50";
+
   function handlePresentBlur(value: string) {
     setError(null);
     const formData = new FormData();
@@ -82,37 +92,52 @@ export function TeamAccreditationControls({
 
   return (
     <div className="space-y-1.5">
-      <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-        <label className="flex items-center gap-1 text-xs panel-label">
+      <div className="flex flex-wrap items-center gap-1.5">
+        <label className={toggleChipClass}>
           <input
             ref={accreditedRef}
             type="checkbox"
             defaultChecked={team.accredited}
             disabled={pending}
             onChange={(e) => handleAccreditedChange(e.target.checked)}
-            className="rounded accent-brand-teal w-3.5 h-3.5 disabled:opacity-50"
+            className="peer sr-only"
           />
+          <span aria-hidden="true" className="hidden peer-checked:inline">
+            ✓
+          </span>
+          <span aria-hidden="true" className="peer-checked:hidden">
+            ○
+          </span>{" "}
           Acreditado
         </label>
-        <label className="flex items-center gap-1 text-xs panel-label">
+        <label className={toggleChipClass}>
           <input
             ref={homologatedRef}
             type="checkbox"
             defaultChecked={team.homologated}
             disabled={pending}
             onChange={(e) => handleHomologatedChange(e.target.checked)}
-            className="rounded accent-brand-teal w-3.5 h-3.5 disabled:opacity-50"
+            className="peer sr-only"
           />
+          <span aria-hidden="true" className="hidden peer-checked:inline">
+            ✓
+          </span>
+          <span aria-hidden="true" className="peer-checked:hidden">
+            ○
+          </span>{" "}
           Homologado
         </label>
-        <label className="flex items-center gap-1 text-xs panel-label" title="Cantidad de personas presentes de este equipo">
+        <label
+          className="flex items-center gap-1.5 text-xs rounded-full border border-neutral-300 dark:border-neutral-700 panel-label pl-2.5 pr-1 py-1"
+          title="Cantidad de personas presentes de este equipo"
+        >
           Presentes
           <input
             type="number"
             min={0}
             defaultValue={team.participants_present ?? team.member_count ?? ""}
             disabled={pending}
-            className="w-12 rounded panel-input px-1 py-0.5 text-xs disabled:opacity-50"
+            className="w-10 rounded panel-input px-1 py-0.5 text-xs disabled:opacity-50"
             onBlur={(e) => handlePresentBlur(e.currentTarget.value.trim())}
             onKeyDown={(e) => {
               if (e.key === "Enter") {

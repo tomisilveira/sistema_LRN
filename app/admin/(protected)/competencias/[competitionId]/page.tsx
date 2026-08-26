@@ -353,6 +353,7 @@ export default async function CompetitionPage({
                 groups={groupsList}
                 currentGroupId={groupIdByTeamId.get(t.id) ?? null}
                 moveTargets={competition.status === "setup" ? moveTargets : []}
+                colors={colors}
               />
             ))}
           </div>
