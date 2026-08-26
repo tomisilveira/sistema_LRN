@@ -22,12 +22,13 @@ export default async function AcreditacionPage({ params }: { params: Promise<{ e
 
   const { data: competitions } = await supabase
     .from("competitions")
-    .select("id, disciplines(name), categories(name)")
+    .select("id, status, disciplines(name, slug), categories(name)")
     .eq("event_id", event.id);
 
   const competitionList = (competitions ?? []) as unknown as {
     id: string;
-    disciplines: { name: string } | null;
+    status: string;
+    disciplines: { name: string; slug: string } | null;
     categories: { name: string } | null;
   }[];
   const competitionIds = competitionList.map((c) => c.id);
@@ -44,10 +45,25 @@ export default async function AcreditacionPage({ params }: { params: Promise<{ e
     teamsByCompetition.set(t.competition_id, list);
   }
 
+  // Mismo criterio que competencias/[competitionId]/page.tsx: solo se puede
+  // mover un equipo a un torneo del evento que TODAVÍA esté en "setup" (sin
+  // fixture armado) — uno que ya arrancó no tiene dónde meter un equipo
+  // nuevo. No se restringe a la misma disciplina (un equipo puede haberse
+  // anotado en la disciplina que no era), se marca con crossDiscipline para
+  // avisar del tema de robot_names (solo tiene sentido en fútbol).
   const groups: AccreditationGroup[] = competitionList.map((c) => ({
     id: c.id,
     label: disciplineCategoryLabel(c.disciplines, c.categories),
     teams: teamsByCompetition.get(c.id) ?? [],
+    isFutbol: c.disciplines?.slug === "futbol",
+    canMove: c.status === "setup",
+    moveTargets: competitionList
+      .filter((other) => other.id !== c.id && other.status === "setup")
+      .map((other) => ({
+        id: other.id,
+        label: disciplineCategoryLabel(other.disciplines, other.categories),
+        crossDiscipline: other.disciplines?.name !== c.disciplines?.name,
+      })),
   }));
 
   const totalPresent = teamsList.reduce((sum, t) => sum + (t.participants_present ?? 0), 0);

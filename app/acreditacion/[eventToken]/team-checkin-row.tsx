@@ -1,11 +1,25 @@
 "use client";
 
 import { useRef, useState, useTransition } from "react";
-import { setAccredited, setHomologated, setParticipantsPresent } from "./actions";
+import { setAccredited, setHomologated, setParticipantsPresent, updateTeam } from "./actions";
 import type { Team } from "@/lib/database.types";
 import { TeamLabel } from "@/app/components/team-label";
+import { TeamFormFields } from "@/app/components/team-form-fields";
+import { ModalFormButton } from "@/app/components/modal-form";
+import { parseRobotNames } from "@/lib/team-display";
+import { MoveTeamSelect } from "./move-team-select";
 
-export function TeamCheckinRow({ eventToken, team }: { eventToken: string; team: Team }) {
+export function TeamCheckinRow({
+  eventToken,
+  team,
+  isFutbol,
+  moveTargets,
+}: {
+  eventToken: string;
+  team: Team;
+  isFutbol: boolean;
+  moveTargets: { id: string; label: string; crossDiscipline: boolean }[];
+}) {
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
@@ -72,7 +86,28 @@ export function TeamCheckinRow({ eventToken, team }: { eventToken: string; team:
         </p>
         {team.institution && <p className="text-xs panel-label">{team.institution}</p>}
         {error && <p className="text-xs text-red-500 dark:text-red-400">{error}</p>}
+        <ModalFormButton
+          buttonLabel="Editar"
+          buttonClassName="text-xs rounded-md px-2 py-0.5 mt-1 panel-button-secondary"
+          title={`Editar ${team.name}`}
+          description="Nombre mal escrito, robots, institución o integrantes — se corrige acá mismo, sin ir al panel admin."
+          action={updateTeam.bind(null, eventToken, team.id)}
+          submitLabel="Guardar"
+        >
+          <TeamFormFields
+            isFutbol={isFutbol}
+            defaults={{
+              name: team.name,
+              institution: team.institution ?? "",
+              robots: parseRobotNames(team.robot_names),
+              memberCount: team.member_count,
+              memberNames: team.member_names,
+              notes: team.notes ?? "",
+            }}
+          />
+        </ModalFormButton>
       </div>
+      <MoveTeamSelect eventToken={eventToken} teamId={team.id} options={moveTargets} />
 
       <label className="flex items-center gap-1.5 text-xs">
         <input

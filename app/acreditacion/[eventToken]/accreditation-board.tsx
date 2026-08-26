@@ -8,6 +8,11 @@ export interface AccreditationGroup {
   id: string;
   label: string;
   teams: Team[];
+  isFutbol: boolean;
+  /** Si este torneo ya arrancó (fixture armado), no se puede mover NADA
+   * afuera de él — ver moveTeamToCompetition en ./actions.ts. */
+  canMove: boolean;
+  moveTargets: { id: string; label: string; crossDiscipline: boolean }[];
 }
 
 /** Tablero de acreditación con buscador — filtra equipos por nombre o
@@ -67,7 +72,13 @@ export function AccreditationBoard({
           <h2 className="text-sm font-semibold text-brand-teal uppercase tracking-wide">{g.label}</h2>
           <div className="space-y-2 panel-enter-stagger">
             {g.teams.map((t) => (
-              <TeamCheckinRow key={t.id} eventToken={eventToken} team={t} />
+              <TeamCheckinRow
+                key={t.id}
+                eventToken={eventToken}
+                team={t}
+                isFutbol={g.isFutbol}
+                moveTargets={g.canMove ? g.moveTargets : []}
+              />
             ))}
           </div>
         </section>

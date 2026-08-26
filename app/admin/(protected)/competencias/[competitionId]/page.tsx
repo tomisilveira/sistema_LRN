@@ -38,7 +38,7 @@ import { TeamSeedInput } from "./team-seed-input";
 import { RealtimeRefresh } from "./realtime-refresh";
 import { CopyLinkButton } from "@/app/components/copy-link-button";
 import { TeamLabel } from "@/app/components/team-label";
-import { MemberListInput } from "@/app/components/member-list-input";
+import { TeamFormFields } from "@/app/components/team-form-fields";
 import { parseRobotNames } from "@/lib/team-display";
 import { TeamCardBadges } from "@/app/components/team-card-badges";
 import { cardsByTeam } from "@/lib/match-cards";
@@ -52,97 +52,6 @@ import { disciplineCategoryLabel, disciplineDisplayName } from "@/lib/discipline
 import { FormatAdvisory } from "./format-advisory";
 import { EditFormatForm } from "./edit-format-form";
 
-/** Campos de equipo compartidos entre "Agregar equipo" y "Editar equipo" —
- * mismo set de inputs, la única diferencia es si vienen con valor inicial
- * (edición) o vacíos (alta). Robots solo se muestra para fútbol robótico
- * (ver isFutbol más abajo); se prellenan por posición ya que robot_names
- * solo guarda una lista de texto, no cuál era titular 1/2/suplente. */
-function TeamFormFields({
-  isFutbol,
-  defaults,
-}: {
-  isFutbol: boolean;
-  defaults?: {
-    name: string;
-    institution: string;
-    robots: string[];
-    memberCount: number | null;
-    memberNames: string | null;
-    notes: string;
-  };
-}) {
-  const robots = defaults?.robots ?? [];
-  return (
-    <>
-      <div>
-        <label className="block text-sm panel-label mb-1">{isFutbol ? "Nombre del equipo" : "Nombre del robot"}</label>
-        <input
-          name="name"
-          required
-          defaultValue={defaults?.name}
-          placeholder={isFutbol ? "Nombre del equipo" : "Nombre del robot"}
-          className="w-full rounded-md panel-input px-3 py-2 text-sm"
-        />
-      </div>
-      {isFutbol && (
-        <div className="rounded-md panel-surface p-3 space-y-2.5">
-          <p className="text-sm font-medium">Robots del equipo (opcional)</p>
-          <input
-            name="robot_1"
-            defaultValue={robots[0] ?? ""}
-            placeholder="Robot 1"
-            className="w-full rounded-md panel-input px-3 py-2 text-sm"
-          />
-          <input
-            name="robot_2"
-            defaultValue={robots[1] ?? ""}
-            placeholder="Robot 2"
-            className="w-full rounded-md panel-input px-3 py-2 text-sm"
-          />
-          <input
-            name="robot_3"
-            defaultValue={robots[2] ?? ""}
-            placeholder="Robot suplente"
-            className="w-full rounded-md panel-input px-3 py-2 text-sm"
-          />
-        </div>
-      )}
-      <div>
-        <label className="block text-sm panel-label mb-1">Institución (opcional)</label>
-        <input
-          name="institution"
-          defaultValue={defaults?.institution}
-          placeholder="Institución"
-          className="w-full rounded-md panel-input px-3 py-2 text-sm"
-        />
-      </div>
-      <div>
-        <label className="block text-sm panel-label mb-1">Cantidad de integrantes (opcional)</label>
-        <input
-          name="member_count"
-          type="number"
-          min={1}
-          defaultValue={defaults?.memberCount ?? undefined}
-          className="w-32 rounded-md panel-input px-3 py-2 text-sm"
-        />
-      </div>
-      <MemberListInput
-        label="Integrantes (opcional)"
-        initialValue={defaults?.memberNames}
-        helpText="Se muestran públicamente debajo del nombre del equipo, entre paréntesis."
-      />
-      <div>
-        <label className="block text-sm panel-label mb-1">Notas (opcional)</label>
-        <textarea
-          name="notes"
-          rows={2}
-          defaultValue={defaults?.notes}
-          className="w-full rounded-md panel-input px-3 py-2 text-sm"
-        />
-      </div>
-    </>
-  );
-}
 
 export default async function CompetitionPage({
   params,
@@ -239,6 +148,13 @@ export default async function CompetitionPage({
       label: disciplineCategoryLabel(c.disciplines, c.categories),
       crossDiscipline: c.disciplines?.name !== discipline?.name,
     }));
+  // Torneos del evento que existen pero no sirven como destino porque ya
+  // arrancaron (tienen fixture armado) — para explicar en la pestaña
+  // Equipos por qué "Mover a otro torneo" no aparece o tiene menos
+  // opciones de las esperadas, en vez de dejarlo en silencio.
+  const blockedMoveSiblings = siblingCompetitions
+    .filter((c) => c.id !== competitionId && c.status !== "setup")
+    .map((c) => disciplineCategoryLabel(c.disciplines, c.categories));
 
   // Las canchas se comparten entre torneos, pero conviene ver primero las
   // que ya están armadas para esta disciplina — evita elegir por error una
@@ -418,6 +334,19 @@ export default async function CompetitionPage({
             Acreditado y Homologado se pueden tildar acá mismo (queda igual que hacerlo desde el link de
             acreditación del evento).
           </p>
+          {competition.status !== "setup" && siblingCompetitions.length > 1 && (
+            <p className="text-xs text-amber-600 dark:text-amber-400 -mt-1">
+              Para mover equipos de este torneo a otro (unificar/dividir categorías), primero hay que
+              reiniciarlo — ya tiene fixture armado.
+            </p>
+          )}
+          {competition.status === "setup" && moveTargets.length === 0 && blockedMoveSiblings.length > 0 && (
+            <p className="text-xs text-amber-600 dark:text-amber-400 -mt-1">
+              &quot;Mover a otro torneo&quot; no tiene destino ahora — {blockedMoveSiblings.join(", ")} ya
+              arrancó{blockedMoveSiblings.length > 1 ? "ron" : ""} (tiene fixture armado). Reiniciálo si
+              necesitás mover equipos ahí.
+            </p>
+          )}
           <div className="grid sm:grid-cols-2 gap-2 panel-enter-stagger">
             {(teams ?? []).map((t: Team) => {
               const ready = t.accredited && t.homologated;
