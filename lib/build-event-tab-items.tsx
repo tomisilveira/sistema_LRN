@@ -3,7 +3,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { disciplineColor } from "./discipline-colors";
 import { disciplineCategoryLabel } from "./discipline-display";
 import { competitionStatusLabel, competitionStatusChipClass } from "./labels";
-import type { Competition, Court, Group, GroupStandingRow, Match, MatchCard, Team } from "./database.types";
+import type { Competition, Court, Group, GroupStandingRow, Match, MatchCard } from "./database.types";
 import type { DisciplineTabItem } from "@/app/home-discipline-menu";
 import { PublicStandingsTable } from "@/app/components/public-standings-table";
 import { PublicBracketView, type BracketDisplayMatch } from "@/app/components/public-bracket-view";
@@ -45,7 +45,10 @@ async function buildTabItem(
 ): Promise<DisciplineTabItem> {
   const [{ data: teams }, { data: groups }, { data: groupMatches }, { data: bracketMatches }] =
     await Promise.all([
-      supabase.from("teams").select("*").eq("competition_id", competition.id),
+      // Solo las columnas que se muestran acá (nombre + integrantes). Evita
+      // arrastrar mentor_contact/notes al render público — y, con el grant
+      // por columna de 0011, un `select("*")` anónimo tampoco las traería.
+      supabase.from("teams").select("id, name, member_names").eq("competition_id", competition.id),
       supabase.from("groups").select("*").eq("competition_id", competition.id).order("sort_order"),
       supabase
         .from("matches")
@@ -61,23 +64,18 @@ async function buildTabItem(
         .order("bracket_slot"),
     ]);
 
-  const allMatchIds = [...(groupMatches ?? []), ...(bracketMatches ?? [])].map((m: Match) => m.id);
-  const { data: allCards } = allMatchIds.length
-    ? await supabase.from("match_cards").select("*").in("match_id", allMatchIds)
-    : { data: [] as MatchCard[] };
-  const cardsByMatchId = new Map<string, MatchCard[]>();
-  for (const c of (allCards ?? []) as MatchCard[]) {
-    const list = cardsByMatchId.get(c.match_id) ?? [];
-    list.push(c);
-    cardsByMatchId.set(c.match_id, list);
-  }
-
-  const teamsById = new Map((teams ?? []).map((t: Team) => [t.id, t]));
+  const teamsById = new Map((teams ?? []).map((t) => [t.id, t]));
   const groupsList = (groups ?? []) as Group[];
   const teamName = (id: string | null) => (id ? teamsById.get(id)?.name ?? "?" : "?");
   const teamMemberNames = (id: string | null) => (id ? teamsById.get(id)?.member_names ?? null : null);
 
-  const standingsByGroup = await Promise.all(
+  // Tarjetas y posiciones no dependen entre sí — un solo viaje en paralelo.
+  const allMatchIds = [...(groupMatches ?? []), ...(bracketMatches ?? [])].map((m: Match) => m.id);
+  const cardsPromise = allMatchIds.length
+    ? supabase.from("match_cards").select("*").in("match_id", allMatchIds).then((r) => ({ data: r.data }))
+    : Promise.resolve({ data: [] as MatchCard[] | null });
+
+  const standingsPromise = Promise.all(
     groupsList.map(async (g) => {
       try {
         const { data, error } = await supabase.rpc("get_group_standings", { p_group_id: g.id });
@@ -89,6 +87,14 @@ async function buildTabItem(
       }
     })
   );
+
+  const [{ data: allCards }, standingsByGroup] = await Promise.all([cardsPromise, standingsPromise]);
+  const cardsByMatchId = new Map<string, MatchCard[]>();
+  for (const c of (allCards ?? []) as MatchCard[]) {
+    const list = cardsByMatchId.get(c.match_id) ?? [];
+    list.push(c);
+    cardsByMatchId.set(c.match_id, list);
+  }
 
   const groupMatchDisplays: PublicMatchDisplay[] = ((groupMatches ?? []) as Match[]).map((m) => ({
     ...m,

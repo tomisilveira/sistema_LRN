@@ -21,7 +21,8 @@ export function MatchScheduleForm({
   matchId: string;
   courtId: string | null;
   turno: number | null;
-  courts: Court[];
+  // Solo se usan estas 3 columnas — el server nunca manda `access_token`.
+  courts: Pick<Court, "id" | "name" | "discipline_id">[];
   competitionDisciplineId: string;
   disciplineNameById: Map<string, string>;
   onSchedule: (matchId: string, formData: FormData) => Promise<void>;

@@ -47,16 +47,15 @@ export async function GET(_req: Request, context: { params: Promise<{ eventId: s
   const { eventId } = await context.params;
   const supabase = await createServerSupabaseClient();
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) {
+  const { data: claimsData } = await supabase.auth.getClaims();
+  const userId = claimsData?.claims?.sub;
+  if (!userId) {
     return NextResponse.json({ error: "No autenticado." }, { status: 401 });
   }
   const { data: adminRow } = await supabase
     .from("admins")
     .select("user_id")
-    .eq("user_id", user.id)
+    .eq("user_id", userId)
     .maybeSingle();
   if (!adminRow) {
     return NextResponse.json({ error: "Sin permisos de administrador." }, { status: 403 });

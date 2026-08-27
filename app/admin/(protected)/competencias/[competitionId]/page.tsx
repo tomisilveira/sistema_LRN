@@ -48,6 +48,10 @@ import { disciplineCategoryLabel, disciplineDisplayName } from "@/lib/discipline
 import { FormatAdvisory } from "./format-advisory";
 import { EditFormatForm } from "./edit-format-form";
 
+// Esta página nunca necesita el `access_token` de las canchas (el link del
+// juez se copia desde la página del evento) y además pasa la lista a un
+// client component — así el token no viaja al browser.
+type CourtOption = Pick<Court, "id" | "name" | "discipline_id" | "sort_order">;
 
 export default async function CompetitionPage({
   params,
@@ -64,6 +68,10 @@ export default async function CompetitionPage({
     .maybeSingle<Competition>();
   if (!competition) notFound();
 
+  // Un solo batch: todo esto depende únicamente de `competition` (que ya
+  // tenemos). Antes eran dos Promise.all encadenados — el segundo esperaba
+  // al primero sin necesidad (courts/siblings filtran por
+  // competition.event_id, no por el resultado de la query de `events`).
   const [
     { data: discipline },
     { data: category },
@@ -73,6 +81,9 @@ export default async function CompetitionPage({
     { data: groupTeams },
     { data: groupMatches },
     { data: bracketMatches },
+    { data: courtsRaw },
+    { data: allDisciplines },
+    { data: siblingCompetitionsRaw },
   ] = await Promise.all([
     supabase.from("disciplines").select("*").eq("id", competition.discipline_id).single<Discipline>(),
     supabase.from("categories").select("*").eq("id", competition.category_id).single<Category>(),
@@ -95,10 +106,14 @@ export default async function CompetitionPage({
       .eq("competition_id", competitionId)
       .eq("phase", "bracket")
       .order("bracket_slot"),
-  ]);
-
-  const [{ data: courtsRaw }, { data: allDisciplines }, { data: siblingCompetitionsRaw }] = await Promise.all([
-    supabase.from("courts").select("*").eq("event_id", event?.id ?? "").order("sort_order"),
+    // Sin `access_token`: esta página pasa `courts` a MatchScheduleForm
+    // (client component) y solo usa id/name/discipline_id/sort_order. El
+    // link del juez se copia desde la página del evento, no desde acá.
+    supabase
+      .from("courts")
+      .select("id, name, discipline_id, sort_order, event_id")
+      .eq("event_id", competition.event_id)
+      .order("sort_order"),
     supabase.from("disciplines").select("id, name"),
     // Otros torneos del mismo evento — para poder saltar directo a otra
     // disciplina/categoría sin volver por Eventos > pestaña Torneos.
@@ -109,15 +124,11 @@ export default async function CompetitionPage({
       .order("created_at"),
   ]);
   const allMatchIds = [...(groupMatches ?? []), ...(bracketMatches ?? [])].map((m: Match) => m.id);
-  const { data: allCards } = allMatchIds.length
-    ? await supabase.from("match_cards").select("*").in("match_id", allMatchIds)
-    : { data: [] as MatchCard[] };
-  const cardsByMatchId = new Map<string, MatchCard[]>();
-  for (const c of (allCards ?? []) as MatchCard[]) {
-    const list = cardsByMatchId.get(c.match_id) ?? [];
-    list.push(c);
-    cardsByMatchId.set(c.match_id, list);
-  }
+  // Las tarjetas y las tablas de posiciones no dependen entre sí — se piden
+  // en paralelo y se esperan juntas más abajo (ver `await Promise.all`).
+  const cardsPromise = allMatchIds.length
+    ? supabase.from("match_cards").select("*").in("match_id", allMatchIds).then((r) => ({ data: r.data }))
+    : Promise.resolve({ data: [] as MatchCard[] | null });
 
   const disciplineNameById = new Map(
     (allDisciplines ?? []).map((d: { id: string; name: string }) => [d.id, disciplineDisplayName(d.name)])
@@ -155,7 +166,7 @@ export default async function CompetitionPage({
   // Las canchas se comparten entre torneos, pero conviene ver primero las
   // que ya están armadas para esta disciplina — evita elegir por error una
   // cancha de otra disciplina al asignar un partido.
-  const courts = [...(courtsRaw ?? [])].sort((a: Court, b: Court) => {
+  const courts = [...((courtsRaw ?? []) as CourtOption[])].sort((a, b) => {
     const aMatch = a.discipline_id === competition.discipline_id ? 0 : 1;
     const bMatch = b.discipline_id === competition.discipline_id ? 0 : 1;
     return aMatch - bMatch || a.sort_order - b.sort_order;
@@ -193,7 +204,7 @@ export default async function CompetitionPage({
   // Si la RPC de un grupo puntual falla (red, cold start, etc.), que se
   // pierda solo ese grupo y no toda la página — antes un error acá tiraba
   // abajo todo el render del server component.
-  const standingsByGroup = await Promise.all(
+  const standingsPromise = Promise.all(
     groupsList.map(async (g) => {
       try {
         const { data, error } = await supabase.rpc("get_group_standings", { p_group_id: g.id });
@@ -205,6 +216,14 @@ export default async function CompetitionPage({
       }
     })
   );
+
+  const [{ data: allCards }, standingsByGroup] = await Promise.all([cardsPromise, standingsPromise]);
+  const cardsByMatchId = new Map<string, MatchCard[]>();
+  for (const c of (allCards ?? []) as MatchCard[]) {
+    const list = cardsByMatchId.get(c.match_id) ?? [];
+    list.push(c);
+    cardsByMatchId.set(c.match_id, list);
+  }
 
   const addTeamAction = addTeam.bind(null, competitionId);
   const createGroupAction = createGroup.bind(null, competitionId);
@@ -654,7 +673,7 @@ export default async function CompetitionPage({
               teamAMemberNames={m.team_a_id ? teamsById.get(m.team_a_id)?.member_names ?? null : null}
               teamBMemberNames={m.team_b_id ? teamsById.get(m.team_b_id)?.member_names ?? null : null}
               cards={cardsByMatchId.get(m.id) ?? []}
-              courts={(courts ?? []) as Court[]}
+              courts={courts}
               competitionDisciplineId={competition.discipline_id}
               disciplineNameById={disciplineNameById}
               allowDraws={competition.allow_draws}
@@ -932,7 +951,7 @@ function MatchRow({
   teamAMemberNames: string | null;
   teamBMemberNames: string | null;
   cards: MatchCard[];
-  courts: Court[];
+  courts: CourtOption[];
   competitionDisciplineId: string;
   disciplineNameById: Map<string, string>;
   allowDraws: boolean;

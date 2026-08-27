@@ -35,7 +35,13 @@ export default async function EventPage({ params }: { params: Promise<{ eventId:
 
   const [{ data: courts }, { data: competitions }, { data: disciplines }, { data: categories }] =
     await Promise.all([
-      supabase.from("courts").select("*").eq("event_id", eventId).order("sort_order"),
+      // `access_token` sí hace falta acá: esta pestaña muestra el link del
+      // juez de cada cancha (CopyLinkButton). Es la única página que lo expone.
+      supabase
+        .from("courts")
+        .select("id, name, access_token, discipline_id, sort_order, event_id")
+        .eq("event_id", eventId)
+        .order("sort_order"),
       supabase
         .from("competitions")
         .select("*, disciplines(name, sort_order), categories(name)")
