@@ -52,22 +52,32 @@ export function MemberListInput({
   initialValue,
   label = "Integrantes del equipo",
   helpText = "Se van a mostrar públicamente (en /publico, el modo pantalla y la cancha del juez), debajo del nombre del robot. Cargá solo lo que la organización pueda mostrar.",
+  required = false,
+  max,
 }: {
   name?: string;
   initialValue?: string | null;
   label?: string;
   helpText?: string | null;
+  /** Marca el label con * y arranca con una fila vacía si no hay valor previo. */
+  required?: boolean;
+  /** Tope de integrantes: deshabilita "+ Agregar" al llegar. */
+  max?: number;
 }) {
   const groupId = useId();
-  const [rows, setRows] = useState<MemberRow[]>(() =>
-    parseMemberNames(initialValue).map((raw) => {
+  const [rows, setRows] = useState<MemberRow[]>(() => {
+    const initial = parseMemberNames(initialValue).map((raw) => {
       const { name: n, age } = parseRow(raw);
       return newRow(n, age);
-    })
-  );
+    });
+    if (initial.length === 0 && required) return [newRow()];
+    return initial;
+  });
+
+  const atMax = max !== undefined && rows.length >= max;
 
   function addRow() {
-    setRows((prev) => [...prev, newRow()]);
+    setRows((prev) => (max !== undefined && prev.length >= max ? prev : [...prev, newRow()]));
   }
   function removeRow(id: string) {
     setRows((prev) => prev.filter((r) => r.id !== id));
@@ -80,6 +90,7 @@ export function MemberListInput({
     <div>
       <label className="block text-sm panel-label mb-1" id={groupId}>
         {label}
+        {required && <span className="text-brand-orange"> *</span>}
       </label>
       <input type="hidden" name={name} value={serializeMembers(rows)} />
 
@@ -123,10 +134,14 @@ export function MemberListInput({
         <button
           type="button"
           onClick={addRow}
-          className="text-sm font-medium rounded-md panel-button-secondary px-3 py-1.5"
+          disabled={atMax}
+          className="text-sm font-medium rounded-md panel-button-secondary px-3 py-1.5 disabled:opacity-50 disabled:cursor-not-allowed"
         >
           + Agregar integrante
         </button>
+        {atMax && (
+          <p className="text-xs panel-label">Máximo {max} integrantes por equipo.</p>
+        )}
       </div>
 
       {helpText && <p className="text-xs panel-label mt-1.5">{helpText}</p>}

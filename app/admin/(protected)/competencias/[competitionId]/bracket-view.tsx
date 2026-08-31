@@ -12,7 +12,7 @@ export interface BracketDisplayMatch extends Match {
   cards: MatchCard[];
 }
 
-const ROUND_ORDER = ["R32", "R16", "QF", "SF", "F"];
+const ROUND_ORDER = ["R32", "R16", "QF", "SF", "F", "3P"];
 
 export function BracketView({
   competitionId,
@@ -39,17 +39,30 @@ export function BracketView({
 
   return (
     <div className="flex items-stretch gap-3 overflow-x-auto pb-2">
-      {rounds.map(([round, ms], ri) => (
+      {rounds.map(([round, ms], ri) => {
+        const isThird = round === "3P";
+        return (
         <div key={round} className="flex flex-col min-w-[230px]">
-          <p className="text-xs text-brand-teal-dark dark:text-brand-teal font-semibold uppercase tracking-wide text-center pb-2 mb-2 border-b-2 border-brand-teal/30">
+          <p
+            className={`text-xs font-semibold uppercase tracking-wide text-center pb-2 mb-2 border-b-2 ${
+              isThird
+                ? "text-brand-orange border-brand-orange/40"
+                : "text-brand-teal-dark dark:text-brand-teal border-brand-teal/30"
+            }`}
+          >
+            {isThird && "🥉 "}
             {roundName(round)}
           </p>
           <div
             className="flex-1 flex flex-col justify-center"
-            style={{ gap: `${Math.pow(2, ri) * 1.1}rem` }}
+            style={{ gap: isThird ? "1.1rem" : `${Math.pow(2, ri) * 1.1}rem` }}
           >
             {ms.map((m) => {
               const decided = m.status === "completed";
+              const bothTeams = !!(m.team_a_name && m.team_b_name);
+              // La final espera a que se juegue el 3er puesto: tiene sus dos
+              // finalistas pero sigue en 'pending_teams'.
+              const finalWaitingForThird = m.round === "F" && bothTeams && m.status === "pending_teams";
               return (
                 <div
                   key={m.id}
@@ -73,7 +86,9 @@ export function BracketView({
                   />
                   {decided ? (
                     <p className="text-[10px] panel-label">✅ Jugado</p>
-                  ) : m.team_a_name && m.team_b_name ? (
+                  ) : finalWaitingForThird ? (
+                    <p className="text-[10px] text-brand-orange">⏳ Primero se juega el 3er puesto</p>
+                  ) : bothTeams ? (
                     <form action={submit.bind(null, m.id)} className="flex flex-col gap-1.5 pt-1">
                       <div className="flex gap-1">
                         <input
@@ -113,7 +128,8 @@ export function BracketView({
             })}
           </div>
         </div>
-      ))}
+        );
+      })}
     </div>
   );
 }
@@ -155,6 +171,8 @@ function roundName(code: string) {
       return "Dieciseisavos";
     case "R32":
       return "Treintaidosavos";
+    case "3P":
+      return "3er puesto";
     default:
       return code;
   }

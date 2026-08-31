@@ -25,6 +25,7 @@ export function TabbedLayout({
   sectionTitle,
   sectionHref,
   sectionColorDot,
+  sectionEventId,
 }: {
   items: TabItem[];
   defaultTabId?: string;
@@ -34,6 +35,8 @@ export function TabbedLayout({
   sectionHref?: string;
   /** Clase de color (ej. "bg-brand-teal") para el punto de disciplina. */
   sectionColorDot?: string;
+  /** Id del evento actual — habilita el selector de eventos del sidebar. */
+  sectionEventId?: string;
 }) {
   const { activeId, registerSection, clearSection } = useSectionNav();
   const fallbackActive = defaultTabId ?? items[0]?.id;
@@ -48,13 +51,14 @@ export function TabbedLayout({
         title: sectionTitle,
         href: sectionHref,
         colorDot: sectionColorDot,
+        eventId: sectionEventId,
         items: items.map(({ id, label, badge }) => ({ id, label, badge })),
       },
       fallbackActive
     );
     return () => clearSection();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [sectionTitle, sectionHref, sectionColorDot, itemsKey, fallbackActive]);
+  }, [sectionTitle, sectionHref, sectionColorDot, sectionEventId, itemsKey, fallbackActive]);
 
   const active = activeId ?? fallbackActive;
 

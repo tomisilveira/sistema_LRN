@@ -14,6 +14,9 @@ export interface SectionNavData {
   title: string;
   /** Link opcional al detalle de la entidad (ej. volver al evento desde un torneo). */
   href?: string;
+  /** Id del evento actual (evento o torneo dentro del evento) — el sidebar
+   * lo usa para pintar el selector de eventos. */
+  eventId?: string;
   /** Clase de color (ej. "bg-brand-teal") para el punto de disciplina, si aplica. */
   colorDot?: string;
   items: SectionNavItem[];

@@ -6,9 +6,9 @@ import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { generateRoundRobinPairs } from "@/lib/round-robin";
 import { advanceWinner } from "@/lib/bracket-actions";
 import { computeMatchOutcome } from "@/lib/match-logic";
-import { generateBracketForCompetition } from "@/lib/generate-bracket-for-competition";
+import { generateBracketForCompetition, ensureThirdPlaceMatch } from "@/lib/generate-bracket-for-competition";
 import { maybeAdvanceCompetitionPhase } from "@/lib/advance-competition-phase";
-import { joinNameList } from "@/lib/team-display";
+import { parseTeamInput, isFutbolCompetition } from "@/lib/team-input";
 import { autoScheduleAndPersist } from "@/lib/apply-auto-schedule";
 import type { SchedulableMatch } from "@/lib/auto-schedule";
 import type { Competition, Match } from "@/lib/database.types";
@@ -107,62 +107,45 @@ export async function deleteCompetition(competitionId: string) {
 }
 
 export async function addTeam(competitionId: string, formData: FormData) {
-  const name = String(formData.get("name") ?? "").trim();
-  const institution = String(formData.get("institution") ?? "").trim() || null;
-  const memberCountRaw = String(formData.get("member_count") ?? "").trim();
-  const memberNames = String(formData.get("member_names") ?? "").trim() || null;
-  const robotNames = joinNameList([
-    formData.get("robot_1") as string | null,
-    formData.get("robot_2") as string | null,
-    formData.get("robot_3") as string | null,
-  ]);
-  const notes = String(formData.get("notes") ?? "").trim() || null;
-  if (!name) throw new Error("Falta el nombre del equipo.");
-
   const supabase = await createServerSupabaseClient();
+  const isFutbol = await isFutbolCompetition(supabase, competitionId);
+  const input = parseTeamInput(formData, { isFutbol });
+
   const { error } = await supabase.from("teams").insert({
     competition_id: competitionId,
-    name,
-    institution,
-    member_count: memberCountRaw ? Number(memberCountRaw) : null,
-    member_names: memberNames,
-    robot_names: robotNames,
-    notes,
+    name: input.name,
+    institution: input.institution,
+    member_count: input.memberCount,
+    member_names: input.memberNames,
+    robot_names: input.robotNames,
+    notes: input.notes,
   });
   if (error) throw new Error(error.message);
 
   revalidateCompetition(competitionId);
 }
 
-/** Edita un equipo ya cargado (nombre, robots, institución, cantidad de
- * integrantes, integrantes y notas) — mismos campos que `addTeam`, más
- * `member_count` que ahí nunca se pedía. No toca mentor_name/mentor_contact:
- * quedaron con formatos mezclados entre equipos cargados antes y después de
- * separar celular/email (ver registration-form.tsx), así que forzar ese
- * campo acá podría pisar datos válidos con un parseo adivinado. */
+/** Edita un equipo ya cargado (nombre, robots, institución, integrantes y
+ * notas) — mismas reglas que `addTeam` vía parseTeamInput (1..4 integrantes,
+ * 2 robots en fútbol). `member_count` sale de la lista de integrantes, no se
+ * pide aparte. No toca mentor_name/mentor_contact: quedaron con formatos
+ * mezclados entre equipos cargados antes y después de separar celular/email
+ * (ver registration-form.tsx), así que forzar ese campo acá podría pisar
+ * datos válidos con un parseo adivinado. */
 export async function updateTeam(competitionId: string, teamId: string, formData: FormData) {
-  const name = String(formData.get("name") ?? "").trim();
-  const institution = String(formData.get("institution") ?? "").trim() || null;
-  const memberCountRaw = String(formData.get("member_count") ?? "").trim();
-  const memberNames = String(formData.get("member_names") ?? "").trim() || null;
-  const robotNames = joinNameList([
-    formData.get("robot_1") as string | null,
-    formData.get("robot_2") as string | null,
-    formData.get("robot_3") as string | null,
-  ]);
-  const notes = String(formData.get("notes") ?? "").trim() || null;
-  if (!name) throw new Error("Falta el nombre del equipo.");
-
   const supabase = await createServerSupabaseClient();
+  const isFutbol = await isFutbolCompetition(supabase, competitionId);
+  const input = parseTeamInput(formData, { isFutbol });
+
   const { error } = await supabase
     .from("teams")
     .update({
-      name,
-      institution,
-      member_count: memberCountRaw ? Number(memberCountRaw) : null,
-      member_names: memberNames,
-      robot_names: robotNames,
-      notes,
+      name: input.name,
+      institution: input.institution,
+      member_count: input.memberCount,
+      member_names: input.memberNames,
+      robot_names: input.robotNames,
+      notes: input.notes,
     })
     .eq("id", teamId)
     .eq("competition_id", competitionId);
@@ -272,15 +255,11 @@ export async function assignTeamToGroup(competitionId: string, teamId: string, g
   }
 
   if (groupId) {
-    const { data: team } = await supabase
-      .from("teams")
-      .select("accredited, homologated")
-      .eq("id", teamId)
-      .single();
-    if (!team?.accredited || !team?.homologated) {
-      throw new Error("Este equipo todavía no está acreditado y homologado — no puede entrar a un grupo.");
-    }
-
+    // Ya NO se exige acreditado + homologado para entrar a un grupo: el
+    // pedido explícito es poder armar y lanzar el fixture aunque falte
+    // acreditar (esa gestión suele terminar el mismo día del evento, con
+    // los grupos ya sorteados). La pestaña Equipos/Grupos sigue mostrando
+    // el chip "Falta acreditar" como aviso.
     const { error } = await supabase.from("group_teams").insert({ group_id: groupId, team_id: teamId });
     if (error) throw new Error(error.message);
   }
@@ -292,14 +271,15 @@ export async function randomDraw(competitionId: string, formData: FormData) {
   const numGroups = Math.max(1, Number(formData.get("num_groups") ?? 1));
   const supabase = await createServerSupabaseClient();
 
+  // Se sortean TODOS los equipos cargados (no sólo los acreditados +
+  // homologados): el pedido es poder armar los grupos aunque la
+  // acreditación todavía esté en curso.
   const { data: teams } = await supabase
     .from("teams")
     .select("id")
-    .eq("competition_id", competitionId)
-    .eq("accredited", true)
-    .eq("homologated", true);
+    .eq("competition_id", competitionId);
   if (!teams || teams.length < 2) {
-    throw new Error("Cargá al menos 2 equipos acreditados y homologados antes de sortear.");
+    throw new Error("Cargá al menos 2 equipos antes de sortear.");
   }
 
   const { data: existingGroups } = await supabase
@@ -371,24 +351,10 @@ export async function startTournament(competitionId: string) {
 
   if (!groups || groups.length === 0) throw new Error("Creá los grupos y asigná equipos primero.");
 
-  // Pedido explícito del usuario: no se puede iniciar el torneo mientras
-  // queden equipos cargados sin asignar a un grupo (se resuelve desde la
-  // pestaña Grupos) — este chequeo es el resguardo del lado del server, la
-  // UI ya oculta el botón "Iniciar torneo" en ese caso.
-  const { count: totalTeams } = await supabase
-    .from("teams")
-    .select("id", { count: "exact", head: true })
-    .eq("competition_id", competitionId);
-  const assignedTeamIds = new Set(
-    (groups as unknown as { group_teams: { team_id: string }[] }[]).flatMap((g) =>
-      g.group_teams.map((gt) => gt.team_id)
-    )
-  );
-  if ((totalTeams ?? 0) > assignedTeamIds.size) {
-    throw new Error(
-      `Todavía hay ${(totalTeams ?? 0) - assignedTeamIds.size} equipo(s) sin asignar a un grupo — asignalos (o quitalos del torneo) desde la pestaña Grupos antes de iniciar.`
-    );
-  }
+  // Los equipos que quedaron sin grupo NO bloquean el arranque: se juega
+  // con lo que esté asignado y los que falten se suman después con "Armar
+  // partidos que falten" (ver syncGroupFixture). Antes esto era un error
+  // duro.
 
   const rows: Partial<Match>[] = [];
   for (const g of groups as unknown as { id: string; group_teams: { team_id: string }[] }[]) {
@@ -446,6 +412,138 @@ export async function restartTournament(competitionId: string) {
     .update({ status: "setup" })
     .eq("id", competitionId);
   if (statusError) throw new Error(statusError.message);
+
+  revalidateCompetition(competitionId);
+}
+
+/**
+ * "Armar partidos que falten": después de sumar equipos tarde (inscripción
+ * reabierta + asignados a un grupo), genera SÓLO los partidos nuevos del
+ * round-robin de cada grupo, sin tocar los ya jugados. También limpia los
+ * partidos todavía no jugados de equipos que se sacaron de un grupo.
+ *
+ * A diferencia de `restartTournament`, no borra resultados. Sólo corre con
+ * el torneo ya arrancado en fase de grupos.
+ */
+export async function syncGroupFixture(competitionId: string) {
+  const supabase = await createServerSupabaseClient();
+
+  const { data: competition } = await supabase
+    .from("competitions")
+    .select("id, status, event_id, discipline_id")
+    .eq("id", competitionId)
+    .single<Pick<Competition, "id" | "status" | "event_id" | "discipline_id">>();
+  if (!competition) throw new Error("Competencia no encontrada.");
+  if (competition.status === "setup") {
+    throw new Error("El torneo todavía no arrancó — usá “Iniciar torneo”.");
+  }
+  if (competition.status !== "groups_in_progress" && competition.status !== "groups_done") {
+    throw new Error(
+      "La fase de grupos ya está cerrada (o el torneo terminó). Reiniciá el torneo si necesitás rearmar el fixture."
+    );
+  }
+
+  const { data: groups } = await supabase
+    .from("groups")
+    .select("id, group_teams(team_id)")
+    .eq("competition_id", competitionId);
+  if (!groups || groups.length === 0) throw new Error("Este torneo no tiene grupos.");
+
+  const { data: groupMatches } = await supabase
+    .from("matches")
+    .select("id, group_id, team_a_id, team_b_id, status")
+    .eq("competition_id", competitionId)
+    .eq("phase", "group");
+
+  const pairKey = (a: string, b: string) => [a, b].sort().join("::");
+
+  const rowsToInsert: Partial<Match>[] = [];
+  const matchIdsToDelete: string[] = [];
+
+  for (const g of groups as unknown as { id: string; group_teams: { team_id: string }[] }[]) {
+    const teamIds = g.group_teams.map((gt) => gt.team_id);
+    const teamIdSet = new Set(teamIds);
+    const existing = (groupMatches ?? []).filter((m) => m.group_id === g.id);
+
+    const existingPairs = new Set(
+      existing
+        .filter((m) => m.team_a_id && m.team_b_id)
+        .map((m) => pairKey(m.team_a_id as string, m.team_b_id as string))
+    );
+
+    // Partidos sin jugar de equipos que ya no están en el grupo → se sueltan.
+    for (const m of existing) {
+      const stillHere = m.team_a_id && m.team_b_id && teamIdSet.has(m.team_a_id) && teamIdSet.has(m.team_b_id);
+      if (!stillHere && m.status !== "completed") matchIdsToDelete.push(m.id);
+    }
+
+    // Pares del round-robin que todavía no tienen partido.
+    for (const [a, b] of generateRoundRobinPairs(teamIds)) {
+      if (existingPairs.has(pairKey(a, b))) continue;
+      rowsToInsert.push({
+        competition_id: competitionId,
+        phase: "group",
+        group_id: g.id,
+        team_a_id: a,
+        team_b_id: b,
+        status: "scheduled",
+      });
+    }
+  }
+
+  if (matchIdsToDelete.length > 0) {
+    const { error } = await supabase.from("matches").delete().in("id", matchIdsToDelete);
+    if (error) throw new Error(error.message);
+  }
+
+  if (rowsToInsert.length > 0) {
+    const { data: inserted, error } = await supabase
+      .from("matches")
+      .insert(rowsToInsert)
+      .select("id, team_a_id, team_b_id");
+    if (error) throw new Error(error.message);
+
+    await autoScheduleAndPersist(
+      supabase,
+      competition.event_id,
+      competition.discipline_id,
+      (inserted ?? []) as SchedulableMatch[]
+    );
+  }
+
+  revalidateCompetition(competitionId);
+}
+
+/**
+ * Elimina un grupo. Sus equipos quedan sin grupo (siguen cargados en el
+ * torneo); `group_teams` y los partidos de ese grupo se van por FK
+ * `on delete cascade` (ver 0001_init.sql). Si un grupo vacío se elimina, no
+ * pasa nada. El confirm de la UI avisa cuando hay partidos que se pierden.
+ */
+export async function deleteGroup(competitionId: string, groupId: string) {
+  const supabase = await createServerSupabaseClient();
+
+  const { data: group } = await supabase
+    .from("groups")
+    .select("id")
+    .eq("id", groupId)
+    .eq("competition_id", competitionId)
+    .maybeSingle();
+  if (!group) throw new Error("Grupo no encontrado en este torneo.");
+
+  const { error } = await supabase.from("groups").delete().eq("id", groupId);
+  if (error) throw new Error(error.message);
+
+  // Renumera sort_order de los que quedan (0,1,2...) para que "Grupo A/B/C"
+  // no queden con huecos raros en el orden.
+  const { data: remaining } = await supabase
+    .from("groups")
+    .select("id")
+    .eq("competition_id", competitionId)
+    .order("sort_order");
+  await Promise.all(
+    (remaining ?? []).map((g, i) => supabase.from("groups").update({ sort_order: i }).eq("id", g.id))
+  );
 
   revalidateCompetition(competitionId);
 }
@@ -571,6 +669,34 @@ export async function setManualRankOverride(
 export async function generateBracket(competitionId: string) {
   const supabase = await createServerSupabaseClient();
   await generateBracketForCompetition(supabase, competitionId);
+  revalidateCompetition(competitionId);
+}
+
+/**
+ * Se asegura de que el cuadro tenga el partido por el 3er puesto (obligatorio
+ * en todo cuadro con semifinales). Para cuadros generados antes de la
+ * migración 0014 que no lo traen — la pantalla del torneo la llama sola al
+ * abrirse (ver ensure-third-place.tsx). Si el torneo ya estaba "Terminado",
+ * lo reabre a "Eliminatoria en curso" hasta que se juegue ese partido. No
+ * tira error si no había nada que hacer.
+ */
+export async function ensureThirdPlaceMatchAction(competitionId: string) {
+  const supabase = await createServerSupabaseClient();
+
+  const { data: competition } = await supabase
+    .from("competitions")
+    .select("status")
+    .eq("id", competitionId)
+    .maybeSingle<Pick<Competition, "status">>();
+  if (!competition) return;
+
+  const created = await ensureThirdPlaceMatch(supabase, competitionId);
+  if (!created) return;
+
+  if (competition.status === "finished") {
+    await supabase.from("competitions").update({ status: "bracket_in_progress" }).eq("id", competitionId);
+  }
+
   revalidateCompetition(competitionId);
 }
 

@@ -11,7 +11,7 @@ export interface BracketDisplayMatch extends Match {
   cards: MatchCard[];
 }
 
-const ROUND_ORDER = ["R32", "R16", "QF", "SF", "F"];
+const ROUND_ORDER = ["R32", "R16", "QF", "SF", "F", "3P"];
 
 /** Cuadro eliminatorio claro/oscuro compartido entre el inicio y
  * /publico/[eventId]/[competitionId]. */
@@ -32,12 +32,22 @@ export function PublicBracketView({ matches }: { matches: BracketDisplayMatch[] 
 
   return (
     <div className="flex items-stretch gap-4 overflow-x-auto pb-2 snap-x snap-mandatory sm:snap-none">
-      {rounds.map(([round, ms], ri) => (
+      {rounds.map(([round, ms], ri) => {
+        const isThird = round === "3P";
+        return (
         <div key={round} className="flex flex-col min-w-[200px] snap-start">
-          <p className="text-xs text-white bg-brand-teal-dark font-display font-bold uppercase tracking-wide text-center py-1.5 mb-3 rounded-full">
+          <p
+            className={`text-xs text-white font-display font-bold uppercase tracking-wide text-center py-1.5 mb-3 rounded-full ${
+              isThird ? "bg-brand-orange" : "bg-brand-teal-dark"
+            }`}
+          >
+            {isThird && "🥉 "}
             {roundName(round)}
           </p>
-          <div className="flex-1 flex flex-col justify-center" style={{ gap: `${Math.pow(2, ri) * 1.1}rem` }}>
+          <div
+            className="flex-1 flex flex-col justify-center"
+            style={{ gap: isThird ? "1.1rem" : `${Math.pow(2, ri) * 1.1}rem` }}
+          >
             {ms.map((m) => {
               const decided = m.status === "completed";
               return (
@@ -61,12 +71,16 @@ export function PublicBracketView({ matches }: { matches: BracketDisplayMatch[] 
                     score={m.score_b}
                     cardSummary={cardsByTeam(m.cards, m.team_a_id, m.team_b_id).b}
                   />
+                  {m.round === "F" && m.status === "pending_teams" && m.team_a_name && m.team_b_name && (
+                    <p className="text-[11px] text-brand-orange">⏳ Se juega después del 3er puesto</p>
+                  )}
                 </div>
               );
             })}
           </div>
         </div>
-      ))}
+        );
+      })}
     </div>
   );
 }
@@ -112,6 +126,8 @@ function roundName(code: string) {
       return "Dieciseisavos";
     case "R32":
       return "Treintaidosavos";
+    case "3P":
+      return "3er puesto";
     default:
       return code;
   }

@@ -28,14 +28,12 @@ export default async function InscripcionPage({
     supabase.from("events").select("name").eq("id", competition.event_id).single(),
   ]);
 
-  // Una vez que el torneo arrancó (fase de grupos o cuadro generados) ya no
-  // tiene sentido sumar equipos nuevos — no entrarían al fixture ni al
-  // cuadro ya armado. `registration_open` es un toggle manual que el admin
-  // puede olvidarse de cerrar en el momento justo, así que acá se chequea
-  // también el status, sin depender de que se haya tocado el botón (mismo
-  // criterio en registerTeam, ver actions.ts).
-  const alreadyStarted = competition.status !== "setup";
-  const effectivelyOpen = competition.registration_open && !alreadyStarted;
+  // La inscripción tardía está permitida mientras el torneo esté en curso —
+  // el admin reabre `registration_open` a mano y después usa "Armar partidos
+  // que falten" para sumar a los nuevos al fixture. Sólo un torneo ya
+  // terminado no acepta equipos (mismo criterio en registerTeam, ver actions.ts).
+  const alreadyFinished = competition.status === "finished";
+  const effectivelyOpen = competition.registration_open && !alreadyFinished;
 
   return (
     <KioskShell
@@ -45,11 +43,15 @@ export default async function InscripcionPage({
     >
       <div className="space-y-6">
         {effectivelyOpen ? (
-          <RegistrationForm competitionId={competitionId} disciplineSlug={discipline?.slug ?? ""} />
+          <RegistrationForm
+            competitionId={competitionId}
+            disciplineSlug={discipline?.slug ?? ""}
+            disciplineLabel={disciplineCategoryLabel(discipline, category)}
+          />
         ) : (
           <p className="text-sm panel-label panel-surface rounded-lg p-4">
-            {alreadyStarted
-              ? "Este torneo ya arrancó, así que las inscripciones para nuevos equipos están cerradas."
+            {alreadyFinished
+              ? "Este torneo ya terminó, así que las inscripciones están cerradas."
               : "Las inscripciones para este torneo están cerradas por ahora. Consultá con la organización de la Liga Robótica Neuquina."}
           </p>
         )}

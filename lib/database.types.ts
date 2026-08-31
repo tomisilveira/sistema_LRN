@@ -69,6 +69,11 @@ export interface Competition {
   qualifiers_per_group: number;
   status: CompetitionStatus;
   registration_open: boolean;
+  // Columna de 0014_third_place_match.sql. Quedó sin uso: el partido por el
+  // 3er puesto pasó a ser obligatorio en todo cuadro con semifinales (ya no
+  // es un toggle). Se deja la columna (default true) por si vuelve a hacer
+  // falta configurarlo por torneo.
+  third_place_match: boolean;
   created_at: string;
   // Config de timer de este torneo puntual (copiada del discipline al
   // crearlo, editable en "Formato del torneo" mientras status='setup').
@@ -152,6 +157,12 @@ export interface Match {
   bracket_slot: number | null;
   next_match_id: string | null;
   next_match_slot: "a" | "b" | null;
+  // Partido por el 3er puesto (round = '3P') al que se empuja el PERDEDOR de
+  // esta semifinal — análogo a next_match_id/next_match_slot para el ganador
+  // (ver 0014_third_place_match.sql y lib/bracket-actions.ts). NULL fuera de
+  // las semifinales.
+  consolation_match_id: string | null;
+  consolation_slot: "a" | "b" | null;
   team_a_id: string | null;
   team_b_id: string | null;
   court_id: string | null;

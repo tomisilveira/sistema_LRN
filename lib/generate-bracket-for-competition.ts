@@ -4,7 +4,7 @@ import { buildSeedOrder, generateBracketRounds } from "./bracket";
 import { persistBracket } from "./bracket-actions";
 import { autoScheduleAndPersist } from "./apply-auto-schedule";
 import type { SchedulableMatch } from "./auto-schedule";
-import type { BracketType, Competition, GroupStandingRow, Team } from "./database.types";
+import type { BracketType, Competition, GroupStandingRow, Match, Team } from "./database.types";
 
 type StandingsSelector = (standings: GroupStandingRow[]) => GroupStandingRow[];
 
@@ -120,10 +120,16 @@ export async function generateBracketForCompetition(supabase: SupabaseClient, co
   if (competition.format_type === "bracket_only") {
     await generateBracketOnlyBracket(supabase, competitionId);
   } else if (competition.format_type === "gold_silver") {
-    await generateGroupBracket(supabase, competitionId, "gold", (s) => s.slice(0, competition.qualifiers_per_group));
-    await generateGroupBracket(supabase, competitionId, "silver", (s) => s.slice(competition.qualifiers_per_group));
+    await generateGroupBracket(supabase, competitionId, "gold", (s) =>
+      s.slice(0, competition.qualifiers_per_group)
+    );
+    await generateGroupBracket(supabase, competitionId, "silver", (s) =>
+      s.slice(competition.qualifiers_per_group)
+    );
   } else if (competition.format_type === "single_elimination" || competition.format_type === "groups_only") {
-    await generateGroupBracket(supabase, competitionId, null, (s) => s.slice(0, competition.qualifiers_per_group));
+    await generateGroupBracket(supabase, competitionId, null, (s) =>
+      s.slice(0, competition.qualifiers_per_group)
+    );
   } else {
     throw new Error("Esta competencia no tiene un formato con cuadro de eliminación.");
   }
@@ -132,20 +138,27 @@ export async function generateBracketForCompetition(supabase: SupabaseClient, co
   // a jugar (los "bye" de la ronda 1 ya quedaron completed, sin partido real
   // que jugar). Una sola pasada sobre TODOS los partidos de cuadro
   // pendientes de la competencia — así oro y plata (o un reintento parcial)
-  // no se pisan el turno entre sí.
+  // no se pisan el turno entre sí. Ordenados por ronda: primero las rondas
+  // tempranas, después el 3er puesto, y la FINAL al final (se juega última).
   const { data: bracketMatches } = await supabase
     .from("matches")
-    .select("id, team_a_id, team_b_id")
+    .select("id, team_a_id, team_b_id, round")
     .eq("competition_id", competitionId)
     .eq("phase", "bracket")
     .neq("status", "completed");
 
-  if ((bracketMatches ?? []).length > 0) {
+  const roundOrder = (round: string | null) =>
+    ({ R32: 0, R16: 1, QF: 2, SF: 3, "3P": 4, F: 5 })[round ?? ""] ?? 3;
+  const toSchedule = [...(bracketMatches ?? [])].sort(
+    (a, b) => roundOrder(a.round) - roundOrder(b.round)
+  );
+
+  if (toSchedule.length > 0) {
     await autoScheduleAndPersist(
       supabase,
       competition.event_id,
       competition.discipline_id,
-      (bracketMatches ?? []) as SchedulableMatch[]
+      toSchedule as SchedulableMatch[]
     );
   }
 
@@ -164,4 +177,130 @@ export async function generateBracketForCompetition(supabase: SupabaseClient, co
       .update({ status: "bracket_in_progress", registration_open: false })
       .eq("id", competitionId);
   }
+}
+
+/**
+ * Agrega el partido por el 3er puesto (round = '3P') a un cuadro que YA
+ * existe pero no lo tiene — cuadros generados antes de la migración 0014.
+ * El 3er puesto es obligatorio en todos los cuadros con semifinales, así
+ * que esto se llama solo desde `maybeAdvanceCompetitionPhase` y desde la
+ * pantalla del torneo (ver ensureThirdPlaceMatchAction). Es idempotente: si
+ * ya hay un '3P' para ese bracket_type, no hace nada.
+ *
+ * Requiere que el cuadro tenga semifinales (ronda 'SF' con 2 partidos) y
+ * final. Engancha las dos semis con consolation_match_id/slot; si alguna ya
+ * está jugada, empuja de una a su perdedor al 3er puesto. Devuelve true si
+ * creó al menos un partido.
+ *
+ * Nunca cambia el `status` de la competencia — eso lo decide quien la llama.
+ */
+export async function ensureThirdPlaceMatch(
+  supabase: SupabaseClient,
+  competitionId: string
+): Promise<boolean> {
+  const { data: competition } = await supabase
+    .from("competitions")
+    .select("*")
+    .eq("id", competitionId)
+    .single<Competition>();
+  if (!competition) return false;
+
+  const bracketTypes: (BracketType | null)[] =
+    competition.format_type === "gold_silver" ? ["gold", "silver"] : [null];
+
+  let created = false;
+
+  for (const bt of bracketTypes) {
+    const roundRows = async (round: string) => {
+      let q = supabase
+        .from("matches")
+        .select("*")
+        .eq("competition_id", competitionId)
+        .eq("phase", "bracket")
+        .eq("round", round)
+        .order("bracket_slot");
+      q = bt ? q.eq("bracket_type", bt) : q.is("bracket_type", null);
+      const { data } = await q;
+      return (data ?? []) as Match[];
+    };
+
+    if ((await roundRows("3P")).length > 0) continue;
+
+    const semis = await roundRows("SF");
+    const finals = await roundRows("F");
+    if (semis.length !== 2 || finals.length === 0) continue;
+
+    const { data: tpInserted, error } = await supabase
+      .from("matches")
+      .insert({
+        competition_id: competitionId,
+        phase: "bracket" as const,
+        bracket_type: bt,
+        round: "3P",
+        bracket_slot: 0,
+        team_a_id: null,
+        team_b_id: null,
+        status: "pending_teams" as const,
+        winner_id: null,
+        next_match_id: null,
+        next_match_slot: null,
+      })
+      .select("id, created_at")
+      .single();
+    if (error) throw error;
+    created = true;
+
+    // Guard anti-carrera (dos pestañas del admin abriendo el torneo a la
+    // vez): si quedó más de un '3P' para este cuadro, se queda el más viejo
+    // y se borran los demás.
+    const all3p = await roundRows("3P");
+    let tp = tpInserted;
+    if (all3p.length > 1) {
+      const sorted = [...all3p].sort((a, b) => (a.created_at < b.created_at ? -1 : 1));
+      const keeper = sorted[0];
+      const extraIds = sorted.slice(1).map((m) => m.id);
+      await supabase.from("matches").delete().in("id", extraIds);
+      tp = { id: keeper.id, created_at: keeper.created_at };
+    }
+
+    for (let i = 0; i < semis.length; i++) {
+      const slot: "a" | "b" = i === 0 ? "a" : "b";
+      const s = semis[i];
+      await supabase
+        .from("matches")
+        .update({ consolation_match_id: tp.id, consolation_slot: slot })
+        .eq("id", s.id);
+
+      if (s.status === "completed" && s.winner_id && s.team_a_id && s.team_b_id) {
+        const loserId = s.winner_id === s.team_a_id ? s.team_b_id : s.team_a_id;
+        await supabase
+          .from("matches")
+          .update({ [slot === "a" ? "team_a_id" : "team_b_id"]: loserId })
+          .eq("id", tp.id);
+      }
+    }
+
+    const { data: tpNow } = await supabase
+      .from("matches")
+      .select("id, team_a_id, team_b_id")
+      .eq("id", tp.id)
+      .single<Pick<Match, "id" | "team_a_id" | "team_b_id">>();
+    if (tpNow?.team_a_id && tpNow?.team_b_id) {
+      await supabase.from("matches").update({ status: "scheduled" }).eq("id", tp.id);
+    }
+
+    // El 3er puesto va PRIMERO: si la final ya estaba habilitada
+    // ('scheduled') pero todavía no se jugó, vuelve a 'pending_teams' hasta
+    // que se juegue el 3er puesto. Si la final ya está 'completed' (cuadro
+    // viejo terminado) se deja como está — no se puede des-jugar.
+    if (finals[0].status === "scheduled") {
+      await supabase.from("matches").update({ status: "pending_teams" }).eq("id", finals[0].id);
+    }
+
+    await autoScheduleAndPersist(supabase, competition.event_id, competition.discipline_id, [
+      { id: tp.id, team_a_id: tpNow?.team_a_id ?? null, team_b_id: tpNow?.team_b_id ?? null },
+    ] as SchedulableMatch[]);
+  }
+
+  return created;
 }

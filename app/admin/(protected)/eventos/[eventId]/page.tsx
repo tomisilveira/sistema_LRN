@@ -427,7 +427,7 @@ export default async function EventPage({ params }: { params: Promise<{ eventId:
       {/* Arranca en Torneos (no en Canchas): es adonde se vuelve casi siempre
           después de entrar a un torneo puntual, para elegir otra
           disciplina/categoría del mismo evento. */}
-      <TabbedLayout items={tabs} defaultTabId="torneos" sectionTitle={event.name} />
+      <TabbedLayout items={tabs} defaultTabId="torneos" sectionTitle={event.name} sectionEventId={event.id} />
     </div>
   );
 }

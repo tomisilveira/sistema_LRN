@@ -65,6 +65,10 @@ export function EditFormatForm({ competitionId, competition }: { competitionId: 
         <input name="allow_draws" type="checkbox" defaultChecked={competition.allow_draws} className="rounded" />
         Esta disciplina admite empates (desmarcar para sumo)
       </label>
+      <p className="text-xs panel-label">
+        Todo cuadro con semifinales incluye el partido por el 3er puesto (perdedores de las semis),
+        que se juega antes de la final.
+      </p>
 
       <div className="rounded-md panel-surface border-l-4 border-brand-teal/40 p-3 space-y-3">
         <div>

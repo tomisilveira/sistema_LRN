@@ -104,7 +104,6 @@ export function TeamCard({
                 name: team.name,
                 institution: team.institution ?? "",
                 robots: parseRobotNames(team.robot_names),
-                memberCount: team.member_count,
                 memberNames: team.member_names,
                 notes: team.notes ?? "",
               }}

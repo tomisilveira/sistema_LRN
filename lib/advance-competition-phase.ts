@@ -1,6 +1,6 @@
 import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { generateBracketForCompetition } from "./generate-bracket-for-competition";
+import { generateBracketForCompetition, ensureThirdPlaceMatch } from "./generate-bracket-for-competition";
 import type { BracketType, Competition } from "./database.types";
 
 /** `bracket_type`s relevantes para cada formato — `gold_silver` tiene dos
@@ -57,15 +57,23 @@ export async function maybeAdvanceCompetitionPhase(
     }
 
     if (competition.status === "bracket_in_progress") {
+      // Cuadros generados antes de 0014 no tienen el partido por el 3er
+      // puesto — se lo agrega acá apenas se puede (semis + final ya
+      // existen), así aparece la columna "3er puesto" sin ningún paso
+      // manual. Idempotente: si ya está, no hace nada.
+      await ensureThirdPlaceMatch(supabase, competitionId);
+
       const types = relevantBracketTypes(competition.format_type);
       const finalsDone = await Promise.all(
         types.map(async (bracketType) => {
+          // 'F' y '3P': el torneo no se da por terminado hasta que se
+          // definió también el 3er puesto (si el cuadro lo generó).
           const base = supabase
             .from("matches")
             .select("status")
             .eq("competition_id", competitionId)
             .eq("phase", "bracket")
-            .eq("round", "F");
+            .in("round", ["F", "3P"]);
           const { data: finalMatches } = bracketType
             ? await base.eq("bracket_type", bracketType)
             : await base.is("bracket_type", null);

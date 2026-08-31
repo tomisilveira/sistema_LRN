@@ -44,10 +44,17 @@ export default async function ProtectedAdminLayout({ children }: { children: Rea
     );
   }
 
+  // Lista de eventos para el selector del sidebar (cambiar de evento sin
+  // volver a /admin). Liviano: sólo id/nombre/visibilidad/estado.
+  const { data: events } = await supabase
+    .from("events")
+    .select("id, name, is_public, status")
+    .order("event_date", { ascending: false });
+
   return (
     <SectionNavProvider>
       <div className="min-h-screen md:flex">
-        <AdminSidebar userEmail={userEmail} />
+        <AdminSidebar userEmail={userEmail} events={events ?? []} />
         <main className="flex-1 p-6 panel-enter min-w-0">{children}</main>
       </div>
     </SectionNavProvider>

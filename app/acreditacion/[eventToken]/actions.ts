@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { joinNameList } from "@/lib/team-display";
+import { parseTeamInput, isFutbolCompetition } from "@/lib/team-input";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 // Server Actions públicas (sin sesión): las usa la mesa de acreditación del
@@ -98,27 +98,23 @@ export async function updateTeam(eventToken: string, teamId: string, formData: F
   const supabase = createAdminClient();
   await assertTeamBelongsToEvent(supabase, eventToken, teamId);
 
-  const name = String(formData.get("name") ?? "").trim();
-  const institution = String(formData.get("institution") ?? "").trim() || null;
-  const memberCountRaw = String(formData.get("member_count") ?? "").trim();
-  const memberNames = String(formData.get("member_names") ?? "").trim() || null;
-  const robotNames = joinNameList([
-    formData.get("robot_1") as string | null,
-    formData.get("robot_2") as string | null,
-    formData.get("robot_3") as string | null,
-  ]);
-  const notes = String(formData.get("notes") ?? "").trim() || null;
-  if (!name) throw new Error("Falta el nombre del equipo.");
+  const { data: team } = await supabase
+    .from("teams")
+    .select("competition_id")
+    .eq("id", teamId)
+    .maybeSingle<{ competition_id: string }>();
+  const isFutbol = team ? await isFutbolCompetition(supabase, team.competition_id) : false;
+  const input = parseTeamInput(formData, { isFutbol });
 
   const { error } = await supabase
     .from("teams")
     .update({
-      name,
-      institution,
-      member_count: memberCountRaw ? Number(memberCountRaw) : null,
-      member_names: memberNames,
-      robot_names: robotNames,
-      notes,
+      name: input.name,
+      institution: input.institution,
+      member_count: input.memberCount,
+      member_names: input.memberNames,
+      robot_names: input.robotNames,
+      notes: input.notes,
     })
     .eq("id", teamId);
   if (error) throw new Error(error.message);
@@ -189,26 +185,17 @@ export async function addTeam(eventToken: string, competitionId: string, formDat
   const supabase = createAdminClient();
   await assertCompetitionBelongsToEvent(supabase, eventToken, competitionId);
 
-  const name = String(formData.get("name") ?? "").trim();
-  const institution = String(formData.get("institution") ?? "").trim() || null;
-  const memberCountRaw = String(formData.get("member_count") ?? "").trim();
-  const memberNames = String(formData.get("member_names") ?? "").trim() || null;
-  const robotNames = joinNameList([
-    formData.get("robot_1") as string | null,
-    formData.get("robot_2") as string | null,
-    formData.get("robot_3") as string | null,
-  ]);
-  const notes = String(formData.get("notes") ?? "").trim() || null;
-  if (!name) throw new Error("Falta el nombre del equipo.");
+  const isFutbol = await isFutbolCompetition(supabase, competitionId);
+  const input = parseTeamInput(formData, { isFutbol });
 
   const { error } = await supabase.from("teams").insert({
     competition_id: competitionId,
-    name,
-    institution,
-    member_count: memberCountRaw ? Number(memberCountRaw) : null,
-    member_names: memberNames,
-    robot_names: robotNames,
-    notes,
+    name: input.name,
+    institution: input.institution,
+    member_count: input.memberCount,
+    member_names: input.memberNames,
+    robot_names: input.robotNames,
+    notes: input.notes,
   });
   if (error) throw new Error(error.message);
 

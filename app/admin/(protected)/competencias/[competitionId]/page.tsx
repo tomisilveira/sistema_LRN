@@ -16,9 +16,11 @@ import type {
 import {
   addTeam,
   createGroup,
+  deleteGroup,
   randomDraw,
   startTournament,
   restartTournament,
+  syncGroupFixture,
   assignSchedule,
   submitResult,
   generateBracket,
@@ -33,6 +35,7 @@ import { TeamCard } from "./team-card";
 import { MergeCompetitionButton } from "./merge-competition-button";
 import { BracketView, type BracketDisplayMatch } from "./bracket-view";
 import { RealtimeRefresh } from "./realtime-refresh";
+import { EnsureThirdPlace } from "./ensure-third-place";
 import { CopyLinkButton } from "@/app/components/copy-link-button";
 import { TeamLabel } from "@/app/components/team-label";
 import { TeamFormFields } from "@/app/components/team-form-fields";
@@ -47,6 +50,8 @@ import { disciplineColor } from "@/lib/discipline-colors";
 import { disciplineCategoryLabel, disciplineDisplayName } from "@/lib/discipline-display";
 import { FormatAdvisory } from "./format-advisory";
 import { EditFormatForm } from "./edit-format-form";
+import { PodiumPanel } from "./podium-panel";
+import { buildPodium } from "@/lib/podium";
 
 // Esta página nunca necesita el `access_token` de las canchas (el link del
 // juez se copia desde la página del evento) y además pasa la lista a un
@@ -189,17 +194,16 @@ export default async function CompetitionPage({
   }
   const unassignedTeams = (teams ?? []).filter((t: Team) => !groupIdByTeamId.has(t.id));
 
-  // Pedido explícito del usuario: el torneo solo puede arrancar una vez que
-  // TODOS los equipos cargados están asignados a un grupo — antes se podía
-  // iniciar con equipos sueltos, que quedaban afuera del fixture sin avisar.
+  // El torneo puede arrancar apenas hay grupos con equipos. Los equipos que
+  // queden sin grupo NO bloquean el arranque: se suman después con "Armar
+  // partidos que falten" (ver syncGroupFixture). Tampoco hace falta que
+  // estén todos acreditados/homologados.
   const startBlockedReason =
     (teams ?? []).length === 0
       ? "Cargá equipos antes de iniciar el torneo (pestaña Equipos)."
       : groupsList.length === 0
         ? "Creá los grupos y asigná los equipos antes de iniciar el torneo (pestaña Grupos)."
-        : unassignedTeams.length > 0
-          ? `Asigná ${unassignedTeams.length === 1 ? "el equipo que falta" : `los ${unassignedTeams.length} equipos que faltan`} a un grupo antes de iniciar el torneo (pestaña Grupos).`
-          : null;
+        : null;
 
   // Si la RPC de un grupo puntual falla (red, cold start, etc.), que se
   // pierda solo ese grupo y no toda la página — antes un error acá tiraba
@@ -230,6 +234,7 @@ export default async function CompetitionPage({
   const randomDrawAction = randomDraw.bind(null, competitionId);
   const startTournamentAction = startTournament.bind(null, competitionId);
   const restartTournamentAction = restartTournament.bind(null, competitionId);
+  const syncGroupFixtureAction = syncGroupFixture.bind(null, competitionId);
   const assignScheduleAction = assignSchedule.bind(null, competitionId);
   const submitResultAction = submitResult.bind(null, competitionId);
   const generateBracketAction = generateBracket.bind(null, competitionId);
@@ -248,6 +253,18 @@ export default async function CompetitionPage({
   const plainMatches = bracketDisplayMatches.filter((m) => m.bracket_type === null);
   const goldMatches = bracketDisplayMatches.filter((m) => m.bracket_type === "gold");
   const silverMatches = bracketDisplayMatches.filter((m) => m.bracket_type === "silver");
+
+  // ¿Falta el partido por el 3er puesto en un cuadro ya armado? (cuadros
+  // generados antes de la migración 0014). El 3er puesto es obligatorio; si
+  // falta, <EnsureThirdPlace> lo crea solo al abrir esta pantalla.
+  const bracketNeedsThirdPlace = (ms: BracketDisplayMatch[]) =>
+    !ms.some((m) => m.round === "3P") &&
+    ms.filter((m) => m.round === "SF").length === 2 &&
+    ms.some((m) => m.round === "F");
+  const needsThirdPlace =
+    bracketNeedsThirdPlace(plainMatches) ||
+    bracketNeedsThirdPlace(goldMatches) ||
+    bracketNeedsThirdPlace(silverMatches);
 
   const colors = disciplineColor(discipline);
   const teamsReadyCount = (teams ?? []).filter((t: Team) => t.accredited && t.homologated).length;
@@ -425,7 +442,7 @@ export default async function CompetitionPage({
                 buttonLabel="🎲 Sortear equipos"
                 buttonClassName="rounded-md panel-button-accent px-3 py-2 text-sm font-medium whitespace-nowrap"
                 title="Sortear equipos en grupos"
-                description="Reparte al azar en partes iguales a TODOS los equipos ya acreditados y homologados. Si ya había grupos armados, borra esas asignaciones y arranca de cero."
+                description="Reparte al azar en partes iguales a TODOS los equipos cargados (estén o no acreditados). Si ya había grupos armados, borra esas asignaciones y arranca de cero."
                 action={randomDrawAction}
                 submitLabel="Sortear"
                 confirmMessage="Esto borra y vuelve a repartir TODAS las asignaciones de grupo actuales. ¿Continuar?"
@@ -457,13 +474,28 @@ export default async function CompetitionPage({
               <div className="grid sm:grid-cols-2 gap-3 panel-enter-stagger">
                 {groupsList.map((g) => {
                   const groupTeams = teamsByGroupId.get(g.id) ?? [];
+                  const groupHasMatches = (groupMatches ?? []).some((m: Match) => m.group_id === g.id);
                   return (
                     <div key={g.id} className="panel-surface rounded-md p-3 space-y-2">
-                      <div className="flex items-center justify-between">
+                      <div className="flex items-center justify-between gap-2">
                         <h3 className="text-sm font-semibold">{g.name}</h3>
-                        <span className="text-xs panel-label">
-                          {groupTeams.length} equipo{groupTeams.length === 1 ? "" : "s"}
-                        </span>
+                        <div className="flex items-center gap-1.5 shrink-0">
+                          <span className="text-xs panel-label">
+                            {groupTeams.length} equipo{groupTeams.length === 1 ? "" : "s"}
+                          </span>
+                          <form action={deleteGroup.bind(null, competitionId, g.id)}>
+                            <ConfirmSubmitButton
+                              confirmMessage={`¿Eliminar "${g.name}"? Sus ${groupTeams.length} equipo${
+                                groupTeams.length === 1 ? "" : "s"
+                              } quedan sin grupo${
+                                groupHasMatches ? " y se borran los partidos de ese grupo" : ""
+                              }. No se puede deshacer.`}
+                              className="text-xs rounded-md px-1.5 py-0.5 panel-button-danger"
+                            >
+                              🗑️
+                            </ConfirmSubmitButton>
+                          </form>
+                        </div>
                       </div>
                       {groupTeams.length === 0 ? (
                         <p className="text-xs panel-label">Todavía no tiene equipos asignados.</p>
@@ -497,7 +529,8 @@ export default async function CompetitionPage({
           {unassignedTeams.length > 0 && (
             <div className="pt-2 border-t border-neutral-200 dark:border-neutral-800">
               <p className="text-xs panel-label mb-1.5">
-                Sin grupo asignado ({unassignedTeams.length}) — elegí grupo para el que ya estén listos:
+                Sin grupo asignado ({unassignedTeams.length}) — elegí el grupo de cada uno. Si el torneo
+                ya arrancó, después usá &ldquo;Armar partidos que falten&rdquo; en la pestaña Partidos.
               </p>
               <div className="space-y-1.5">
                 {unassignedTeams.map((t) => {
@@ -507,21 +540,24 @@ export default async function CompetitionPage({
                       key={t.id}
                       className="panel-surface flex items-center justify-between gap-2 rounded-md px-2.5 py-1.5 text-sm"
                     >
-                      <TeamLabel name={t.name} memberNames={t.member_names} className="truncate" />
-                      {groupsList.length > 0 && ready ? (
+                      <div className="flex items-center gap-1.5 min-w-0">
+                        <TeamLabel name={t.name} memberNames={t.member_names} className="truncate" />
+                        {!ready && (
+                          <span
+                            className="panel-chip-warning text-xs rounded-full px-2 py-0.5 shrink-0"
+                            title="Todavía falta acreditar/homologar a este equipo (pestaña Acreditación). Igual podés asignarlo a un grupo."
+                          >
+                            Falta acreditar
+                          </span>
+                        )}
+                      </div>
+                      {groupsList.length > 0 && (
                         <GroupAssignSelect
                           competitionId={competitionId}
                           teamId={t.id}
                           groups={groupsList}
                           currentGroupId={null}
                         />
-                      ) : (
-                        <span
-                          className="panel-chip-warning text-xs rounded-full px-2 py-0.5 shrink-0"
-                          title="Falta acreditar y homologar a este equipo (pestaña Acreditación) antes de poder asignarlo a un grupo"
-                        >
-                          Falta acreditar
-                        </span>
                       )}
                     </div>
                   );
@@ -646,16 +682,34 @@ export default async function CompetitionPage({
               </form>
             )
           ) : (
-            <form action={restartTournamentAction}>
-              <ConfirmSubmitButton
-                confirmMessage="Esto borra TODOS los partidos y resultados de este torneo (grupos y cuadro) y vuelve a 'Armando'. Los equipos y grupos no se tocan. ¿Reiniciar?"
-                className="text-xs rounded-md panel-button-danger px-3 py-1.5 whitespace-nowrap"
-              >
-                🔄 Reiniciar torneo
-              </ConfirmSubmitButton>
-            </form>
+            <div className="flex flex-wrap items-center gap-2">
+              <form action={syncGroupFixtureAction}>
+                <button
+                  type="submit"
+                  className="text-xs rounded-md panel-button-secondary px-3 py-1.5 whitespace-nowrap"
+                  title="Crea sólo los partidos nuevos del round-robin (equipos sumados tarde), sin borrar los ya jugados."
+                >
+                  🔁 Armar partidos que falten
+                </button>
+              </form>
+              <form action={restartTournamentAction}>
+                <ConfirmSubmitButton
+                  confirmMessage="Esto borra TODOS los partidos y resultados de este torneo (grupos y cuadro) y vuelve a 'Armando'. Los equipos y grupos no se tocan. ¿Reiniciar?"
+                  className="text-xs rounded-md panel-button-danger px-3 py-1.5 whitespace-nowrap"
+                >
+                  🔄 Reiniciar torneo
+                </ConfirmSubmitButton>
+              </form>
+            </div>
           )}
         </div>
+        {(groupMatches ?? []).length > 0 && unassignedTeams.length > 0 && (
+          <p className="text-xs text-amber-600 dark:text-amber-400">
+            Hay {unassignedTeams.length} equipo{unassignedTeams.length === 1 ? "" : "s"} sin grupo.
+            Asigná{unassignedTeams.length === 1 ? "lo" : "los"} en la pestaña Grupos y después apretá
+            &ldquo;Armar partidos que falten&rdquo;.
+          </p>
+        )}
         <div className="space-y-2 panel-enter-stagger">
           {(groupMatches ?? []).length === 0 && (
             <p className="text-sm panel-label">
@@ -872,9 +926,24 @@ export default async function CompetitionPage({
     });
   }
 
+  const podiumBoards = buildPodium({
+    competition,
+    teams: (teams ?? []) as Team[],
+    groups: groupsList,
+    standingsByGroup: standingsByGroup as { group: Group; rows: GroupStandingRow[] }[],
+    bracketMatches: (bracketMatches ?? []) as Match[],
+  });
+
+  tabs.push({
+    id: "ganadores",
+    label: "🏆 Ganadores",
+    content: <PodiumPanel boards={podiumBoards} finished={competition.status === "finished"} />,
+  });
+
   return (
     <div className="max-w-5xl mx-auto space-y-6">
       <RealtimeRefresh competitionId={competitionId} />
+      <EnsureThirdPlace competitionId={competitionId} needed={needsThirdPlace} />
 
       <div>
         <Breadcrumbs
@@ -926,6 +995,8 @@ export default async function CompetitionPage({
         items={tabs}
         sectionTitle={disciplineCategoryLabel(discipline, category)}
         sectionColorDot={colors.dot}
+        sectionEventId={competition.event_id}
+        sectionHref={event ? `/admin/eventos/${event.id}` : undefined}
       />
     </div>
   );
