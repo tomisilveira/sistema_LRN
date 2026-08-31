@@ -255,11 +255,22 @@ export async function assignTeamToGroup(competitionId: string, teamId: string, g
   }
 
   if (groupId) {
-    // Ya NO se exige acreditado + homologado para entrar a un grupo: el
-    // pedido explícito es poder armar y lanzar el fixture aunque falte
-    // acreditar (esa gestión suele terminar el mismo día del evento, con
-    // los grupos ya sorteados). La pestaña Equipos/Grupos sigue mostrando
-    // el chip "Falta acreditar" como aviso.
+    // Un equipo NO listo (falta acreditar y/o homologar) no puede entrar a
+    // ningún grupo. Queda "fuera de los grupos" hasta que la mesa lo deje
+    // listo; recién ahí se elige su grupo (y después "Armar partidos que
+    // falten" si el torneo ya arrancó). Igual se puede lanzar el torneo con
+    // equipos afuera — simplemente no juegan hasta sumarse.
+    const { data: team } = await supabase
+      .from("teams")
+      .select("accredited, homologated")
+      .eq("id", teamId)
+      .eq("competition_id", competitionId)
+      .single();
+    if (!team?.accredited || !team?.homologated) {
+      throw new Error(
+        "Este equipo todavía no está listo (falta acreditar y/o homologar) — no puede entrar a un grupo."
+      );
+    }
     const { error } = await supabase.from("group_teams").insert({ group_id: groupId, team_id: teamId });
     if (error) throw new Error(error.message);
   }
@@ -271,15 +282,18 @@ export async function randomDraw(competitionId: string, formData: FormData) {
   const numGroups = Math.max(1, Number(formData.get("num_groups") ?? 1));
   const supabase = await createServerSupabaseClient();
 
-  // Se sortean TODOS los equipos cargados (no sólo los acreditados +
-  // homologados): el pedido es poder armar los grupos aunque la
-  // acreditación todavía esté en curso.
+  // Sólo se sortean los equipos LISTOS (acreditados + homologados). Los que
+  // todavía no lo están quedan fuera de los grupos; cuando la mesa los deje
+  // listos se les asigna grupo a mano (y "Armar partidos que falten" si el
+  // torneo ya arrancó).
   const { data: teams } = await supabase
     .from("teams")
     .select("id")
-    .eq("competition_id", competitionId);
+    .eq("competition_id", competitionId)
+    .eq("accredited", true)
+    .eq("homologated", true);
   if (!teams || teams.length < 2) {
-    throw new Error("Cargá al menos 2 equipos antes de sortear.");
+    throw new Error("Necesitás al menos 2 equipos listos (acreditados y homologados) para sortear.");
   }
 
   const { data: existingGroups } = await supabase

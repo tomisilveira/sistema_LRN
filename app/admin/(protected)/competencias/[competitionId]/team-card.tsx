@@ -62,8 +62,15 @@ export function TeamCard({
             </p>
             <span
               className={`shrink-0 text-[11px] rounded-full px-2 py-0.5 font-medium whitespace-nowrap ${ready ? "panel-chip-success" : "panel-chip-warning"}`}
+              title={ready ? undefined : "Un equipo no listo no puede entrar a ningún grupo"}
             >
-              {ready ? "✅ Listo" : "⏳ Falta"}
+              {ready
+                ? "✅ Listo"
+                : team.accredited
+                  ? "⏳ Sin homologar"
+                  : team.homologated
+                    ? "⏳ Sin acreditar"
+                    : "⏳ No listo"}
             </span>
           </div>
           {(team.institution || team.mentor_name) && (

@@ -192,7 +192,12 @@ export default async function CompetitionPage({
     list.push(team);
     teamsByGroupId.set(gt.group_id, list);
   }
+  const isTeamReady = (t: Team) => t.accredited && t.homologated;
   const unassignedTeams = (teams ?? []).filter((t: Team) => !groupIdByTeamId.has(t.id));
+  // Listos sin grupo → se les elige grupo. No listos → quedan "fuera de los
+  // grupos" hasta que la mesa los acredite/homologue.
+  const unassignedReady = unassignedTeams.filter(isTeamReady);
+  const unassignedNotReady = unassignedTeams.filter((t: Team) => !isTeamReady(t));
 
   // El torneo puede arrancar apenas hay grupos con equipos. Los equipos que
   // queden sin grupo NO bloquean el arranque: se suman después con "Armar
@@ -442,7 +447,7 @@ export default async function CompetitionPage({
                 buttonLabel="🎲 Sortear equipos"
                 buttonClassName="rounded-md panel-button-accent px-3 py-2 text-sm font-medium whitespace-nowrap"
                 title="Sortear equipos en grupos"
-                description="Reparte al azar en partes iguales a TODOS los equipos cargados (estén o no acreditados). Si ya había grupos armados, borra esas asignaciones y arranca de cero."
+                description="Reparte al azar en partes iguales a los equipos LISTOS (acreditados y homologados). Los que todavía no lo están quedan fuera de los grupos. Si ya había grupos armados, borra esas asignaciones y arranca de cero."
                 action={randomDrawAction}
                 submitLabel="Sortear"
                 confirmMessage="Esto borra y vuelve a repartir TODAS las asignaciones de grupo actuales. ¿Continuar?"
@@ -526,42 +531,57 @@ export default async function CompetitionPage({
             </>
           )}
 
-          {unassignedTeams.length > 0 && (
+          {unassignedReady.length > 0 && (
             <div className="pt-2 border-t border-neutral-200 dark:border-neutral-800">
               <p className="text-xs panel-label mb-1.5">
-                Sin grupo asignado ({unassignedTeams.length}) — elegí el grupo de cada uno. Si el torneo
+                Listos sin grupo ({unassignedReady.length}) — elegí el grupo de cada uno. Si el torneo
                 ya arrancó, después usá &ldquo;Armar partidos que falten&rdquo; en la pestaña Partidos.
               </p>
               <div className="space-y-1.5">
-                {unassignedTeams.map((t) => {
-                  const ready = t.accredited && t.homologated;
-                  return (
-                    <div
-                      key={t.id}
-                      className="panel-surface flex items-center justify-between gap-2 rounded-md px-2.5 py-1.5 text-sm"
-                    >
-                      <div className="flex items-center gap-1.5 min-w-0">
-                        <TeamLabel name={t.name} memberNames={t.member_names} className="truncate" />
-                        {!ready && (
-                          <span
-                            className="panel-chip-warning text-xs rounded-full px-2 py-0.5 shrink-0"
-                            title="Todavía falta acreditar/homologar a este equipo (pestaña Acreditación). Igual podés asignarlo a un grupo."
-                          >
-                            Falta acreditar
-                          </span>
-                        )}
-                      </div>
-                      {groupsList.length > 0 && (
-                        <GroupAssignSelect
-                          competitionId={competitionId}
-                          teamId={t.id}
-                          groups={groupsList}
-                          currentGroupId={null}
-                        />
-                      )}
+                {unassignedReady.map((t) => (
+                  <div
+                    key={t.id}
+                    className="panel-surface flex items-center justify-between gap-2 rounded-md px-2.5 py-1.5 text-sm"
+                  >
+                    <div className="flex items-center gap-1.5 min-w-0">
+                      <TeamLabel name={t.name} memberNames={t.member_names} className="truncate" />
+                      <span className="panel-chip-success text-xs rounded-full px-2 py-0.5 shrink-0">
+                        ✅ Listo
+                      </span>
                     </div>
-                  );
-                })}
+                    {groupsList.length > 0 && (
+                      <GroupAssignSelect
+                        competitionId={competitionId}
+                        teamId={t.id}
+                        groups={groupsList}
+                        currentGroupId={null}
+                      />
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {unassignedNotReady.length > 0 && (
+            <div className="pt-2 border-t border-neutral-200 dark:border-neutral-800">
+              <p className="text-xs panel-label mb-1.5">
+                Fuera de los grupos ({unassignedNotReady.length}) — falta acreditar y/o homologar. No
+                entran a ningún grupo hasta estar listos (pestaña Equipos o el link de Acreditación).
+                Cuando lo estén, aparecen arriba para elegirles grupo.
+              </p>
+              <div className="space-y-1.5">
+                {unassignedNotReady.map((t) => (
+                  <div
+                    key={t.id}
+                    className="panel-surface flex items-center justify-between gap-2 rounded-md px-2.5 py-1.5 text-sm opacity-90"
+                  >
+                    <TeamLabel name={t.name} memberNames={t.member_names} className="truncate" />
+                    <span className="panel-chip-warning text-xs rounded-full px-2 py-0.5 shrink-0">
+                      {t.accredited ? "Sin homologar" : t.homologated ? "Sin acreditar" : "No listo"}
+                    </span>
+                  </div>
+                ))}
               </div>
             </div>
           )}
@@ -703,11 +723,19 @@ export default async function CompetitionPage({
             </div>
           )}
         </div>
-        {(groupMatches ?? []).length > 0 && unassignedTeams.length > 0 && (
+        {(groupMatches ?? []).length > 0 && unassignedReady.length > 0 && (
           <p className="text-xs text-amber-600 dark:text-amber-400">
-            Hay {unassignedTeams.length} equipo{unassignedTeams.length === 1 ? "" : "s"} sin grupo.
-            Asigná{unassignedTeams.length === 1 ? "lo" : "los"} en la pestaña Grupos y después apretá
+            Hay {unassignedReady.length} equipo{unassignedReady.length === 1 ? "" : "s"} listo
+            {unassignedReady.length === 1 ? "" : "s"} sin grupo. Asigná
+            {unassignedReady.length === 1 ? "lo" : "los"} en la pestaña Grupos y después apretá
             &ldquo;Armar partidos que falten&rdquo;.
+          </p>
+        )}
+        {(groupMatches ?? []).length > 0 && unassignedNotReady.length > 0 && (
+          <p className="text-xs panel-label">
+            {unassignedNotReady.length} equipo{unassignedNotReady.length === 1 ? "" : "s"} fuera de los
+            grupos por falta de acreditación/homologación. Cuando estén listos, asignales grupo y volvé
+            a apretar &ldquo;Armar partidos que falten&rdquo;.
           </p>
         )}
         <div className="space-y-2 panel-enter-stagger">
