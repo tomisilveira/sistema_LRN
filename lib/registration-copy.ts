@@ -25,6 +25,7 @@ const FUTBOL: RegistrationCopy = {
   implies: [
     "Reservás un lugar en el torneo de esta disciplina y categoría.",
     "El equipo se compromete a presentarse el día de la jornada.",
+    "El día del evento, se va a llamar a las canchas con el nombre del equipo.",
     "Aceptás las bases y condiciones de la Liga Robótica Neuquina.",
     "Los nombres de los integrantes se usan para la premiación — cargá a las personas que forman parte del equipo.",
   ],
@@ -41,6 +42,7 @@ const SUMO: RegistrationCopy = {
   implies: [
     "Reservás un lugar en el torneo de esta disciplina y categoría.",
     "El equipo se compromete a presentarse el día de la jornada.",
+    "El día del evento, se va a llamar a las canchas con el nombre del robot.",
     "Aceptás las bases y condiciones de la Liga Robótica Neuquina.",
     "Los nombres de los integrantes se usan para la premiación — cargá a las personas que forman parte del equipo.",
   ],
@@ -57,6 +59,7 @@ const GENERIC: RegistrationCopy = {
   implies: [
     "Reservás un lugar en el torneo de esta disciplina y categoría.",
     "El equipo se compromete a presentarse el día de la jornada.",
+    "El día del evento, se va a llamar a las canchas con el nombre que cargaste arriba.",
     "Aceptás las bases y condiciones de la Liga Robótica Neuquina.",
     "Los nombres de los integrantes se usan para la premiación — cargá a las personas que forman parte del equipo.",
   ],
