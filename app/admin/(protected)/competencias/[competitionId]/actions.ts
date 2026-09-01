@@ -177,9 +177,21 @@ export async function removeTeam(competitionId: string, teamId: string) {
  */
 export async function setTeamAccredited(competitionId: string, teamId: string, value: boolean) {
   const supabase = await createServerSupabaseClient();
+
+  // Invariante: homologado ⟹ acreditado — al quitar la acreditación se
+  // quita también la homologación (misma regla que la mesa de acreditación).
+  const patch: Record<string, unknown> = {
+    accredited: value,
+    accredited_at: value ? new Date().toISOString() : null,
+  };
+  if (!value) {
+    patch.homologated = false;
+    patch.homologated_at = null;
+  }
+
   const { error } = await supabase
     .from("teams")
-    .update({ accredited: value, accredited_at: value ? new Date().toISOString() : null })
+    .update(patch)
     .eq("id", teamId)
     .eq("competition_id", competitionId);
   if (error) throw new Error(error.message);
@@ -188,6 +200,19 @@ export async function setTeamAccredited(competitionId: string, teamId: string, v
 
 export async function setTeamHomologated(competitionId: string, teamId: string, value: boolean) {
   const supabase = await createServerSupabaseClient();
+
+  if (value) {
+    const { data: team } = await supabase
+      .from("teams")
+      .select("accredited")
+      .eq("id", teamId)
+      .eq("competition_id", competitionId)
+      .maybeSingle<{ accredited: boolean }>();
+    if (!team?.accredited) {
+      throw new Error("Primero acreditá al equipo — no se puede homologar sin acreditación.");
+    }
+  }
+
   const { error } = await supabase
     .from("teams")
     .update({ homologated: value, homologated_at: value ? new Date().toISOString() : null })

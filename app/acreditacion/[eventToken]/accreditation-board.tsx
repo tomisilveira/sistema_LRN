@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import type { Team } from "@/lib/database.types";
+import type { DisciplineColorSet } from "@/lib/discipline-colors";
 import { TeamCheckinRow } from "./team-checkin-row";
 import { ModalFormButton } from "@/app/components/modal-form";
 import { TeamFormFields } from "@/app/components/team-form-fields";
@@ -12,6 +13,8 @@ export interface AccreditationGroup {
   label: string;
   teams: Team[];
   isFutbol: boolean;
+  /** Color de la disciplina (mismo sistema que canchas/torneos). */
+  colors: DisciplineColorSet;
   /** Si este torneo ya arrancó (fixture armado), no se puede mover NADA
    * afuera de él — ver moveTeamToCompetition en ./actions.ts. */
   canMove: boolean;
@@ -51,53 +54,76 @@ export function AccreditationBoard({
 
   return (
     <div className="space-y-5">
-      <div className="flex flex-wrap items-center gap-3 sticky top-0 -mx-4 px-4 py-2 bg-neutral-50/95 dark:bg-neutral-950/95 backdrop-blur z-10">
-        <input
-          type="search"
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          placeholder="Buscar equipo o institución…"
-          className="flex-1 min-w-[180px] rounded-md panel-input px-3 py-2 text-sm"
-        />
-        <span className="panel-chip text-xs whitespace-nowrap rounded-full px-2.5 py-1">
+      <div className="flex items-center gap-2.5 sticky top-0 -mx-4 px-4 py-2.5 bg-neutral-50/95 dark:bg-neutral-950/95 backdrop-blur z-10">
+        <div className="relative flex-1 min-w-0">
+          <svg
+            viewBox="0 0 24 24"
+            className="w-4 h-4 text-neutral-400 absolute left-3.5 top-1/2 -translate-y-1/2"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth={2}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            aria-hidden="true"
+          >
+            <circle cx="11" cy="11" r="7" />
+            <path d="m21 21-4.3-4.3" />
+          </svg>
+          <input
+            type="search"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Buscar equipo o institución…"
+            className="w-full h-11 rounded-lg panel-input pl-10 pr-3 text-[15px]"
+          />
+        </div>
+        <span className="shrink-0 font-display font-bold text-[13px] rounded-full px-3 py-2 panel-chip-success whitespace-nowrap">
           {readyTeams}/{totalTeams} listos
         </span>
       </div>
 
       {filteredGroups.length === 0 && (
-        <p className="text-sm panel-label">
+        <p className="text-sm panel-label px-1">
           {q ? `Sin resultados para "${query}".` : "Todavía no hay equipos inscriptos."}
         </p>
       )}
 
-      {filteredGroups.map((g) => (
-        <section key={g.id} className="panel-card rounded-xl p-3 space-y-2 panel-enter">
-          <div className="flex items-center justify-between gap-2">
-            <h2 className="text-sm font-semibold text-brand-teal uppercase tracking-wide">{g.label}</h2>
-            <ModalFormButton
-              buttonLabel="+ Agregar equipo"
-              buttonClassName="text-xs px-2.5 py-1 panel-button-xs shrink-0 whitespace-nowrap"
-              title={`Agregar equipo — ${g.label}`}
-              description="Para un equipo que se presenta hoy sin haberse anotado antes."
-              action={addTeam.bind(null, eventToken, g.id)}
-              submitLabel="Agregar"
-            >
-              <TeamFormFields isFutbol={g.isFutbol} showMentor mentorRequired />
-            </ModalFormButton>
-          </div>
-          <div className="space-y-2 panel-enter-stagger">
-            {g.teams.map((t) => (
-              <TeamCheckinRow
-                key={t.id}
-                eventToken={eventToken}
-                team={t}
-                isFutbol={g.isFutbol}
-                moveTargets={g.canMove ? g.moveTargets : []}
-              />
-            ))}
-          </div>
-        </section>
-      ))}
+      {filteredGroups.map((g) => {
+        const groupReady = g.teams.filter((t) => t.accredited && t.homologated).length;
+        return (
+          <section key={g.id} className="space-y-2.5 panel-enter">
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className={`w-2 h-2 rounded-full shrink-0 ${g.colors.dot}`} aria-hidden="true" />
+              <h2 className={`text-[12.5px] font-bold uppercase tracking-wide ${g.colors.text}`}>{g.label}</h2>
+              <span className="text-[11px] panel-label">
+                {groupReady}/{g.teams.length} listos
+              </span>
+              <ModalFormButton
+                buttonLabel="+ Agregar equipo"
+                buttonClassName={`ml-auto text-xs h-8 px-3 rounded-lg border font-medium whitespace-nowrap ${g.colors.border} ${g.colors.bg} ${g.colors.text}`}
+                title={`Agregar equipo — ${g.label}`}
+                description="Para un equipo que se presenta hoy sin haberse anotado antes."
+                action={addTeam.bind(null, eventToken, g.id)}
+                submitLabel="Agregar"
+              >
+                <TeamFormFields isFutbol={g.isFutbol} showMentor mentorRequired />
+              </ModalFormButton>
+            </div>
+            <div className="space-y-2.5 panel-enter-stagger">
+              {g.teams.map((t) => (
+                <TeamCheckinRow
+                  key={t.id}
+                  eventToken={eventToken}
+                  team={t}
+                  isFutbol={g.isFutbol}
+                  colors={g.colors}
+                  moveTargets={g.canMove ? g.moveTargets : []}
+                />
+              ))}
+            </div>
+          </section>
+        );
+      })}
     </div>
   );
 }

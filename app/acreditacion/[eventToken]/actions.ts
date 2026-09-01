@@ -54,10 +54,18 @@ export async function setAccredited(eventToken: string, teamId: string, value: b
   const supabase = createAdminClient();
   await assertTeamBelongsToEvent(supabase, eventToken, teamId);
 
-  const { error } = await supabase
-    .from("teams")
-    .update({ accredited: value, accredited_at: value ? new Date().toISOString() : null })
-    .eq("id", teamId);
+  // Invariante: homologado ⟹ acreditado. Al quitar la acreditación se quita
+  // también la homologación (no se puede homologar un equipo no acreditado).
+  const patch: Record<string, unknown> = {
+    accredited: value,
+    accredited_at: value ? new Date().toISOString() : null,
+  };
+  if (!value) {
+    patch.homologated = false;
+    patch.homologated_at = null;
+  }
+
+  const { error } = await supabase.from("teams").update(patch).eq("id", teamId);
   if (error) throw new Error(error.message);
 
   revalidatePath(`/acreditacion/${eventToken}`);
@@ -66,6 +74,17 @@ export async function setAccredited(eventToken: string, teamId: string, value: b
 export async function setHomologated(eventToken: string, teamId: string, value: boolean) {
   const supabase = createAdminClient();
   await assertTeamBelongsToEvent(supabase, eventToken, teamId);
+
+  if (value) {
+    const { data: team } = await supabase
+      .from("teams")
+      .select("accredited")
+      .eq("id", teamId)
+      .maybeSingle<{ accredited: boolean }>();
+    if (!team?.accredited) {
+      throw new Error("Primero acreditá al equipo — no se puede homologar sin acreditación.");
+    }
+  }
 
   const { error } = await supabase
     .from("teams")

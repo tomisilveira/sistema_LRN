@@ -3,6 +3,7 @@ import type { Team } from "@/lib/database.types";
 import { AccreditationBoard, type AccreditationGroup } from "./accreditation-board";
 import { KioskShell, KioskInvalidLink } from "@/app/components/kiosk-shell";
 import { disciplineCategoryLabel } from "@/lib/discipline-display";
+import { disciplineColor } from "@/lib/discipline-colors";
 
 export const dynamic = "force-dynamic";
 
@@ -22,13 +23,13 @@ export default async function AcreditacionPage({ params }: { params: Promise<{ e
 
   const { data: competitions } = await supabase
     .from("competitions")
-    .select("id, status, disciplines(name, slug), categories(name)")
+    .select("id, status, disciplines(name, slug, sort_order), categories(name)")
     .eq("event_id", event.id);
 
   const competitionList = (competitions ?? []) as unknown as {
     id: string;
     status: string;
-    disciplines: { name: string; slug: string } | null;
+    disciplines: { name: string; slug: string; sort_order: number } | null;
     categories: { name: string } | null;
   }[];
   const competitionIds = competitionList.map((c) => c.id);
@@ -56,6 +57,7 @@ export default async function AcreditacionPage({ params }: { params: Promise<{ e
     label: disciplineCategoryLabel(c.disciplines, c.categories),
     teams: teamsByCompetition.get(c.id) ?? [],
     isFutbol: c.disciplines?.slug === "futbol",
+    colors: disciplineColor(c.disciplines),
     canMove: c.status === "setup",
     moveTargets: competitionList
       .filter((other) => other.id !== c.id && other.status === "setup")
@@ -76,9 +78,9 @@ export default async function AcreditacionPage({ params }: { params: Promise<{ e
         <AccreditationBoard eventToken={eventToken} groups={groups} />
       )}
 
-      <footer className="mt-8 pt-4 panel-nav border-t text-sm panel-label">
+      <footer className="mt-6 pt-4 border-t border-neutral-200/70 dark:border-neutral-800 text-[14px] panel-label">
         Total participantes presentes:{" "}
-        <span className="font-semibold text-brand-orange text-base">{totalPresent}</span>
+        <span className="font-display font-bold text-brand-orange text-[17px]">{totalPresent}</span>
       </footer>
     </KioskShell>
   );

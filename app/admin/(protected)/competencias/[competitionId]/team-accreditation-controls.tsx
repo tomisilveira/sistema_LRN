@@ -18,6 +18,7 @@ export function TeamAccreditationControls({
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
+  const [accredited, setAccreditedState] = useState(team.accredited);
   const accreditedRef = useRef<HTMLInputElement>(null);
   const homologatedRef = useRef<HTMLInputElement>(null);
 
@@ -28,12 +29,17 @@ export function TeamAccreditationControls({
 
   function handleAccreditedChange(checked: boolean) {
     setError(null);
+    setAccreditedState(checked);
+    // homologado ⟹ acreditado: al desacreditar, el server también baja la
+    // homologación (ver setTeamAccredited) — reflejar acá.
+    if (!checked && homologatedRef.current) homologatedRef.current.checked = false;
     startTransition(async () => {
       try {
         await setTeamAccredited(competitionId, team.id, checked);
         flashSaved();
       } catch (err) {
         if (accreditedRef.current) accreditedRef.current.checked = !checked;
+        setAccreditedState(!checked);
         setError((err as Error).message ?? "No se pudo guardar.");
       }
     });
@@ -110,12 +116,15 @@ export function TeamAccreditationControls({
           </span>{" "}
           Acreditado
         </label>
-        <label className={toggleChipClass}>
+        <label
+          className={toggleChipClass}
+          title={!accredited ? "Primero acreditá al equipo" : undefined}
+        >
           <input
             ref={homologatedRef}
             type="checkbox"
             defaultChecked={team.homologated}
-            disabled={pending}
+            disabled={pending || !accredited}
             onChange={(e) => handleHomologatedChange(e.target.checked)}
             className="peer sr-only"
           />
