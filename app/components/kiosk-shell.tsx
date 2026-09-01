@@ -11,12 +11,16 @@ export function KioskShell({
   eyebrow,
   title,
   subtitle,
+  titleDot,
   maxWidthClassName = "max-w-md",
   children,
 }: {
   eyebrow?: string;
   title: string;
   subtitle?: string;
+  /** Clase de color (ej. "bg-brand-teal") para un puntito antes del título —
+   * usado en Inscripción para marcar la disciplina. */
+  titleDot?: string;
   maxWidthClassName?: string;
   children: React.ReactNode;
 }) {
@@ -27,7 +31,10 @@ export function KioskShell({
           <BrandIcon className="h-8 w-8" priority />
           <div className="min-w-0">
             {eyebrow && <p className="text-sm panel-label truncate">{eyebrow}</p>}
-            <h1 className="text-xl font-bold truncate">{title}</h1>
+            <h1 className="text-xl font-bold truncate flex items-center gap-2">
+              {titleDot && <span className={`w-2 h-2 rounded-full shrink-0 ${titleDot}`} aria-hidden="true" />}
+              <span className="truncate">{title}</span>
+            </h1>
             {subtitle && <p className="text-sm panel-label mt-0.5">{subtitle}</p>}
           </div>
         </header>
