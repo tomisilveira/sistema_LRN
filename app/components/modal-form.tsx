@@ -96,7 +96,12 @@ export function ModalFormButton({
               role="dialog"
               aria-modal="true"
               aria-labelledby="modal-form-title"
-              className="panel-page panel-card rounded-xl p-5 w-full max-w-md space-y-4 shadow-lg panel-modal-panel"
+              // max-h + overflow-y-auto: formularios largos (ej. "+ Agregar
+              // equipo" con robots + responsable adulto + integrantes) no
+              // entraban en pantallas chicas y no había forma de bajar para
+              // ver el resto de los campos ni el botón "Agregar" — reportado
+              // en vivo 2026-09-01.
+              className="panel-page panel-card rounded-xl p-5 w-full max-w-md max-h-[90vh] overflow-y-auto space-y-4 shadow-lg panel-modal-panel"
               onClick={(e) => e.stopPropagation()}
             >
               <div className="flex items-start justify-between gap-2">
