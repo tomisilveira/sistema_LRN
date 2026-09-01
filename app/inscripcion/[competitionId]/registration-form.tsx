@@ -146,25 +146,29 @@ export function RegistrationForm({
               <CheckIcon className="w-6 h-6" />
             </span>
           </div>
-          <h2 className="font-display font-bold text-xl leading-tight">¡{submitted} quedó inscripto!</h2>
-          <p className="text-sm panel-label leading-relaxed">
-            Ya está en la lista para <span className="font-medium text-neutral-700 dark:text-neutral-200">{disciplineLabel}</span>. Nos vemos en la jornada.
+          <h2 className="font-display font-bold text-[22px] leading-tight">¡{submitted} quedó inscripto!</h2>
+          <p className="text-[15px] panel-label leading-relaxed">
+            Ya está en la lista para{" "}
+            <span className="font-semibold text-neutral-700 dark:text-neutral-200">{disciplineLabel}</span>. Nos
+            vemos en la jornada.
           </p>
         </div>
 
         <div className="panel-card rounded-xl overflow-hidden">
           <div className="flex items-center gap-2.5 px-4 py-3 border-b border-neutral-200/70">
-            <ClockIcon className="w-4 h-4 text-brand-teal-dark dark:text-brand-teal" />
-            <span className="font-display font-semibold text-[15px]">Qué sigue</span>
+            <ClockIcon className="w-[18px] h-[18px] text-brand-teal-dark dark:text-brand-teal" />
+            <span className="font-display font-semibold text-[16px]">Qué sigue</span>
           </div>
-          <div className="p-4 space-y-2.5 text-sm">
-            <p className="text-neutral-700 dark:text-neutral-300 leading-snug">
-              Llevá {isFutbol ? "los robots" : "el robot"} a <span className="font-medium">homologación técnica</span> el día del evento, antes de tu primer partido.
+          <div className="p-4 space-y-3 text-[15px]">
+            <p className="text-neutral-700 dark:text-neutral-200 leading-snug">
+              Llevá {isFutbol ? "los robots" : "el robot"} a{" "}
+              <span className="font-semibold">homologación técnica</span> el día del evento, antes de tu
+              primer partido.
             </p>
-            <p className="text-neutral-700 dark:text-neutral-300 leading-snug">
-              Seguí el cronograma y los resultados en la <span className="font-medium">pantalla del evento</span>.
+            <p className="text-neutral-700 dark:text-neutral-200 leading-snug">
+              Seguí el cronograma y los resultados en la <span className="font-semibold">pantalla del evento</span>.
             </p>
-            <p className="text-neutral-700 dark:text-neutral-300 leading-snug">
+            <p className="text-neutral-700 dark:text-neutral-200 leading-snug">
               ¿Cambió algo del equipo? Escribile a la organización de la Liga.
             </p>
           </div>
@@ -172,7 +176,7 @@ export function RegistrationForm({
 
         <button
           onClick={() => setSubmitted(null)}
-          className="w-full rounded-xl panel-button-primary font-medium h-12 text-[15px]"
+          className="w-full rounded-xl panel-button-primary font-semibold h-12 text-base"
         >
           Inscribir otro equipo
         </button>
@@ -200,28 +204,28 @@ export function RegistrationForm({
           <ClipboardIcon className={`w-[18px] h-[18px] ${colors.text}`} />
           <span className={`font-display font-semibold text-[15px] ${colors.text}`}>Antes de inscribirte</span>
         </div>
-        <div className="p-4 space-y-3 text-sm">
-          <p className="text-neutral-700 dark:text-neutral-300 leading-relaxed">{copy.what}</p>
+        <div className="p-4 space-y-3.5 text-[15px]">
+          <p className="text-neutral-700 dark:text-neutral-200 leading-relaxed">{copy.what}</p>
 
           <div>
-            <p className={`text-[11px] font-semibold uppercase tracking-wider mb-1.5 ${colors.text}`}>Vas a necesitar</p>
-            <ul className="space-y-1.5">
+            <p className={`text-[12px] font-bold uppercase tracking-wider mb-2 ${colors.text}`}>Vas a necesitar</p>
+            <ul className="space-y-2">
               {copy.need.map((n, i) => (
-                <li key={i} className="flex items-start gap-2">
-                  <CheckIcon className={`w-3.5 h-3.5 mt-[3px] shrink-0 ${colors.text}`} />
-                  <span className="text-[13px] leading-snug text-neutral-700 dark:text-neutral-300">{n}</span>
+                <li key={i} className="flex items-start gap-2.5">
+                  <CheckIcon className={`w-4 h-4 mt-[3px] shrink-0 ${colors.text}`} />
+                  <span className="text-[14px] leading-snug text-neutral-700 dark:text-neutral-200">{n}</span>
                 </li>
               ))}
             </ul>
           </div>
 
-          <div className="border-t border-dashed border-neutral-200 dark:border-neutral-700 pt-2.5">
-            <p className="text-[11px] font-semibold uppercase tracking-wider panel-label mb-1">Qué implica inscribirte</p>
-            <ul className="space-y-0.5">
+          <div className="border-t border-dashed border-neutral-200 dark:border-neutral-700 pt-3">
+            <p className="text-[12px] font-bold uppercase tracking-wider panel-label mb-1.5">Qué implica inscribirte</p>
+            <ul className="space-y-1">
               {copy.implies.map((n, i) => (
-                <li key={i} className="flex items-start gap-1.5">
-                  <span className="mt-[7px] w-1 h-1 rounded-full bg-neutral-400 shrink-0" />
-                  <span className="text-[12.5px] leading-snug panel-label">{n}</span>
+                <li key={i} className="flex items-start gap-2">
+                  <span className="mt-[8px] w-1 h-1 rounded-full bg-neutral-400 shrink-0" />
+                  <span className="text-[13.5px] leading-snug panel-label">{n}</span>
                 </li>
               ))}
             </ul>
@@ -234,9 +238,9 @@ export function RegistrationForm({
           ref={summaryRef}
           role="alert"
           tabIndex={-1}
-          className="rounded-xl border border-red-500/50 bg-red-500/10 p-3.5 text-sm panel-enter outline-none"
+          className="rounded-xl border border-red-500/50 bg-red-500/10 p-3.5 text-[14px] panel-enter outline-none"
         >
-          <p className="font-semibold text-red-600 dark:text-red-400">Revisá estos puntos:</p>
+          <p className="font-bold text-red-600 dark:text-red-400">Revisá estos puntos:</p>
           <ul className="list-disc pl-5 mt-1 space-y-0.5 text-red-600 dark:text-red-400">
             {error && <li>{error}</li>}
             {fieldErrors.map((p, i) => (
@@ -252,25 +256,25 @@ export function RegistrationForm({
           {sectionHeader(1, isFutbol ? "Tu equipo" : "Tu robot")}
           <div className="p-4 space-y-4">
             <div className="space-y-1.5">
-              <label className="block text-[13px] font-semibold panel-label" htmlFor="name">
+              <label className="block text-sm font-semibold panel-label" htmlFor="name">
                 {isFutbol ? "Nombre del equipo" : "Nombre del robot"} <span className="text-brand-orange">*</span>
               </label>
               <input
                 id="name"
                 name="name"
                 required
-                className="w-full rounded-lg panel-input px-3 h-11 text-[15px]"
+                className="w-full rounded-lg panel-input px-3 h-11 text-base"
                 placeholder={isFutbol ? "Ej. Los Ninjabots" : "Ej. Topadora"}
               />
             </div>
             <div className="space-y-1.5">
-              <label className="block text-[13px] font-semibold panel-label" htmlFor="institution">
+              <label className="block text-sm font-semibold panel-label" htmlFor="institution">
                 Institución / escuela <span className="font-normal text-neutral-400">· opcional</span>
               </label>
               <input
                 id="institution"
                 name="institution"
-                className="w-full rounded-lg panel-input px-3 h-11 text-[15px]"
+                className="w-full rounded-lg panel-input px-3 h-11 text-base"
                 placeholder="Ej. IPET 20 — Neuquén"
               />
             </div>
@@ -284,7 +288,7 @@ export function RegistrationForm({
                     Obligatorio
                   </span>
                 </div>
-                <p className="text-xs panel-label mb-3">
+                <p className="text-[13px] panel-label mb-3">
                   Fútbol robótico se juega con 2 robots titulares. El suplente es opcional.
                 </p>
                 <div className="space-y-2.5">
@@ -302,7 +306,7 @@ export function RegistrationForm({
                         {r.slot ?? <RobotIcon className="w-4 h-4" />}
                       </span>
                       <div className="flex-1 space-y-1">
-                        <label className="block text-[12px] font-semibold panel-label" htmlFor={r.name}>
+                        <label className="block text-[13px] font-semibold panel-label" htmlFor={r.name}>
                           {r.label}{" "}
                           {r.required ? (
                             <span className="text-brand-orange">*</span>
@@ -314,7 +318,7 @@ export function RegistrationForm({
                           id={r.name}
                           name={r.name}
                           required={r.required}
-                          className="w-full rounded-lg panel-input px-3 h-11 text-[15px]"
+                          className="w-full rounded-lg panel-input px-3 h-11 text-base"
                           placeholder={r.slot ? `Nombre del robot ${r.slot}` : "Nombre del robot suplente"}
                         />
                       </div>
@@ -331,23 +335,24 @@ export function RegistrationForm({
           {sectionHeader(2, "Responsable adulto")}
           <div className="p-4 space-y-4">
             <div className="space-y-1.5">
-              <label className="block text-[13px] font-semibold panel-label" htmlFor="mentor_name">
+              <label className="block text-sm font-semibold panel-label" htmlFor="mentor_name">
                 Mentor / profesor responsable <span className="text-brand-orange">*</span>
               </label>
               <input
                 id="mentor_name"
                 name="mentor_name"
                 required
-                className="w-full rounded-lg panel-input px-3 h-11 text-[15px]"
+                className="w-full rounded-lg panel-input px-3 h-11 text-base"
                 placeholder="Nombre y apellido"
               />
-              <p className="text-xs panel-label">
-                Persona mayor de edad que responde por el equipo el día del evento.
+              <p className="text-[13px] panel-label">
+                Persona <span className="font-semibold text-neutral-600 dark:text-neutral-300">mayor de edad</span>{" "}
+                que responde por el equipo el día del evento.
               </p>
             </div>
             <div className="grid grid-cols-1 min-[390px]:grid-cols-2 gap-2.5">
               <div className="space-y-1.5">
-                <label className="block text-[13px] font-semibold panel-label" htmlFor="mentor_phone">
+                <label className="block text-sm font-semibold panel-label" htmlFor="mentor_phone">
                   Celular <span className="text-brand-orange">*</span>
                 </label>
                 <div className="relative">
@@ -357,13 +362,13 @@ export function RegistrationForm({
                     name="mentor_phone"
                     type="tel"
                     required
-                    className="w-full rounded-lg panel-input pl-8 pr-3 h-11 text-[15px]"
+                    className="w-full rounded-lg panel-input pl-8 pr-3 h-11 text-base"
                     placeholder="299 ..."
                   />
                 </div>
               </div>
               <div className="space-y-1.5">
-                <label className="block text-[13px] font-semibold panel-label" htmlFor="mentor_email">
+                <label className="block text-sm font-semibold panel-label" htmlFor="mentor_email">
                   Email <span className="text-brand-orange">*</span>
                 </label>
                 <div className="relative">
@@ -373,7 +378,7 @@ export function RegistrationForm({
                     name="mentor_email"
                     type="email"
                     required
-                    className="w-full rounded-lg panel-input pl-8 pr-3 h-11 text-[15px]"
+                    className="w-full rounded-lg panel-input pl-8 pr-3 h-11 text-base"
                     placeholder="mail@ejemplo.com"
                   />
                 </div>
@@ -396,7 +401,7 @@ export function RegistrationForm({
               label="Personas del equipo"
               required
               max={MAX_TEAM_MEMBERS}
-              helpText={`Cargá a todas las personas que van a competir (hasta ${MAX_TEAM_MEMBERS}), con nombre y edad. La lista se usa para la premiación, así que tiene que coincidir con quienes se presentan.`}
+              helpText={`Quiénes forman parte del equipo (hasta ${MAX_TEAM_MEMBERS}), con nombre y edad. Los nombres se usan para la premiación, así que tienen que coincidir con quienes se presentan.`}
             />
           </div>
         </section>
@@ -406,19 +411,19 @@ export function RegistrationForm({
           {sectionHeader(4, "Confirmación")}
           <div className="p-4 space-y-4">
             <div className="space-y-1.5">
-              <label className="block text-[13px] font-semibold panel-label" htmlFor="notes">
+              <label className="block text-sm font-semibold panel-label" htmlFor="notes">
                 Notas para la organización <span className="font-normal text-neutral-400">· opcional</span>
               </label>
               <textarea
                 id="notes"
                 name="notes"
                 rows={2}
-                className="w-full rounded-lg panel-input px-3 py-2.5 text-[15px]"
+                className="w-full rounded-lg panel-input px-3 py-2.5 text-base"
                 placeholder="Algo que la organización deba saber"
               />
             </div>
 
-            <label className="flex items-start gap-2.5 rounded-lg border border-brand-teal/30 bg-brand-teal/[0.05] p-3 cursor-pointer text-sm">
+            <label className="flex items-start gap-2.5 rounded-lg border border-brand-teal/30 bg-brand-teal/[0.05] p-3 cursor-pointer text-[14px]">
               <input
                 type="checkbox"
                 name="accepted_terms"
@@ -442,11 +447,11 @@ export function RegistrationForm({
             <button
               type="submit"
               disabled={pending}
-              className="w-full rounded-xl panel-button-primary font-medium h-12 text-[15px] disabled:opacity-50"
+              className="w-full rounded-xl panel-button-primary font-semibold h-12 text-base disabled:opacity-50"
             >
               {pending ? "Enviando..." : "Inscribir equipo"}
             </button>
-            <p className="text-center text-xs text-neutral-400">Vas a poder inscribir otro equipo después de enviar.</p>
+            <p className="text-center text-[13px] text-neutral-400">Vas a poder inscribir otro equipo después de enviar.</p>
           </div>
         </section>
       </form>

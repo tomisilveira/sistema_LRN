@@ -1,7 +1,7 @@
 "use server";
 
 import { createAdminClient } from "@/lib/supabase/admin";
-import { parseTeamInput, isFutbolCompetition } from "@/lib/team-input";
+import { parseTeamInput, parseMentorInput, isFutbolCompetition } from "@/lib/team-input";
 
 // Server Action pública (sin sesión): la usa el formulario de auto-registro
 // de equipos. No hay usuario autenticado acá, así que escribe con la
@@ -23,24 +23,17 @@ export async function registerTeam(competitionId: string, formData: FormData) {
     throw new Error("Las inscripciones para este torneo están cerradas.");
   }
 
-  const mentorName = String(formData.get("mentor_name") ?? "").trim();
-  const mentorPhone = String(formData.get("mentor_phone") ?? "").trim();
-  const mentorEmail = String(formData.get("mentor_email") ?? "").trim();
   const acceptedTerms = formData.get("accepted_terms") === "on";
-
-  if (!mentorName) throw new Error("Falta el nombre del mentor/profesor responsable.");
-  if (!mentorPhone) throw new Error("Falta el celular del mentor.");
-  if (!mentorEmail || !mentorEmail.includes("@")) throw new Error("Falta un email válido del mentor.");
   if (!acceptedTerms) throw new Error("Tenés que leer y aceptar las bases y condiciones para inscribirte.");
+
+  // Mismo parseo del responsable adulto que usan la mesa de acreditación y
+  // el "+ Agregar equipo" del admin — acá es obligatorio.
+  const { mentorName, mentorContact } = parseMentorInput(formData);
+  if (!mentorName) throw new Error("Cargá los datos del mentor/profesor responsable.");
 
   const isFutbol = await isFutbolCompetition(supabase, competitionId);
   // parseTeamInput valida nombre, 1..4 integrantes y los 2 robots de fútbol.
   const input = parseTeamInput(formData, { isFutbol });
-
-  // Sin columnas propias todavía para teléfono/email por separado — se
-  // combinan acá en `mentor_contact` (mismo criterio "texto libre, solo
-  // para mostrar" que member_names/robot_names).
-  const mentorContact = `${mentorPhone} · ${mentorEmail}`;
 
   const { error } = await supabase.from("teams").insert({
     competition_id: competitionId,

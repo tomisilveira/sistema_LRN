@@ -364,7 +364,7 @@ export default async function CompetitionPage({
               action={addTeamAction}
               submitLabel="Agregar"
             >
-              <TeamFormFields isFutbol={isFutbol} />
+              <TeamFormFields isFutbol={isFutbol} showMentor />
             </ModalFormButton>
           </div>
           <p className="text-xs panel-label -mt-1">

@@ -8,7 +8,7 @@ import { advanceWinner } from "@/lib/bracket-actions";
 import { computeMatchOutcome } from "@/lib/match-logic";
 import { generateBracketForCompetition, ensureThirdPlaceMatch } from "@/lib/generate-bracket-for-competition";
 import { maybeAdvanceCompetitionPhase } from "@/lib/advance-competition-phase";
-import { parseTeamInput, isFutbolCompetition } from "@/lib/team-input";
+import { parseTeamInput, parseMentorInput, isFutbolCompetition } from "@/lib/team-input";
 import { autoScheduleAndPersist } from "@/lib/apply-auto-schedule";
 import type { SchedulableMatch } from "@/lib/auto-schedule";
 import type { Competition, Match } from "@/lib/database.types";
@@ -110,11 +110,17 @@ export async function addTeam(competitionId: string, formData: FormData) {
   const supabase = await createServerSupabaseClient();
   const isFutbol = await isFutbolCompetition(supabase, competitionId);
   const input = parseTeamInput(formData, { isFutbol });
+  // Datos del responsable adulto — opcionales en el alta del admin (se
+  // pueden completar después), obligatorios en la inscripción pública y en
+  // la mesa de acreditación.
+  const { mentorName, mentorContact } = parseMentorInput(formData);
 
   const { error } = await supabase.from("teams").insert({
     competition_id: competitionId,
     name: input.name,
     institution: input.institution,
+    mentor_name: mentorName,
+    mentor_contact: mentorContact,
     member_count: input.memberCount,
     member_names: input.memberNames,
     robot_names: input.robotNames,

@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { parseTeamInput, isFutbolCompetition } from "@/lib/team-input";
+import { parseTeamInput, parseMentorInput, isFutbolCompetition } from "@/lib/team-input";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 // Server Actions públicas (sin sesión): las usa la mesa de acreditación del
@@ -187,11 +187,17 @@ export async function addTeam(eventToken: string, competitionId: string, formDat
 
   const isFutbol = await isFutbolCompetition(supabase, competitionId);
   const input = parseTeamInput(formData, { isFutbol });
+  // Mismos datos del responsable adulto que pide la inscripción pública
+  // (obligatorios acá: el equipo está presente en la mesa).
+  const { mentorName, mentorContact } = parseMentorInput(formData);
+  if (!mentorName) throw new Error("Cargá los datos del mentor/profesor responsable.");
 
   const { error } = await supabase.from("teams").insert({
     competition_id: competitionId,
     name: input.name,
     institution: input.institution,
+    mentor_name: mentorName,
+    mentor_contact: mentorContact,
     member_count: input.memberCount,
     member_names: input.memberNames,
     robot_names: input.robotNames,

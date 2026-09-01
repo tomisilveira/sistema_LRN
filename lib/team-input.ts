@@ -62,6 +62,31 @@ export function parseTeamInput(formData: FormData, opts: { isFutbol: boolean }):
   };
 }
 
+/**
+ * Datos del adulto responsable (mentor/profesor) — mismos campos en la
+ * inscripción pública, en "+ Agregar equipo" del admin y en la mesa de
+ * acreditación. `mentor_contact` guarda "celular · email" en una sola línea
+ * (mismo criterio de siempre, solo para mostrar). Si los 3 campos vienen
+ * vacíos devuelve nulls (alta sin responsable cargado todavía); si hay
+ * alguno, valida los tres.
+ */
+export function parseMentorInput(formData: FormData): {
+  mentorName: string | null;
+  mentorContact: string | null;
+} {
+  const name = String(formData.get("mentor_name") ?? "").trim();
+  const phone = String(formData.get("mentor_phone") ?? "").trim();
+  const email = String(formData.get("mentor_email") ?? "").trim();
+
+  if (!name && !phone && !email) return { mentorName: null, mentorContact: null };
+
+  if (!name) throw new Error("Falta el nombre del mentor/profesor responsable.");
+  if (!phone) throw new Error("Falta el celular del mentor.");
+  if (!email || !email.includes("@")) throw new Error("Falta un email válido del mentor.");
+
+  return { mentorName: name, mentorContact: `${phone} · ${email}` };
+}
+
 /** ¿La competencia es de fútbol robótico? (la única disciplina que arma el
  * equipo con más de un robot). Se usa para decidir si `parseTeamInput`
  * exige los 2 robots. */

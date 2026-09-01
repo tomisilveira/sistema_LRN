@@ -80,24 +80,24 @@ function RegistrationClosed({ label, finished }: { label: string; finished: bool
               <path d="M8 10V7a4 4 0 0 1 8 0v3" />
             </svg>
           </div>
-          <h2 className="font-display font-bold text-xl leading-tight">Inscripción cerrada</h2>
-          <p className="text-sm panel-label leading-relaxed">
+          <h2 className="font-display font-bold text-[22px] leading-tight">Inscripción cerrada</h2>
+          <p className="text-[15px] panel-label leading-relaxed">
             {finished ? (
               <>
-                <span className="font-medium text-neutral-700 dark:text-neutral-200">{label}</span> ya terminó, así
+                <span className="font-semibold text-neutral-700 dark:text-neutral-200">{label}</span> ya terminó, así
                 que las inscripciones están cerradas.
               </>
             ) : (
               <>
                 Las inscripciones para{" "}
-                <span className="font-medium text-neutral-700 dark:text-neutral-200">{label}</span> están cerradas
+                <span className="font-semibold text-neutral-700 dark:text-neutral-200">{label}</span> están cerradas
                 por ahora.
               </>
             )}
           </p>
         </div>
         <div className="border-t border-neutral-200/70 p-4 bg-neutral-50 dark:bg-neutral-950">
-          <p className="text-sm panel-label leading-relaxed">
+          <p className="text-[15px] panel-label leading-relaxed">
             ¿Necesitás anotar un equipo o corregir datos? Escribile a la organización de la Liga Robótica
             Neuquina.
           </p>

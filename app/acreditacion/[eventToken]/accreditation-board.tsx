@@ -82,7 +82,7 @@ export function AccreditationBoard({
               action={addTeam.bind(null, eventToken, g.id)}
               submitLabel="Agregar"
             >
-              <TeamFormFields isFutbol={g.isFutbol} />
+              <TeamFormFields isFutbol={g.isFutbol} showMentor mentorRequired />
             </ModalFormButton>
           </div>
           <div className="space-y-2 panel-enter-stagger">
