@@ -110,7 +110,7 @@ export default async function JudgePage({ params }: { params: Promise<{ courtTok
               <div className="space-y-2 panel-enter-stagger">
                 {scheduled.map((m) => (
                   <div key={m.id} className="panel-card rounded-xl p-4 space-y-3">
-                    <p className="text-lg font-display font-semibold">
+                    <p className="text-xl font-display font-semibold">
                       <TeamLabel name={teamName.get(m.team_a_id ?? "") ?? "?"} memberNames={teamById.get(m.team_a_id ?? "")?.member_names} />{" "}
                       <span className="panel-label font-normal">vs</span>{" "}
                       <TeamLabel name={teamName.get(m.team_b_id ?? "") ?? "?"} memberNames={teamById.get(m.team_b_id ?? "")?.member_names} />

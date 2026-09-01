@@ -57,7 +57,7 @@ export function TeamCard({
         </div>
         <div className="min-w-0 flex-1">
           <div className="flex items-start justify-between gap-2">
-            <p className="font-semibold text-sm leading-tight truncate pt-0.5">
+            <p className="font-semibold text-base leading-tight truncate pt-0.5">
               <TeamLabel name={team.name} memberNames={team.member_names} />
             </p>
             <span
@@ -84,7 +84,7 @@ export function TeamCard({
       </div>
 
       {team.robot_names && (
-        <p className="text-xs panel-label opacity-80 pl-[42px] -mt-2.5">
+        <p className="text-[13px] panel-label opacity-90 pl-[42px] -mt-2.5">
           🤖 {parseRobotNames(team.robot_names).join(", ")}
         </p>
       )}

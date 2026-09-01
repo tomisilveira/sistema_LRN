@@ -1062,7 +1062,7 @@ function MatchRow({
 
   return (
     <div
-      className={`rounded-lg px-3 py-2.5 space-y-2.5 text-sm transition-colors ${
+      className={`rounded-lg px-3 py-2.5 space-y-2.5 text-[15px] transition-colors ${
         match.status === "in_progress"
           ? "bg-brand-orange/5 border border-brand-orange/40"
           : "panel-surface hover:border-brand-teal/30"

@@ -169,7 +169,7 @@ export function MatchTimerPanel({
 
   return (
     <section className="panel-card rounded-xl p-5 space-y-5 panel-enter">
-      <p className="text-lg font-display font-semibold text-center">
+      <p className="text-xl font-display font-semibold text-center">
         <TeamLabel name={teamAName} memberNames={teamAMemberNames} />{" "}
         <TeamCardBadges summary={teamCards.a} className="align-middle" />{" "}
         <span className="panel-label font-normal">vs</span>{" "}

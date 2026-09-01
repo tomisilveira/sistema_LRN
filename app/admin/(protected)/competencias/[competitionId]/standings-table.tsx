@@ -48,7 +48,7 @@ export function StandingsTable({
                 <td className="py-1.5 pr-2">
                   <RankBadge rank={i + 1} />
                 </td>
-                <td className="py-1.5 pr-2 font-medium">
+                <td className="py-1.5 pr-2 font-medium text-[15px]">
                   <TeamLabel name={r.team_name} memberNames={r.member_names} />
                   {r.manual_rank_override !== null && (
                     <span

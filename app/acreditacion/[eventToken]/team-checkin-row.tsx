@@ -169,7 +169,7 @@ export function TeamCheckinRow({
             {team.name.trim().charAt(0).toUpperCase() || "?"}
           </span>
           <div className="min-w-0">
-            <p className="font-semibold text-[15px] leading-tight truncate">
+            <p className="font-semibold text-base leading-tight truncate">
               <TeamLabel name={team.name} memberNames={team.member_names} />
             </p>
             {team.institution && (

@@ -34,7 +34,7 @@ export function CourtBoards({ boards }: { boards: CourtBoard[] }) {
                   <p className={`text-base font-display font-bold leading-tight ${board.colorText}`}>
                     {board.live.disciplineCategory}
                   </p>
-                  <p className="text-sm font-display font-medium text-center">
+                  <p className="text-lg font-display font-medium text-center">
                     <TeamLabel name={board.live.teamAName} memberNames={board.live.teamAMemberNames} />{" "}
                     <TeamCardBadges summary={cardsByTeam(board.live.cards, board.live.match.team_a_id, board.live.match.team_b_id).a} />{" "}
                     <span className="panel-label font-normal">vs</span>{" "}

@@ -31,10 +31,10 @@ export function ScreenBoards({ boards }: { boards: CourtBoard[] }) {
                 <p className={`text-2xl font-display font-extrabold leading-tight ${board.colorText}`}>
                   {board.live.disciplineCategory}
                 </p>
-                <p className="text-lg font-display font-medium text-center">
+                <p className="text-2xl font-display font-medium text-center">
                   <TeamLabel name={board.live.teamAName} memberNames={board.live.teamAMemberNames} />{" "}
                   <TeamCardBadges summary={cardsByTeam(board.live.cards, board.live.match.team_a_id, board.live.match.team_b_id).a} />{" "}
-                  <span className="panel-label font-normal text-base">vs</span>{" "}
+                  <span className="panel-label font-normal text-lg">vs</span>{" "}
                   <TeamLabel name={board.live.teamBName} memberNames={board.live.teamBMemberNames} />{" "}
                   <TeamCardBadges summary={cardsByTeam(board.live.cards, board.live.match.team_a_id, board.live.match.team_b_id).b} />
                 </p>

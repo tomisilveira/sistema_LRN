@@ -27,7 +27,7 @@ export function PublicMatchList({ matches }: { matches: PublicMatchDisplay[] }) 
         return (
         <div
           key={m.id}
-          className={`rounded-md px-3 py-2 flex flex-wrap items-center justify-between gap-2 text-sm border transition-colors ${
+          className={`rounded-md px-3 py-2 flex flex-wrap items-center justify-between gap-2 text-[15px] border transition-colors ${
             m.status === "in_progress"
               ? "border-red-500/50 bg-red-500/5"
               : "panel-surface border-transparent hover:border-brand-teal/30"

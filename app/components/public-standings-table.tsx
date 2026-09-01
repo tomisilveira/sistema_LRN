@@ -35,8 +35,8 @@ export function PublicStandingsTable({ groupName, rows }: { groupName: string; r
                 <td className="py-2 pl-3 pr-2">
                   <RankBadge rank={i + 1} />
                 </td>
-                <td className="py-2 pr-2 font-semibold max-w-[11rem]">
-                  <TeamLabel name={r.team_name} memberNames={r.member_names} className="block truncate" />
+                <td className="py-2 pr-2 font-semibold text-[15px] max-w-[14rem]">
+                  <TeamLabel name={r.team_name} memberNames={r.member_names} className="block" />
                 </td>
                 <td className="text-center py-2 px-1.5 tabular-nums">{r.played}</td>
                 <td className="text-center py-2 px-1.5 tabular-nums">{r.won}</td>

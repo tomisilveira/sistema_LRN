@@ -57,7 +57,7 @@ function PodiumCard({ entry }: { entry: PodiumEntry }) {
         {entry.participantNames.length > 0 ? (
           <div className="flex flex-wrap gap-1.5 mt-2">
             {entry.participantNames.map((name, i) => (
-              <span key={i} className="panel-chip text-sm rounded-full px-2.5 py-1 font-medium">
+              <span key={i} className="panel-chip text-[15px] rounded-full px-2.5 py-1 font-medium">
                 {name}
               </span>
             ))}

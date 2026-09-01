@@ -148,7 +148,7 @@ function TeamLine({
   cardSummary?: ReturnType<typeof cardsByTeam>["a"];
 }) {
   return (
-    <div className={`flex items-start justify-between gap-2 text-sm ${won ? "font-semibold text-brand-green" : "panel-label"}`}>
+    <div className={`flex items-start justify-between gap-2 text-base ${won ? "font-semibold text-brand-green" : "panel-label"}`}>
       <span className="truncate">
         {won && "🏆 "}
         {name ? <TeamLabel name={name} memberNames={memberNames} /> : "Por definir"}{" "}

@@ -100,7 +100,7 @@ function TeamLine({
 }) {
   return (
     <div
-      className={`flex items-start justify-between gap-2 text-sm rounded-lg px-2 py-1 -mx-2 ${
+      className={`flex items-start justify-between gap-2 text-base rounded-lg px-2 py-1 -mx-2 ${
         won ? "font-display font-bold text-brand-green bg-brand-green/10" : "panel-label"
       }`}
     >
