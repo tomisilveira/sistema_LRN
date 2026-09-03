@@ -5,7 +5,6 @@ import { registerTeam } from "./actions";
 import { MemberListInput } from "@/app/components/member-list-input";
 import { parseMemberNames } from "@/lib/team-display";
 import { MAX_TEAM_MEMBERS } from "@/lib/team-limits";
-import { registrationCopy } from "@/lib/registration-copy";
 import type { DisciplineColorSet } from "@/lib/discipline-colors";
 
 // Bases y condiciones de la Liga — el checkbox de abajo es obligatorio y
@@ -21,15 +20,6 @@ const svgProps = {
   strokeLinejoin: "round" as const,
 };
 
-function ClipboardIcon({ className }: { className?: string }) {
-  return (
-    <svg viewBox="0 0 24 24" className={className} {...svgProps} aria-hidden="true">
-      <path d="M9 4h6a1 1 0 0 1 1 1v1H8V5a1 1 0 0 1 1-1Z" />
-      <rect x="5" y="6" width="14" height="15" rx="2" />
-      <path d="M9 12h6M9 16h4" />
-    </svg>
-  );
-}
 function CheckIcon({ className }: { className?: string }) {
   return (
     <svg viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth={2.6} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -88,7 +78,6 @@ export function RegistrationForm({
   colors: DisciplineColorSet;
 }) {
   const isFutbol = disciplineSlug === "futbol";
-  const copy = registrationCopy(disciplineSlug);
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<string[]>([]);
@@ -198,41 +187,6 @@ export function RegistrationForm({
 
   return (
     <div className="space-y-4">
-      {/* Antes de inscribirte */}
-      <section className="panel-card rounded-xl overflow-hidden">
-        <div className={`flex items-center gap-2 px-4 py-3 ${colors.bg} border-b border-neutral-200/60`}>
-          <ClipboardIcon className={`w-[18px] h-[18px] ${colors.text}`} />
-          <span className={`font-display font-semibold text-[15px] ${colors.text}`}>Antes de inscribirte</span>
-        </div>
-        <div className="p-4 space-y-3.5 text-[15px]">
-          <p className="text-neutral-700 dark:text-neutral-200 leading-relaxed">{copy.what}</p>
-
-          <div>
-            <p className={`text-[12px] font-bold uppercase tracking-wider mb-2 ${colors.text}`}>Vas a necesitar</p>
-            <ul className="space-y-2">
-              {copy.need.map((n, i) => (
-                <li key={i} className="flex items-start gap-2.5">
-                  <CheckIcon className={`w-4 h-4 mt-[3px] shrink-0 ${colors.text}`} />
-                  <span className="text-[14px] leading-snug text-neutral-700 dark:text-neutral-200">{n}</span>
-                </li>
-              ))}
-            </ul>
-          </div>
-
-          <div className="border-t border-dashed border-neutral-200 dark:border-neutral-700 pt-3">
-            <p className="text-[12px] font-bold uppercase tracking-wider panel-label mb-1.5">Qué implica inscribirte</p>
-            <ul className="space-y-1">
-              {copy.implies.map((n, i) => (
-                <li key={i} className="flex items-start gap-2">
-                  <span className="mt-[8px] w-1 h-1 rounded-full bg-neutral-400 shrink-0" />
-                  <span className="text-[13.5px] leading-snug panel-label">{n}</span>
-                </li>
-              ))}
-            </ul>
-          </div>
-        </div>
-      </section>
-
       {(fieldErrors.length > 0 || error) && (
         <div
           ref={summaryRef}

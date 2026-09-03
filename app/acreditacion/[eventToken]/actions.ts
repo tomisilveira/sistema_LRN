@@ -9,7 +9,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 // evento. No hay usuario autenticado acá, así que escriben con la
 // service-role key, pero validan a mano que el link (accreditation_token)
 // sea real y que el equipo pertenezca a ESE evento antes de tocar nada —
-// mismo patrón que app/inscripcion/[competitionId]/actions.ts y el token de
+// mismo patrón que app/inscripcion/[eventId]/actions.ts y el token de
 // cancha del juez (lib/judge-auth.ts).
 async function assertTeamBelongsToEvent(supabase: SupabaseClient, eventToken: string, teamId: string) {
   const { data: event } = await supabase

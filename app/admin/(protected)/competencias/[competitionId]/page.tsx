@@ -320,30 +320,34 @@ export default async function CompetitionPage({
       id: "inscripcion",
       label: "Inscripción",
       content: (
-        <section className="panel-card rounded-xl p-4 flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <h2 className="font-medium">Inscripción pública de equipos</h2>
-            <p className="text-xs panel-label mt-0.5">
-              {competition.registration_open
-                ? "Abierta — compartí el link para que los equipos se carguen solos."
-                : "Cerrada — los equipos no pueden auto-registrarse."}
-            </p>
+        <section className="panel-card rounded-xl p-4 space-y-3">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <h2 className="font-medium">Inscripción pública de equipos</h2>
+              <p className="text-xs panel-label mt-0.5">
+                {competition.registration_open
+                  ? "Abierta — este torneo aparece en el link de inscripción del evento."
+                  : "Cerrada — este torneo no aparece en el link de inscripción del evento."}
+              </p>
+            </div>
+            <div className="flex items-center gap-2">
+              <CopyLinkButton path={`/inscripcion/${competition.event_id}`} label="Copiar link de inscripción" />
+              <form action={setRegistrationOpenAction.bind(null, !competition.registration_open)}>
+                <button
+                  type="submit"
+                  className={`text-xs rounded-full px-3 py-1.5 transition-colors ${
+                    competition.registration_open ? "panel-chip" : "panel-button-primary"
+                  }`}
+                >
+                  {competition.registration_open ? "Cerrar inscripción" : "Abrir inscripción"}
+                </button>
+              </form>
+            </div>
           </div>
-          <div className="flex items-center gap-2">
-            {competition.registration_open && (
-              <CopyLinkButton path={`/inscripcion/${competitionId}`} label="Copiar link de inscripción" />
-            )}
-            <form action={setRegistrationOpenAction.bind(null, !competition.registration_open)}>
-              <button
-                type="submit"
-                className={`text-xs rounded-full px-3 py-1.5 transition-colors ${
-                  competition.registration_open ? "panel-chip" : "panel-button-primary"
-                }`}
-              >
-                {competition.registration_open ? "Cerrar inscripción" : "Abrir inscripción"}
-              </button>
-            </form>
-          </div>
+          <p className="text-xs panel-label">
+            El link es <span className="font-medium">uno solo para toda la jornada</span>: el equipo elige ahí la
+            disciplina y la categoría. Solo se ofrecen los torneos con la inscripción abierta.
+          </p>
         </section>
       ),
     },

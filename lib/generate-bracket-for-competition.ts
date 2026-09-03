@@ -171,7 +171,7 @@ export async function generateBracketForCompetition(supabase: SupabaseClient, co
     // Se cierra la inscripción sola acá también — relevante sobre todo
     // para 'bracket_only', que llega a esto directo desde 'setup' sin
     // pasar por startTournament (que ya la cierra para los formatos con
-    // grupos). Ver app/inscripcion/[competitionId]/page.tsx.
+    // grupos). Ver app/inscripcion/[eventId]/page.tsx.
     await supabase
       .from("competitions")
       .update({ status: "bracket_in_progress", registration_open: false })

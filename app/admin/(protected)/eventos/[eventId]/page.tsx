@@ -58,6 +58,7 @@ export default async function EventPage({ params }: { params: Promise<{ eventId:
   const addCourtAction = addCourt.bind(null, eventId);
   const createCompetitionAction = createCompetition.bind(null, eventId);
   const hasCourts = (courts ?? []).length > 0;
+  const hasOpenRegistration = (competitions ?? []).some((c: Competition) => c.registration_open);
 
   const tabs: TabItem[] = [
     {
@@ -368,6 +369,9 @@ export default async function EventPage({ params }: { params: Promise<{ eventId:
                 path={`/acreditacion/${event.accreditation_token}`}
                 label="Copiar link de acreditación"
               />
+            )}
+            {hasOpenRegistration && (
+              <CopyLinkButton path={`/inscripcion/${eventId}`} label="Copiar link de inscripción" />
             )}
             {event.is_public && (
               <a
