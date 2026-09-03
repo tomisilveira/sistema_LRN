@@ -41,7 +41,7 @@ async function main() {
         .eq("phase", "group")
         .neq("status", "completed");
       for (const [i, m] of (pending ?? []).entries()) {
-        await completeMatch(m as any, { allowDraws, hasScore, rngSeed: i + 3 });
+        await completeMatch(m, { allowDraws, hasScore, rngSeed: i + 3 });
       }
       console.log(`  ${(pending ?? []).length} partidos de grupo restantes completados.`);
 

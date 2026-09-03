@@ -12,7 +12,6 @@ import { supabase, saveState, autoScheduleAndPersist, makeTeamRow, makeGroupsAnd
 
 async function main() {
   const { data: disciplines } = await supabase.from("disciplines").select("id, slug, name");
-  const disciplineId = (slug: string) => disciplines!.find((d) => d.slug === slug)!.id;
   const { data: categories } = await supabase.from("categories").select("id, slug");
   const categoryId = (slug: string) => categories!.find((c) => c.slug === slug)!.id;
 

@@ -1,195 +1,324 @@
 # Liga Robótica Neuquina — Sistema de Jornada
 
-Sistema web para administrar y visualizar en vivo las jornadas de competencia
-de la Liga Robótica Neuquina: carga de resultados de fase de grupos y
-eliminatoria simple, tablas de posiciones y cuadros, en tiempo real, con 3
-vistas (juez de cancha, admin, público).
+Aplicación web para administrar y mostrar en vivo las jornadas de competencia
+de la Liga Robótica Neuquina (fútbol robótico, sumo y mini sumo, autónomo y
+radio-controlado, categorías infantil y juvenil/adultos).
 
-Ver el detalle funcional y las decisiones de alcance en
-[`.claude` / conversación original] — resumen rápido abajo.
+Cubre todo el día del evento: inscripción de equipos, acreditación y
+homologación técnica, sorteo de grupos, fase de todos-contra-todos, cuadros
+de eliminación (incluido 3er puesto), cronómetro de cancha, carga de
+resultados y tarjetas, tablas de posiciones y una vista pública / modo
+pantalla que se actualizan solos por WebSocket.
+
+No hay backend propio: Next.js habla directo con Postgres a través de
+Supabase, y toda la autorización vive en Row Level Security.
+
+---
 
 ## Stack
 
-- [Next.js](https://nextjs.org) (App Router, TypeScript) + Tailwind CSS
-- [Supabase](https://supabase.com) (Postgres + Realtime + Auth) — plan gratuito alcanza de sobra para un evento de un día
+| Pieza | Qué se usa |
+|---|---|
+| Framework | Next.js 16 (App Router, React 19, Server Components + Server Actions) |
+| Lenguaje | TypeScript (modo estricto) |
+| Estilos | Tailwind CSS v4 |
+| Base de datos | Postgres gestionado por [Supabase](https://supabase.com) |
+| Auth | Supabase Auth (email + contraseña, solo para el panel admin) |
+| Tiempo real | Supabase Realtime (canal sobre `matches` y `match_cards`) |
+| Export | `exceljs` (planilla del evento) |
+| Deploy sugerido | Vercel (frontend) + Supabase (datos), ambos en plan gratuito |
 
-## Alcance de esta versión
+El plan gratuito de Supabase alcanza de sobra para un evento de un día.
 
-Implementado end-to-end: fase de grupos + eliminatoria simple, para una
-competencia (disciplina × categoría) a la vez, con las 3 pantallas
-funcionando en tiempo real, más:
+---
 
-- **Canchas del evento** (compartidas entre todas las disciplinas del día):
-  se cargan de una sola vez preguntando la cantidad, antes de poder crear el
-  primer torneo.
-- **Inscripción pública de equipos**: el admin habilita/deshabilita por
-  torneo un link sin login donde los equipos se auto-registran (nombre,
-  institución, mentor responsable — nada de datos de menores).
-- **Cronómetro de partido**: el juez "abre" el partido cuando los equipos
-  están listos en la cancha (arranca el cronómetro) y recién ahí puede
-  cargar el resultado.
-- **Avance automático de fase**: al completarse todos los partidos de
-  grupo de un torneo, el sistema genera solo el cuadro eliminatorio (o
-  marca el torneo terminado si es solo fase de grupos) — el botón manual
-  sigue disponible como respaldo.
-- **Sugerencia de formato**: según cantidad de inscriptos y canchas
-  disponibles, el panel recomienda "solo grupos" vs. "grupos + eliminatoria
-  estilo Copa del Mundo" (no vinculante, el admin puede elegir otra cosa
-  mientras el torneo esté en `setup`).
-- **Modo claro/oscuro** del panel admin (toggle en el header, no afecta la
-  vista pública ni la del juez).
-- **Acreditación + homologación técnica**: link único del evento (sin
-  login, como el de cancha) donde la mesa de acreditación marca cada
-  equipo como acreditado y homologado, y carga cuántos participantes se
-  presentaron (solo cantidad, sin nombres — para saber cuántos premios
-  entregar). Un equipo que no esté acreditado **y** homologado no puede
-  entrar al sorteo de grupos ni asignarse a mano.
+## Pantallas
 
-El modelo de datos ya soporta las 10 combinaciones disciplina×categoría y
-tiene reservado el formato "oro/plata" (`gold_silver`), pero **su UI y
-lógica de generación de cuadro doble todavía no están implementadas** — es
-la siguiente pasada natural sobre este mismo schema. Tampoco hay UI para
-correr y administrar varias competencias en simultáneo desde una sola
-pantalla (se puede crear cualquier cantidad de competencias por evento, pero
-cada una se administra entrando a su propia página).
+| Ruta | Login | Para qué |
+|---|---|---|
+| `/` | no | Inicio: jornada en vivo + próximas fechas |
+| `/publico` · `/publico/[eventId]` · `/publico/[eventId]/[competitionId]` | no | Vista pública en vivo (posiciones, partidos, cuadros); deep-link a un torneo puntual para QR en cancha |
+| `/evento/[eventId]/pantalla` | no | Modo pantalla para proyector: partidos en vivo y, si no hay, fallback de posiciones/cuadros |
+| `/inscripcion/[eventId]` | no | Auto-registro público: un link por jornada, el equipo elige disciplina y categoría (solo las de inscripción abierta) |
+| `/acreditacion/[eventToken]` | no | Mesa de acreditación: marcar acreditado/homologado, contar presentes, corregir/mover/agregar equipos |
+| `/juez/[courtToken]` | no | Panel del juez de cancha: abrir partido, cronómetro pausable, marcador en vivo, tarjetas, cierre |
+| `/admin/login` | — | Ingreso del panel |
+| `/admin` · `/admin/eventos/[eventId]` · `/admin/competencias/[competitionId]` · `/admin/categorias` · `/admin/disciplinas` | sí | Panel de administración completo |
 
-El desempate automático de la tabla de posiciones cubre puntos → diferencia
-de gol → goles a favor. Un empate entre 3+ equipos en esos tres criterios no
-se resuelve solo (el enfrentamiento directo entre 3+ equipos requeriría una
-sub-liguilla); el admin lo resuelve a mano cargando un "orden manual" por
-equipo en la tabla de posiciones, que tiene prioridad sobre el cálculo
-automático.
+Las pantallas sin login se autentican con un **token opaco en la URL**
+(`courtToken`, `eventToken`, o el `eventId` para inscripción). Ver
+[Modelo de seguridad](#modelo-de-seguridad).
 
-**El puntaje default (victoria 3 / empate 1 / derrota 0, más el orden de
-desempate) es configurable por competencia, pero no está formalizado
-todavía en el Reglamento General de la Liga** — confirmar con la
-organización antes de dar el sistema por cerrado, tal como señala el spec
-original.
+---
 
-## 1. Crear el proyecto de Supabase
+## Modelo de datos (resumen)
 
-1. Andá a [supabase.com](https://supabase.com), creá una cuenta/proyecto
-   gratuito (elegí una región cercana, ej. São Paulo).
-2. En **Project Settings → API** copiá:
-   - `Project URL` → `NEXT_PUBLIC_SUPABASE_URL`
-   - `anon public` key → `NEXT_PUBLIC_SUPABASE_ANON_KEY`
-   - `service_role` key (Reveal) → `SUPABASE_SERVICE_ROLE_KEY` — **no la
-     compartas ni la subas a git**, solo se usa server-side.
-3. Copiá `.env.local.example` a `.env.local` y completá esos tres valores.
+```
+events ──┬── competitions ──┬── teams ──── group_teams ──┐
+         │                  │                            │
+         ├── courts         ├── groups ──────────────────┘
+         │                  │
+         │                  └── matches ──── match_cards
+         │
+disciplines / categories   (catálogos fijos, sembrados en schema.sql)
+admins                     (user_id → auth.users, habilita el panel)
+```
 
-## 2. Aplicar el schema
+- **`events`** — la jornada. `status` (`draft`/`active`/`finished`) e
+  `is_public` (visibilidad en la sección pública) son independientes.
+- **`competitions`** — un torneo = disciplina × categoría dentro de un evento
+  (único por esa tripleta). Guarda formato, puntajes, config de cronómetro y
+  `status` (`setup` → `groups_in_progress` → `groups_done` →
+  `bracket_in_progress` → `finished`).
+- **`courts`** — canchas del evento, compartidas entre disciplinas. Cada una
+  tiene un `access_token` (link del juez) y una `discipline_id` opcional para
+  color/orden.
+- **`teams`** — datos del equipo, integrantes y robots (texto libre, solo
+  para mostrar), responsable adulto, flags de acreditación/homologación.
+  Nada de datos de menores más allá de los nombres de pila que carga el
+  propio equipo.
+- **`matches`** — un partido. Sirve para grupos y para cuadro
+  (`next_match_id`/`consolation_match_id` arman el árbol). Incluye el estado
+  del reloj pausable del período/ronda actual.
+- **`get_group_standings(group_id)`** — función SQL que calcula la tabla de
+  posiciones (puntos → diferencia → goles a favor → nombre), respetando el
+  `manual_rank_override` que el admin puede fijar para desempatar 3+ equipos.
 
-En el SQL Editor del proyecto Supabase, pegá y ejecutá, **en orden**:
+Formatos soportados (`competitions.format_type`):
 
-1. [`supabase/migrations/0001_init.sql`](supabase/migrations/0001_init.sql) —
-   tablas, RLS, función de posiciones, seeds de disciplinas/categorías.
-2. [`supabase/migrations/0002_features.sql`](supabase/migrations/0002_features.sql) —
-   cronómetro de partido, inscripción pública (agrega columnas, no rompe
-   datos existentes).
-3. [`supabase/migrations/0003_accreditation.sql`](supabase/migrations/0003_accreditation.sql) —
-   acreditación + homologación técnica, link de acreditación del evento
-   (agrega columnas y ajusta el grant público de `events` para no exponer
-   el token nuevo — no rompe datos existentes).
+| Valor | Descripción |
+|---|---|
+| `groups_only` | Solo fase de grupos |
+| `single_elimination` | Grupos + cuadro de eliminación simple |
+| `gold_silver` | Grupos + cuadro oro (clasificados) y cuadro plata (resto) |
+| `bracket_only` | Cuadro directo sin grupos, con siembra manual (`teams.seed_order`) |
 
-(Si preferís la CLI de Supabase: `supabase link` y después `supabase db
-push` aplica las tres migraciones en orden.)
+---
 
-## 3. Crear tu usuario admin
+## Puesta en marcha
 
-1. En el dashboard de Supabase: **Authentication → Users → Add user**,
-   creá tu usuario (email + contraseña).
-2. En el **SQL Editor**, habilitalo como admin (reemplazá el email):
+### 1. Proyecto de Supabase
+
+1. Creá una cuenta y un proyecto gratuito en
+   [supabase.com](https://supabase.com) (región cercana, ej. São Paulo).
+2. En **Project Settings → API** anotá:
+   - `Project URL`
+   - `anon public` key (segura para el navegador: RLS la limita)
+   - `service_role` key (**Reveal**) — bypassea RLS, **nunca** al navegador
+     ni a git.
+
+### 2. Variables de entorno
+
+```bash
+cp .env.local.example .env.local
+```
+
+Completá `.env.local`:
+
+```
+NEXT_PUBLIC_SUPABASE_URL=https://xxxxxxxx.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=...
+SUPABASE_SERVICE_ROLE_KEY=...
+```
+
+`.env.local` está en `.gitignore` — no se commitea.
+
+### 3. Aplicar el schema
+
+**Base nueva** — en el **SQL Editor** del proyecto, pegá y ejecutá el archivo
+completo [`supabase/schema.sql`](supabase/schema.sql). Crea todo de una vez:
+tablas, índices, funciones, RLS, grants por columna, la vista `courts_public`,
+los seeds de disciplinas/categorías y la publicación de Realtime.
+
+**Base existente de una versión anterior** — aplicá solo las migraciones de
+[`supabase/migrations/`](supabase/migrations/) que te falten, en orden. Cada
+archivo tiene un encabezado que explica qué hace y son todas aditivas (salvo
+`0001`).
+
+`schema.sql` y `migrations/` describen **el mismo estado final**:
+`migrations/` es la historia incremental (útil para actualizar una base vieja
+y para entender por qué cada cosa es como es); `schema.sql` es el resultado
+consolidado, para arrancar de cero sin correr 15 archivos. Si tocás una,
+actualizá la otra.
+
+> Con la CLI de Supabase: `supabase db push` aplica `migrations/` en orden.
+
+### 4. Usuario admin
+
+1. **Authentication → Users → Add user**: creá tu usuario (email + contraseña).
+2. En el **SQL Editor**, habilitalo (reemplazá el email):
 
    ```sql
    insert into admins (user_id)
    select id from auth.users where email = 'tu-email@ejemplo.com';
    ```
 
-## 4. Instalar dependencias y correr en local
+### 5. Correr en local
 
 ```bash
 npm install
 npm run dev
 ```
 
-Abrí `http://localhost:3000`:
+Abrí `http://localhost:3000` → `/admin/login`.
 
-- `/publico` — vista pública, sin login
-- `/admin` — panel de administración (pide login)
-- `/juez/[courtToken]` — panel del juez (el link se genera desde el admin,
-  al crear una cancha dentro de un evento)
+---
 
-### Cargar datos de prueba (opcional)
+## Datos de prueba (opcional)
 
-Para probar el flujo completo sin cargar todo a mano:
+Todos los scripts necesitan `NEXT_PUBLIC_SUPABASE_URL` y
+`SUPABASE_SERVICE_ROLE_KEY` en `.env.local` (corren fuera de una sesión de
+Supabase Auth).
 
-```bash
-npm run seed:demo
-```
+| Comando | Qué deja cargado |
+|---|---|
+| `npm run seed:demo` | 1 evento, 1 torneo de fútbol, 8 equipos en 2 grupos, 2 canchas, fase de grupos generada sin resultados |
+| `npm run seed:full-demo` | 1 evento con varios torneos en distintos estados (grupos a medias, cuadro en curso, combate por rounds en vivo) para mirar la UI en movimiento |
+| `node --env-file=.env.local --import tsx scripts/sim-1-setup.ts` | Simulación E2E: 10 torneos (5 disciplinas × 2 categorías, los 4 formatos), equipos y fase de grupos jugada casi entera |
+| `node --env-file=.env.local --import tsx scripts/sim-2-finish.ts` | Termina lo que dejó `sim-1`, genera y juega los cuadros, cierra el evento |
 
-Crea un evento demo con una competencia de Fútbol Robótico Juvenil/Adultos,
-8 equipos en 2 grupos, 2 canchas y los partidos de fase de grupos ya
-generados (sin resultados). Al final imprime los links directos al admin y
-a la vista pública.
+`scripts/sim-lib.ts` reimplementa parte de la lógica `server-only`
+(`lib/apply-auto-schedule.ts`, `lib/bracket-actions.ts`,
+`lib/generate-bracket-for-competition.ts`,
+`lib/advance-competition-phase.ts`) porque esos módulos no se pueden importar
+fuera del build de Next. Si cambia esa lógica, hay que re-sincronizar las
+copias.
 
-## 5. Deploy
+---
 
-- **Vercel** (recomendado): importar el repo, cargar las 3 variables de
-  entorno del paso 1 en el proyecto de Vercel, deploy. No hace falta
-  configuración adicional — Next.js corre tal cual.
-- Supabase ya queda corriendo en la nube desde el paso 1; no hay backend
-  propio que desplegar aparte del sitio Next.js.
+## Deploy
 
-## Flujo de uso el día del evento
+- **Vercel**: importar el repo, cargar las 3 variables de entorno del paso 1,
+  deploy. No hace falta configuración extra.
+- Supabase ya corre en la nube desde el paso 1; no hay otro backend que
+  desplegar.
+- El sitio setea cabeceras de seguridad conservadoras
+  (`Strict-Transport-Security`, `X-Frame-Options`, `X-Content-Type-Options`,
+  `Referrer-Policy`, `Permissions-Policy`) desde `next.config.ts`. Todavía
+  **no hay Content-Security-Policy** — es el próximo paso natural del
+  endurecimiento.
 
-1. **Antes del evento**, desde `/admin`: crear el evento y, en su página,
-   cargar cuántas canchas hay (se crean solas). Recién ahí se puede crear un
-   torneo por cada disciplina/categoría que corre ese día.
-2. En cada torneo: revisar la sugerencia de formato, cargar equipos a mano
-   o (recomendado) activar "Inscripción pública" y compartir ese link con
-   los mentores para que se auto-registren.
-3. El día del evento, compartir el link de acreditación (botón "Copiar
-   link de acreditación" junto al título del evento) con la mesa de
-   acreditación — ahí marcan cada equipo como acreditado y homologado, y
-   cargan cuántos participantes se presentaron. Un equipo que no esté
-   acreditado y homologado no aparece disponible para sortear/asignar a
-   grupo.
-4. Con los equipos ya acreditados: armar los grupos (manual o sorteo),
-   generar los partidos de todos-contra-todos y asignarles cancha + turno.
-5. Compartir el link de cada cancha (botón "Copiar link de juez" en la
-   página del evento) con el juez correspondiente — lo abre en su celular,
-   sin login. El juez abre cada partido cuando los equipos están listos
-   (arranca el cronómetro) y carga el resultado al terminar.
-6. Compartir el link de `/publico/[eventId]/[competitionId]` de cada
-   torneo para proyectar en pantalla o que la gente lo abra desde su
-   celular.
-7. A medida que los jueces cargan resultados, las tablas de posiciones se
-   actualizan solas en el admin y en la vista pública. Cuando termina la
-   fase de grupos de un torneo, el cuadro eliminatorio se genera solo (si
-   el torneo es "grupos + eliminatoria"); si es "solo grupos", el torneo
-   queda marcado como terminado.
+---
+
+## Modelo de seguridad
+
+La autorización está en la base, no en la UI.
+
+- **RLS en todas las tablas.** Escritura solo para usuarios de la tabla
+  `admins` (`is_admin()`). Lectura pública **acotada a eventos con
+  `is_public = true`** (`event_is_public()` / `competition_is_public()`) — un
+  evento privado no se puede leer por la REST API enumerando UUIDs.
+- **La `anon` key es pública** (viaja en el HTML). Las columnas sensibles
+  (`courts.access_token`, `events.accreditation_token`,
+  `teams.mentor_contact`, `teams.notes`) están fuera del grant de `anon`:
+  se otorga `select` **por columna**, no sobre la tabla entera (ver la
+  sección GRANTS de `schema.sql`).
+- **La `service_role` key solo se usa server-side** en:
+  - `lib/supabase/admin.ts` (protegido con `import "server-only"`),
+  - los Route Handlers del juez (`app/api/matches/[matchId]/*`),
+  - las Server Actions públicas de inscripción y acreditación.
+
+  En todos esos casos no hay sesión de Supabase Auth, así que **antes de
+  escribir se re-valida a mano el token** (`lib/judge-auth.ts` para la
+  cancha; chequeo de `accreditation_token` / `registration_open` para las
+  demás) y que el recurso pertenezca a ese evento/torneo.
+- **Los tokens de kiosco van en la URL** (`/juez/<token>`,
+  `/acreditacion/<token>`). Es un compromiso deliberado para que jueces y
+  mesa de acreditación entren desde el celular sin login. Quien tiene el
+  link puede operar esa cancha / esa acreditación: compartilos con cuidado y
+  no los pegues en lugares indexables.
+- **Sin rate limiting.** La inscripción pública podría spamearse; para un
+  evento de un día se asume aceptable, pero si se expone por mucho tiempo
+  conviene sumar un límite.
+- **`npm audit`**: `exceljs` arrastra `uuid < 11.1.1` (severidad *moderate*,
+  solo afecta a `uuid` v3/v5/v6 con `buffer` explícito — no es la ruta que
+  usa `exceljs`). No hay fix sin downgrade mayor de `exceljs`; se revisa
+  cuando saquen release.
+
+`npm run lint` y `npx tsc --noEmit` pasan sin warnings.
+
+---
 
 ## Estructura del proyecto
 
 ```
 app/
-  admin/            panel de administración (protegido con Supabase Auth, modo claro/oscuro)
-  juez/[courtToken] panel del juez de cancha (sin login, token por cancha, cronómetro)
-  publico/          vista pública en vivo (sin login)
-  inscripcion/[competitionId]  auto-registro público de equipos (sin login)
-  acreditacion/[eventToken]    check-in de acreditación + homologación técnica (sin login, token por evento)
-  api/matches/[matchId]/result   endpoint que usa el juez para cargar resultados
-  api/matches/[matchId]/start    endpoint que usa el juez para abrir/cancelar un partido
+  page.tsx                     inicio público
+  publico/                     vista pública en vivo (switcher de jornadas y torneos)
+  evento/[eventId]/pantalla/   modo pantalla para proyector
+  inscripcion/[eventId]/       auto-registro público (un link por jornada, elige disciplina + categoría)
+  acreditacion/[eventToken]/   mesa de acreditación (sin login, token del evento)
+  juez/[courtToken]/           panel del juez de cancha (sin login, token de cancha)
+  admin/
+    login/
+    (protected)/               panel: eventos, torneos, categorías, disciplinas
+  api/
+    matches/[matchId]/         endpoints del juez (start, result, pause/resume,
+                               advance-period, round-result, round-tie, card, live-score)
+    eventos/[eventId]/export/  planilla Excel del evento (requiere sesión admin)
+  components/                   UI compartida (kiosk/public shells, realtime, brackets...)
+
 lib/
-  bracket.ts                        lógica pura de armado de cuadro (seeding, byes)
-  bracket-actions.ts                persistencia del cuadro + avance automático de ganadores
-  generate-bracket-for-competition.ts  arma el cuadro de una competencia (manual o automático)
-  advance-competition-phase.ts      dispara generación de cuadro / cierre de torneo solo
-  format-recommendation.ts          sugerencia de formato según inscriptos y canchas
-  match-logic.ts                    cómputo de resultado (marcador o ganador directo)
-  judge-auth.ts                     validación del token de cancha (compartida por los 2 endpoints del juez)
-  round-robin.ts                    generación de partidos todos-contra-todos
-  supabase/                         clientes de Supabase (browser, server, admin/service-role)
-supabase/migrations/  schema SQL + RLS + seeds (0001 init, 0002 features, 0003 acreditación)
-scripts/seed-demo.ts  datos de prueba
+  supabase/                    clientes: client (browser), server (SSR), admin (service-role)
+  judge-auth.ts                validación del token de cancha, compartida por los endpoints del juez
+  round-robin.ts               generación de partidos todos-contra-todos
+  bracket.ts                   armado puro del cuadro (seeding, byes)
+  bracket-actions.ts           persistencia del cuadro + avance de ganadores y 3er puesto
+  generate-bracket-for-competition.ts   arma el/los cuadro(s) según format_type
+  advance-competition-phase.ts cierre de grupos → cuadro / torneo terminado
+  auto-schedule.ts             asignación automática de cancha + turno
+  match-logic.ts               cómputo de resultado (marcador o ganador directo)
+  match-timer.ts               fórmula del reloj pausable (compartida server/cliente)
+  match-cards.ts               tarjetas + regla "doble amarilla = roja"
+  format-recommendation.ts     sugerencia "solo grupos" vs "grupos + cuadro"
+  database.types.ts            tipos del schema, mantenidos a mano
+
+supabase/schema.sql            schema completo consolidado (para bases nuevas)
+supabase/migrations/           las 15 migraciones incrementales, en orden (historia / bases viejas)
+scripts/                       seed-demo, seed-full-demo, sim-1-setup, sim-2-finish, sim-lib
 ```
+
+---
+
+## Flujo de uso el día del evento
+
+1. **Antes**: en `/admin`, crear el evento y cargar cuántas canchas hay. Recién
+   ahí se puede crear un torneo por cada disciplina/categoría que corre.
+2. En cada torneo: revisar la sugerencia de formato, cargar equipos a mano o
+   abrir la **Inscripción pública**. El link de inscripción es **uno solo por
+   jornada** (botón junto al título del evento): el equipo elige ahí su
+   disciplina y categoría, y solo ve las que tienen la inscripción abierta.
+3. Compartir el **link de acreditación** (botón junto al título del evento)
+   con la mesa: ahí marcan acreditado + homologado y cuentan presentes. Un
+   equipo que no esté acreditado **y** homologado no entra al sorteo.
+4. Armar los grupos (manual o sorteo), **Iniciar torneo** (genera el
+   todos-contra-todos y asigna cancha + turno solo).
+5. Compartir el **link de cada cancha** con su juez. El juez abre el partido
+   cuando los equipos están listos, corre el cronómetro y carga el resultado.
+6. Proyectar `/evento/[eventId]/pantalla` o compartir `/publico/[eventId]`.
+7. A medida que entran resultados, las posiciones se actualizan solas. Al
+   cerrarse la fase de grupos, el cuadro se genera solo (o el torneo queda
+   terminado si es "solo grupos").
+8. Al final: **Exportar a Excel** desde la página del evento para el archivo
+   con todos los equipos, partidos y posiciones de la jornada.
+
+---
+
+## Pendientes conocidos
+
+- El puntaje default (3/1/0 + orden de desempate) es configurable por torneo
+  pero **no está formalizado en el Reglamento General de la Liga** —
+  confirmar con la organización antes de dar el sistema por cerrado.
+- No hay una pantalla única para administrar varios torneos en simultáneo:
+  cada uno se maneja entrando a su página.
+- Un empate entre 3+ equipos en puntos, diferencia y goles a favor no se
+  resuelve solo (haría falta una sub-liguilla): el admin carga un "orden
+  manual" en la tabla de posiciones.
+- Content-Security-Policy y rate limiting, ver [Modelo de seguridad](#modelo-de-seguridad).
+
+---
+
+## Licencia
+
+[MIT](LICENSE).
+

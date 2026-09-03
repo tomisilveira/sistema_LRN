@@ -30,11 +30,17 @@ export const supabase = createClient(url, serviceRoleKey, {
 
 export const STATE_FILE = join(process.cwd(), ".sim-state.json");
 
-export function saveState(state: Record<string, unknown>) {
+export interface SimState {
+  eventId: string;
+  /** "disciplineSlug|categorySlug" -> competitionId */
+  compIds: Record<string, string>;
+}
+
+export function saveState(state: SimState) {
   writeFileSync(STATE_FILE, JSON.stringify(state, null, 2));
 }
-export function loadState(): Record<string, any> {
-  return JSON.parse(readFileSync(STATE_FILE, "utf-8"));
+export function loadState(): SimState {
+  return JSON.parse(readFileSync(STATE_FILE, "utf-8")) as SimState;
 }
 
 // ==========================================================================
@@ -102,10 +108,13 @@ export async function persistBracket(
   }
   const round1Ids = Object.values(idsByRound[0] ?? {});
   if (round1Ids.length === 0) return;
-  const { data: round1Matches } = await supabase.from("matches").select("*").in("id", round1Ids);
+  const { data: round1Matches } = await supabase
+    .from("matches")
+    .select("status, winner_id, next_match_id, next_match_slot")
+    .in("id", round1Ids);
   for (const m of round1Matches ?? []) {
     if (m.status === "completed" && m.winner_id && m.next_match_id) {
-      await advanceWinner(m as any);
+      await advanceWinner(m);
     }
   }
 }
@@ -138,7 +147,10 @@ async function bracketExists(competitionId: string, bracketType: BracketType | n
   return (count ?? 0) > 0;
 }
 
-async function collectGroupSeeds(competitionId: string, select: (rows: any[]) => any[]) {
+/** Fila mínima de get_group_standings usada para sembrar los cuadros. */
+type StandingRow = { team_id: string; team_name: string };
+
+async function collectGroupSeeds(competitionId: string, select: (rows: StandingRow[]) => StandingRow[]) {
   const { data: groups } = await supabase
     .from("groups")
     .select("id, name")
@@ -159,7 +171,7 @@ async function collectGroupSeeds(competitionId: string, select: (rows: any[]) =>
 async function generateGroupBracket(
   competitionId: string,
   bracketType: BracketType | null,
-  select: (rows: any[]) => any[]
+  select: (rows: StandingRow[]) => StandingRow[]
 ): Promise<void> {
   if (await bracketExists(competitionId, bracketType)) return;
   const qualifiersByGroup = await collectGroupSeeds(competitionId, select);
@@ -179,7 +191,11 @@ async function generateBracketOnlyBracket(competitionId: string): Promise<void> 
     .order("created_at", { ascending: true });
   const teamList = teams ?? [];
   if (teamList.length < 2) throw new Error("Cargá al menos 2 equipos antes de generar el cuadro.");
-  const seedTeams = teamList.map((t: any, i: number) => ({ teamId: t.id, teamName: t.name, seed: i + 1 }));
+  const seedTeams = teamList.map((t: { id: string; name: string }, i: number) => ({
+    teamId: t.id,
+    teamName: t.name,
+    seed: i + 1,
+  }));
   const rounds = generateBracketRounds(seedTeams);
   await persistBracket(competitionId, null, rounds);
 }
@@ -320,10 +336,14 @@ export async function playBracketToCompletion(competitionId: string, hasScore: b
     const ready = (matches ?? []).filter((m) => m.team_a_id && m.team_b_id);
     if (ready.length === 0) break;
     for (const [i, m] of ready.entries()) {
-      await completeMatch(m as any, { allowDraws, hasScore, rngSeed: i + guard });
-      const { data: updated } = await supabase.from("matches").select("*").eq("id", m.id).single();
+      await completeMatch(m, { allowDraws, hasScore, rngSeed: i + guard });
+      const { data: updated } = await supabase
+        .from("matches")
+        .select("winner_id, next_match_id, next_match_slot")
+        .eq("id", m.id)
+        .single();
       if (updated?.winner_id && updated?.next_match_id) {
-        await advanceWinner(updated as any);
+        await advanceWinner(updated);
       }
     }
   }

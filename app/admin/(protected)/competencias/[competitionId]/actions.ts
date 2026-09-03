@@ -224,7 +224,7 @@ export async function setTeamHomologated(competitionId: string, teamId: string, 
 
 /** Editar los nombres de las personas de un equipo desde el panel admin —
  * mismo campo que carga el propio equipo al inscribirse (ver
- * app/inscripcion/[competitionId]/actions.ts), acá para poder corregirlo o
+ * app/inscripcion/[eventId]/actions.ts), acá para poder corregirlo o
  * completarlo cuando el equipo lo cargó a mano en la mesa de acreditación
  * en vez de por el form público. */
 export async function setTeamMemberNames(competitionId: string, teamId: string, formData: FormData) {
@@ -350,7 +350,14 @@ export async function randomDraw(competitionId: string, formData: FormData) {
   // Limpia asignaciones previas y reparte al azar en partes iguales.
   await supabase.from("group_teams").delete().in("group_id", groupIds);
 
-  const shuffled = [...teams].sort(() => Math.random() - 0.5);
+  // Fisher-Yates: un `sort(() => Math.random() - 0.5)` da un reparto sesgado
+  // (algunos equipos caen más seguido en el primer grupo) — en un sorteo eso
+  // se nota y se reclama.
+  const shuffled = [...teams];
+  for (let i = shuffled.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+  }
   const rows = shuffled.map((t, i) => ({
     team_id: t.id,
     group_id: activeGroupIds[i % activeGroupIds.length],
@@ -430,7 +437,7 @@ export async function startTournament(competitionId: string) {
 
   // Se cierra la inscripción sola acá — una vez armado el fixture, un
   // equipo nuevo ya no entraría a ningún grupo (ver
-  // app/inscripcion/[competitionId]/page.tsx, que igual re-chequea el
+  // app/inscripcion/[eventId]/page.tsx, que igual re-chequea el
   // status por si el admin la había dejado abierta de antes).
   await supabase
     .from("competitions")

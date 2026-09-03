@@ -1,7 +1,8 @@
-// Tipos manuales que reflejan supabase/migrations/0001_init.sql, 0002_features.sql
-// y 0003_accreditation.sql.
-// Si el schema cambia, actualizar este archivo a mano (no se generó con
-// `supabase gen types` porque el proyecto Supabase todavía no existe).
+// Tipos manuales que reflejan el schema (supabase/schema.sql, o el estado
+// final de supabase/migrations/). Se mantienen a mano en vez de con
+// `supabase gen types` porque el schema se aplica pegando el .sql en el SQL
+// Editor y no hay un proyecto Supabase de referencia commiteado. Si tocás el
+// schema, actualizá también este archivo.
 
 export type FormatType = "groups_only" | "single_elimination" | "gold_silver" | "bracket_only";
 export type CompetitionStatus =
