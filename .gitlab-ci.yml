@@ -1,0 +1,61 @@
+# Pipeline de CI: valida que el código instale, tipee, pase lint y compile
+# limpio en cada push. No hace deploy — el deploy real depende de dónde se
+# hostee el sitio (Vercel, o self-hosted; ver README → Deploy).
+#
+# No necesita ninguna variable de entorno de Supabase: `next build` no toca
+# la base en build time — todas las páginas son dinámicas, se renderizan en
+# el server al llegar cada request, no durante el build (verificado corriendo
+# el build sin ninguna variable seteada).
+
+image: node:20-alpine
+
+stages:
+  - install
+  - check
+  - build
+
+variables:
+  npm_config_cache: "$CI_PROJECT_DIR/.npm"
+
+.npm_cache: &npm_cache
+  key:
+    files:
+      - package-lock.json
+  paths:
+    - .npm/
+    - node_modules/
+
+install:
+  stage: install
+  cache:
+    <<: *npm_cache
+    policy: pull-push
+  script:
+    - npm ci
+
+lint:
+  stage: check
+  needs: ["install"]
+  cache:
+    <<: *npm_cache
+    policy: pull
+  script:
+    - npm run lint
+
+typecheck:
+  stage: check
+  needs: ["install"]
+  cache:
+    <<: *npm_cache
+    policy: pull
+  script:
+    - npm run typecheck
+
+build:
+  stage: build
+  needs: ["lint", "typecheck"]
+  cache:
+    <<: *npm_cache
+    policy: pull
+  script:
+    - npm run build

@@ -2,11 +2,15 @@
   "name": "sistema-lrn",
   "version": "0.1.0",
   "private": true,
+  "engines": {
+    "node": ">=20.9.0"
+  },
   "scripts": {
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
+    "typecheck": "next typegen && tsc --noEmit",
     "seed:demo": "node --env-file=.env.local --import tsx scripts/seed-demo.ts",
     "seed:full-demo": "node --env-file=.env.local --import tsx scripts/seed-full-demo.ts"
   },

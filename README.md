@@ -155,12 +155,19 @@ actualizá la otra.
 
 ### 5. Correr en local
 
+Requiere **Node.js ≥ 20.9** (lo que pide Next 16; ver `engines` en
+`package.json`).
+
 ```bash
 npm install
 npm run dev
 ```
 
 Abrí `http://localhost:3000` → `/admin/login`.
+
+Antes de subir un cambio: `npm run lint`, `npm run typecheck` y `npm run
+build` deberían quedar sin errores — es lo mismo que corre
+[`.gitlab-ci.yml`](.gitlab-ci.yml) en cada push.
 
 ---
 
@@ -197,6 +204,15 @@ copias.
   `Referrer-Policy`, `Permissions-Policy`) desde `next.config.ts`. Todavía
   **no hay Content-Security-Policy** — es el próximo paso natural del
   endurecimiento.
+
+### CI
+
+[`.gitlab-ci.yml`](.gitlab-ci.yml) corre `npm ci` + `lint` + `typecheck` +
+`build` en cada push. No necesita ninguna variable de entorno: el build no
+toca Supabase (todas las páginas son dinámicas, se renderizan recién al
+llegar cada request) — verificado corriendo `next build` sin ninguna
+variable seteada. El pipeline solo valida; el deploy es un paso aparte
+(Vercel se dispara solo con su propia integración, sin pasar por acá).
 
 ---
 
