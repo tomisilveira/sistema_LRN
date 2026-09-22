@@ -8,6 +8,7 @@ import type { DisciplineTabItem } from "@/app/home-discipline-menu";
 import { PublicStandingsTable } from "@/app/components/public-standings-table";
 import { PublicBracketView, type BracketDisplayMatch } from "@/app/components/public-bracket-view";
 import { PublicMatchList, type PublicMatchDisplay } from "@/app/components/public-match-list";
+import { matchStage } from "./match-stage";
 
 export type CompetitionWithNames = Competition & {
   disciplines: { name: string; sort_order: number } | null;
@@ -104,6 +105,7 @@ async function buildTabItem(
     team_b_member_names: teamMemberNames(m.team_b_id),
     court_name: m.court_id ? courtNameById.get(m.court_id) ?? null : null,
     cards: cardsByMatchId.get(m.id) ?? [],
+    stage: matchStage(m, { groupName: groupsList.find((g) => g.id === m.group_id)?.name }),
   }));
 
   const bracketDisplayMatches: BracketDisplayMatch[] = (bracketMatches ?? []).map((m: Match) => ({

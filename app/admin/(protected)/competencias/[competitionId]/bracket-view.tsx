@@ -3,6 +3,7 @@ import { submitResult } from "./actions";
 import { TeamLabel } from "@/app/components/team-label";
 import { TeamCardBadges } from "@/app/components/team-card-badges";
 import { cardsByTeam } from "@/lib/match-cards";
+import { roundName } from "@/lib/match-stage";
 
 export interface BracketDisplayMatch extends Match {
   team_a_name: string | null;
@@ -159,21 +160,3 @@ function TeamLine({
   );
 }
 
-function roundName(code: string) {
-  switch (code) {
-    case "F":
-      return "Final";
-    case "SF":
-      return "Semifinal";
-    case "QF":
-      return "Cuartos de final";
-    case "R16":
-      return "Dieciseisavos";
-    case "R32":
-      return "Treintaidosavos";
-    case "3P":
-      return "3er puesto";
-    default:
-      return code;
-  }
-}

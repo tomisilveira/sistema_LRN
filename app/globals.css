@@ -167,6 +167,11 @@ body {
   background-color: color-mix(in srgb, var(--color-brand-teal) 14%, transparent);
 }
 
+.panel-chip-final {
+  @apply text-brand-pink border border-brand-pink/30 dark:border-brand-pink/40;
+  background-color: color-mix(in srgb, var(--color-brand-pink) 14%, transparent);
+}
+
 .panel-link-card {
   @apply bg-neutral-100 hover:bg-neutral-200 dark:bg-neutral-900 dark:hover:bg-neutral-800
     border-l-2 border-transparent hover:border-l-brand-teal transition;

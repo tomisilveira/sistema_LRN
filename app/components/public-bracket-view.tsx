@@ -2,6 +2,7 @@ import type { Match, MatchCard } from "@/lib/database.types";
 import { TeamLabel } from "./team-label";
 import { TeamCardBadges } from "./team-card-badges";
 import { cardsByTeam } from "@/lib/match-cards";
+import { roundName } from "@/lib/match-stage";
 
 export interface BracketDisplayMatch extends Match {
   team_a_name: string | null;
@@ -114,21 +115,3 @@ function TeamLine({
   );
 }
 
-function roundName(code: string) {
-  switch (code) {
-    case "F":
-      return "Final";
-    case "SF":
-      return "Semifinal";
-    case "QF":
-      return "Cuartos de final";
-    case "R16":
-      return "Dieciseisavos";
-    case "R32":
-      return "Treintaidosavos";
-    case "3P":
-      return "3er puesto";
-    default:
-      return code;
-  }
-}

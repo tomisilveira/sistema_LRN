@@ -8,6 +8,8 @@ import { TeamLabel } from "@/app/components/team-label";
 import { TeamCardBadges } from "@/app/components/team-card-badges";
 import { cardsByTeam } from "@/lib/match-cards";
 import { isStopped } from "@/lib/match-timer";
+import type { MatchStage } from "@/lib/match-stage";
+import { MatchStageChip } from "@/app/components/match-stage-chip";
 import { ResultForm } from "./result-form";
 
 /** Panel activo del partido en curso — el reloj (MatchClock) como hero,
@@ -24,6 +26,7 @@ export function MatchTimerPanel({
   teamAMemberNames,
   teamBMemberNames,
   cards,
+  stage,
 }: {
   courtToken: string;
   match: Match;
@@ -33,6 +36,7 @@ export function MatchTimerPanel({
   teamAMemberNames?: string | null;
   teamBMemberNames?: string | null;
   cards: MatchCard[];
+  stage: MatchStage;
 }) {
   const router = useRouter();
   const [pending, setPending] = useState(false);
@@ -149,6 +153,7 @@ export function MatchTimerPanel({
   if (showFinalize) {
     return (
       <section className="panel-card rounded-xl p-4 space-y-4 panel-enter">
+        <MatchStageChip stage={stage} />
         <p className="text-sm panel-label">Terminó el último tiempo — cargá el resultado final:</p>
         <ResultForm
           courtToken={courtToken}
@@ -169,6 +174,9 @@ export function MatchTimerPanel({
 
   return (
     <section className="panel-card rounded-xl p-5 space-y-5 panel-enter">
+      <div className="flex justify-center">
+        <MatchStageChip stage={stage} />
+      </div>
       <p className="text-xl font-display font-semibold text-center">
         <TeamLabel name={teamAName} memberNames={teamAMemberNames} />{" "}
         <TeamCardBadges summary={teamCards.a} className="align-middle" />{" "}

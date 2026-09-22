@@ -3,6 +3,8 @@ import { LiveMatchElapsed } from "./live-match-elapsed";
 import { TeamLabel } from "./team-label";
 import { TeamCardBadges } from "./team-card-badges";
 import { cardsByTeam } from "@/lib/match-cards";
+import type { MatchStage } from "@/lib/match-stage";
+import { MatchStageChip } from "./match-stage-chip";
 
 export interface PublicMatchDisplay extends Match {
   team_a_name: string;
@@ -11,6 +13,7 @@ export interface PublicMatchDisplay extends Match {
   team_b_member_names: string | null;
   court_name: string | null;
   cards: MatchCard[];
+  stage: MatchStage;
 }
 
 /** Fixture (partidos de fase de grupos) de solo lectura para el público —
@@ -52,6 +55,7 @@ export function PublicMatchList({ matches }: { matches: PublicMatchDisplay[] }) 
             )}
           </div>
           <div className="flex items-center gap-2 text-xs shrink-0">
+            <MatchStageChip stage={m.stage} size="xs" />
             {m.status === "in_progress" ? (
               <span className="inline-flex items-center gap-1 text-red-600 dark:text-red-400 font-medium">
                 <span className="panel-live-dot" aria-hidden="true" />

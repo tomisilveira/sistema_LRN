@@ -3,6 +3,7 @@ import { MatchClock } from "@/app/components/match-clock";
 import { TeamLabel } from "@/app/components/team-label";
 import { TeamCardBadges } from "@/app/components/team-card-badges";
 import { cardsByTeam } from "@/lib/match-cards";
+import { MatchStageChip } from "@/app/components/match-stage-chip";
 import { GoalFlash } from "./goal-flash";
 
 /** Grilla grande para Modo Pantalla — mismo dato que CourtBoards
@@ -28,9 +29,12 @@ export function ScreenBoards({ boards }: { boards: CourtBoard[] }) {
 
             {board.live ? (
               <div className="space-y-3">
-                <p className={`text-2xl font-display font-extrabold leading-tight ${board.colorText}`}>
-                  {board.live.disciplineCategory}
-                </p>
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <p className={`text-2xl font-display font-extrabold leading-tight ${board.colorText}`}>
+                    {board.live.disciplineCategory}
+                  </p>
+                  <MatchStageChip stage={board.live.stage} size="lg" />
+                </div>
                 <p className="text-2xl font-display font-medium text-center">
                   <TeamLabel name={board.live.teamAName} memberNames={board.live.teamAMemberNames} />{" "}
                   <TeamCardBadges summary={cardsByTeam(board.live.cards, board.live.match.team_a_id, board.live.match.team_b_id).a} />{" "}
@@ -58,8 +62,11 @@ export function ScreenBoards({ boards }: { boards: CourtBoard[] }) {
             <div className="border-t border-neutral-200 dark:border-neutral-800 px-5 py-3 space-y-1">
               <p className="text-xs uppercase tracking-wide panel-label font-display font-semibold">Después</p>
               {board.upcoming.map((m) => (
-                <p key={m.match.id} className="text-sm panel-label truncate">
-                  {m.teamAName} vs {m.teamBName}
+                <p key={m.match.id} className="text-sm panel-label flex items-center gap-2 min-w-0">
+                  <span className="truncate">
+                    {m.teamAName} vs {m.teamBName}
+                  </span>
+                  <MatchStageChip stage={m.stage} size="xs" className="shrink-0" />
                 </p>
               ))}
             </div>

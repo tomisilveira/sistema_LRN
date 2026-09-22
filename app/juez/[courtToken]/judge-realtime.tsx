@@ -1,40 +1,18 @@
 "use client";
 
-import { useEffect, useRef } from "react";
-import { useRouter } from "next/navigation";
-import { createClient } from "@/lib/supabase/client";
+import { useRealtimeRefresh } from "@/lib/use-realtime-refresh";
 
 /** Refresca la pantalla del juez si el admin reasigna/reordena el cronograma
- * de su cancha. Debounceado corto: si llega una ráfaga de cambios se hace un
- * solo refresh, sin que se note demora en la mesa de cancha. */
-const REFRESH_DEBOUNCE_MS = 700;
-
+ * de su cancha. Debounceado corto (sin demora notable en la mesa de
+ * cancha), con tope de espera, reconexión y red de seguridad — ver
+ * lib/use-realtime-refresh.ts. */
 export function JudgeRealtime({ courtId }: { courtId: string }) {
-  const router = useRouter();
-  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  useEffect(() => {
-    const supabase = createClient();
-
-    const scheduleRefresh = () => {
-      if (timerRef.current) clearTimeout(timerRef.current);
-      timerRef.current = setTimeout(() => router.refresh(), REFRESH_DEBOUNCE_MS);
-    };
-
-    const channel = supabase
-      .channel(`judge-court-${courtId}`)
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "matches", filter: `court_id=eq.${courtId}` },
-        scheduleRefresh
-      )
-      .subscribe();
-
-    return () => {
-      if (timerRef.current) clearTimeout(timerRef.current);
-      supabase.removeChannel(channel);
-    };
-  }, [courtId, router]);
-
+  useRealtimeRefresh({
+    channelName: `judge-court-${courtId}`,
+    filter: `court_id=eq.${courtId}`,
+    debounceMs: 700,
+    maxWaitMs: 2000,
+    fallbackPollMs: 30000,
+  });
   return null;
 }

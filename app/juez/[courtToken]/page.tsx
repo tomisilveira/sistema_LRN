@@ -6,6 +6,8 @@ import { MatchTimerPanel } from "./match-timer-panel";
 import { KioskInvalidLink } from "@/app/components/kiosk-shell";
 import { TeamLabel } from "@/app/components/team-label";
 import { courtDisplayName } from "@/lib/court-display";
+import { matchStage } from "@/lib/match-stage";
+import { MatchStageChip } from "@/app/components/match-stage-chip";
 
 export const dynamic = "force-dynamic";
 
@@ -51,6 +53,26 @@ export default async function JudgePage({ params }: { params: Promise<{ courtTok
   const teamById = new Map((teams ?? []).map((t) => [t.id, t]));
   const teamName = new Map((teams ?? []).map((t) => [t.id, t.name]));
 
+  // Instancia de cada partido (grupo / ronda / 3er puesto / final) — la
+  // cancha puede tener partidos de más de un torneo en la cola.
+  const groupIds = [...new Set(list.map((m) => m.group_id).filter((x): x is string => !!x))];
+  const competitionIds = [...new Set(list.map((m) => m.competition_id))];
+  const [{ data: groupsData }, { data: formatsData }] = await Promise.all([
+    groupIds.length
+      ? supabase.from("groups").select("id, name").in("id", groupIds)
+      : Promise.resolve({ data: [] as { id: string; name: string }[] }),
+    competitionIds.length
+      ? supabase.from("competitions").select("id, format_type").in("id", competitionIds)
+      : Promise.resolve({ data: [] as Pick<Competition, "id" | "format_type">[] }),
+  ]);
+  const groupNameById = new Map((groupsData ?? []).map((g) => [g.id, g.name]));
+  const formatById = new Map((formatsData ?? []).map((c) => [c.id, c.format_type]));
+  const stageOf = (m: Match) =>
+    matchStage(m, {
+      groupName: m.group_id ? groupNameById.get(m.group_id) : null,
+      goldSilver: formatById.get(m.competition_id) === "gold_silver",
+    });
+
   let competition: Competition | null = null;
   let currentCards: MatchCard[] = [];
   if (current) {
@@ -85,6 +107,7 @@ export default async function JudgePage({ params }: { params: Promise<{ courtTok
             teamAMemberNames={teamById.get(current.team_a_id ?? "")?.member_names ?? null}
             teamBMemberNames={teamById.get(current.team_b_id ?? "")?.member_names ?? null}
             cards={currentCards}
+            stage={stageOf(current)}
           />
         ) : null}
 
@@ -93,8 +116,11 @@ export default async function JudgePage({ params }: { params: Promise<{ courtTok
             <p className="text-xs uppercase tracking-wide panel-label font-display font-semibold mb-2">Después</p>
             <ul className="space-y-1 text-sm panel-label panel-enter-stagger">
               {scheduled.slice(0, 3).map((m) => (
-                <li key={m.id}>
-                  {teamName.get(m.team_a_id ?? "") ?? "?"} vs {teamName.get(m.team_b_id ?? "") ?? "?"}
+                <li key={m.id} className="flex items-center gap-2 min-w-0">
+                  <span className="truncate">
+                    {teamName.get(m.team_a_id ?? "") ?? "?"} vs {teamName.get(m.team_b_id ?? "") ?? "?"}
+                  </span>
+                  <MatchStageChip stage={stageOf(m)} size="xs" className="shrink-0" />
                 </li>
               ))}
             </ul>
@@ -110,6 +136,7 @@ export default async function JudgePage({ params }: { params: Promise<{ courtTok
               <div className="space-y-2 panel-enter-stagger">
                 {scheduled.map((m) => (
                   <div key={m.id} className="panel-card rounded-xl p-4 space-y-3">
+                    <MatchStageChip stage={stageOf(m)} />
                     <p className="text-xl font-display font-semibold">
                       <TeamLabel name={teamName.get(m.team_a_id ?? "") ?? "?"} memberNames={teamById.get(m.team_a_id ?? "")?.member_names} />{" "}
                       <span className="panel-label font-normal">vs</span>{" "}

@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import type { Competition, Match } from "@/lib/database.types";
+import { useServerNow } from "@/lib/use-server-now";
 import { formatClock, isPaused, remainingSeconds, roundWinCounts } from "@/lib/match-timer";
 
 export type MatchClockMatch = Pick<
@@ -26,21 +26,11 @@ export function MatchClock({
   competition: MatchClockCompetition;
   size?: "hero" | "compact";
 }) {
-  // `now` arranca en null: calcularlo ya en el render inicial daría un
-  // texto distinto entre el HTML del server y la primera pasada del
-  // cliente (hydration mismatch) — recién se pisa con el valor real en el
-  // efecto (solo cliente). Mientras tanto se muestra el tiempo completo del
-  // período (sin restar nada), que es un placeholder válido y estable.
-  const [now, setNow] = useState<number | null>(null);
-
-  useEffect(() => {
-    // Recién acá es seguro leer el reloj real (solo cliente, después de que
-    // hidrató con el placeholder) — mismo patrón que theme-toggle.tsx.
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setNow(Date.now());
-    const id = setInterval(() => setNow(Date.now()), 1000);
-    return () => clearInterval(id);
-  }, []);
+  // `now` es null en el primer render (evita hydration mismatch) — mientras
+  // tanto se muestra el tiempo completo del período, un placeholder estable.
+  // Es la hora del SERVIDOR estimada (corrige el desfase del reloj del
+  // dispositivo, ver lib/use-server-now.ts).
+  const now = useServerNow();
 
   if (competition.period_seconds == null) {
     return <p className="text-xs panel-label">Sin reloj configurado para este torneo.</p>;

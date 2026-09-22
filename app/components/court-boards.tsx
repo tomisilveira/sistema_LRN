@@ -3,6 +3,7 @@ import { MatchClock } from "./match-clock";
 import { TeamLabel } from "./team-label";
 import { TeamCardBadges } from "./team-card-badges";
 import { cardsByTeam } from "@/lib/match-cards";
+import { MatchStageChip } from "./match-stage-chip";
 
 /** Pantalla pública organizada por cancha (no por torneo): una tarjeta por
  * cancha con el partido en curso — reloj, marcador, pausado si corresponde —
@@ -31,9 +32,12 @@ export function CourtBoards({ boards }: { boards: CourtBoard[] }) {
 
               {board.live ? (
                 <div className="space-y-2.5">
-                  <p className={`text-base font-display font-bold leading-tight ${board.colorText}`}>
-                    {board.live.disciplineCategory}
-                  </p>
+                  <div className="flex flex-wrap items-center justify-between gap-1.5">
+                    <p className={`text-base font-display font-bold leading-tight ${board.colorText}`}>
+                      {board.live.disciplineCategory}
+                    </p>
+                    <MatchStageChip stage={board.live.stage} />
+                  </div>
                   <p className="text-lg font-display font-medium text-center">
                     <TeamLabel name={board.live.teamAName} memberNames={board.live.teamAMemberNames} />{" "}
                     <TeamCardBadges summary={cardsByTeam(board.live.cards, board.live.match.team_a_id, board.live.match.team_b_id).a} />{" "}
@@ -59,8 +63,11 @@ export function CourtBoards({ boards }: { boards: CourtBoard[] }) {
                   Después
                 </p>
                 {board.upcoming.map((m) => (
-                  <p key={m.match.id} className="text-xs panel-label truncate">
-                    {m.teamAName} vs {m.teamBName}
+                  <p key={m.match.id} className="text-xs panel-label flex items-center gap-1.5 min-w-0">
+                    <span className="truncate">
+                      {m.teamAName} vs {m.teamBName}
+                    </span>
+                    <MatchStageChip stage={m.stage} size="xs" className="shrink-0" />
                   </p>
                 ))}
               </div>

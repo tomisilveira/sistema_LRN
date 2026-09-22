@@ -5,6 +5,7 @@ import type { CompetitionWithNames } from "./build-event-tab-items";
 import { disciplineColor } from "./discipline-colors";
 import { courtDisplayName } from "./court-display";
 import { disciplineCategoryLabel } from "./discipline-display";
+import { matchStage, type MatchStage } from "./match-stage";
 
 export interface CourtBoardMatch {
   match: Match;
@@ -15,6 +16,7 @@ export interface CourtBoardMatch {
   teamBMemberNames: string | null;
   cards: MatchCard[];
   disciplineCategory: string;
+  stage: MatchStage;
 }
 
 export interface CourtBoard {
@@ -66,9 +68,16 @@ export async function buildCourtBoards(
   const teamById = new Map((teams ?? []).map((t: Pick<Team, "id" | "name" | "member_names">) => [t.id, t]));
 
   const matchIds = matchList.map((m) => m.id);
-  const { data: cardsData } = matchIds.length
-    ? await supabase.from("match_cards").select("*").in("match_id", matchIds)
-    : { data: [] as MatchCard[] };
+  const groupIds = [...new Set(matchList.map((m) => m.group_id).filter((x): x is string => !!x))];
+  const [{ data: cardsData }, { data: groupsData }] = await Promise.all([
+    matchIds.length
+      ? supabase.from("match_cards").select("*").in("match_id", matchIds)
+      : Promise.resolve({ data: [] as MatchCard[] }),
+    groupIds.length
+      ? supabase.from("groups").select("id, name").in("id", groupIds)
+      : Promise.resolve({ data: [] as { id: string; name: string }[] }),
+  ]);
+  const groupNameById = new Map(((groupsData ?? []) as { id: string; name: string }[]).map((g) => [g.id, g.name]));
   const cardsByMatchId = new Map<string, MatchCard[]>();
   for (const c of (cardsData ?? []) as MatchCard[]) {
     const list = cardsByMatchId.get(c.match_id) ?? [];
@@ -96,6 +105,10 @@ export async function buildCourtBoards(
       teamBMemberNames: teamById.get(m.team_b_id ?? "")?.member_names ?? null,
       cards: cardsByMatchId.get(m.id) ?? [],
       disciplineCategory: disciplineCategoryLabel(competition.disciplines, competition.categories),
+      stage: matchStage(m, {
+        groupName: m.group_id ? groupNameById.get(m.group_id) : null,
+        goldSilver: competition.format_type === "gold_silver",
+      }),
     };
   };
 
