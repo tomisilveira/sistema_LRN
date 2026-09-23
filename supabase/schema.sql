@@ -476,6 +476,22 @@ grant insert, update, delete on
   disciplines, categories, events, competitions, teams, groups, group_teams, courts, matches, match_cards
   to authenticated;
 
+-- Desde el 30/10/2026 Supabase deja de otorgar privilegios por defecto a
+-- las tablas nuevas de `public` (ver 0016_explicit_grants.sql): todo lo que
+-- antes venía "de regalo" se declara explícito acá.
+
+-- admin logueado: lectura completa de las tablas que arriba sólo tienen
+-- escritura (la RLS con is_admin() es la que limita)
+grant select on events, teams, courts to authenticated;
+
+-- service_role (createAdminClient: juez, acreditación, inscripción,
+-- scripts) — acceso completo; se saltea la RLS
+grant select, insert, update, delete on
+  disciplines, categories, events, admins, competitions, teams, groups,
+  group_teams, courts, matches, match_cards
+  to service_role;
+grant select on courts_public to service_role;
+
 -- ==========================================================================
 -- REALTIME: la vista pública, el modo pantalla y el panel del juez se
 -- subscriben a `matches` y `match_cards` para actualizarse solos.
