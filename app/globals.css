@@ -167,6 +167,65 @@ body {
   background-color: color-mix(in srgb, var(--color-brand-teal) 14%, transparent);
 }
 
+/* Barra de acciones del header de evento: botones con ícono de alto parejo
+   (36px), fondo blanco y el ícono en teal — se leen como un solo grupo
+   sin competir con el título. */
+.panel-action {
+  @apply inline-flex items-center gap-1.5 h-9 px-3 rounded-lg text-sm font-medium whitespace-nowrap
+    border border-neutral-200 bg-white text-neutral-700 shadow-sm
+    transition duration-150 active:scale-[0.97]
+    focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-teal;
+}
+.panel-action svg {
+  @apply text-brand-teal;
+}
+.panel-action:hover {
+  @apply border-brand-teal/60 text-neutral-900;
+  background-color: color-mix(in srgb, var(--color-brand-teal) 7%, white);
+}
+.panel-action-done,
+.panel-action-done:hover {
+  @apply text-brand-green border-brand-green/40;
+  background-color: color-mix(in srgb, var(--color-brand-green) 12%, white);
+}
+.panel-action-done svg {
+  @apply text-brand-green;
+}
+.panel-action-danger {
+  @apply inline-flex items-center gap-1.5 h-9 px-3 rounded-lg text-sm font-medium whitespace-nowrap
+    border border-transparent text-red-600 transition duration-150 active:scale-[0.97]
+    focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red-500;
+}
+.panel-action-danger:hover {
+  @apply border-red-500/30;
+  background-color: color-mix(in srgb, #ef4444 10%, transparent);
+}
+
+.panel-action-sm {
+  @apply h-8 px-2.5 text-xs gap-1;
+}
+.panel-action-sm svg {
+  @apply w-3.5 h-3.5;
+}
+
+/* Control segmentado para estados de dos valores (Público/Privado,
+   Activo/Finalizado): muestra el valor actual Y la alternativa a un click,
+   en vez de un botón cuyo texto es lo contrario del estado actual. */
+.panel-segmented {
+  @apply inline-flex items-center h-9 p-0.5 rounded-lg bg-neutral-100 border border-neutral-200;
+}
+.panel-segment {
+  @apply inline-flex items-center gap-1.5 h-full px-2.5 rounded-md text-sm font-medium whitespace-nowrap
+    text-neutral-500 transition duration-150
+    focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-brand-teal;
+}
+button.panel-segment:hover {
+  @apply text-neutral-800 bg-white/70;
+}
+.panel-segment-on {
+  @apply bg-white text-neutral-900 shadow-sm cursor-default;
+}
+
 .panel-chip-final {
   @apply text-brand-pink border border-brand-pink/30 dark:border-brand-pink/40;
   background-color: color-mix(in srgb, var(--color-brand-pink) 14%, transparent);

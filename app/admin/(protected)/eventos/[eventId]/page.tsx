@@ -12,7 +12,20 @@ import {
 } from "./actions";
 import { deleteCompetition } from "@/app/admin/(protected)/competencias/[competitionId]/actions";
 import { CourtDisciplineSelect } from "./court-discipline-select";
+import { EventDashboard } from "./event-dashboard";
+import { EventRealtime } from "./event-realtime";
+import type { CompetitionWithNames } from "@/lib/build-event-tab-items";
 import { CopyLinkButton } from "@/app/components/copy-link-button";
+import {
+  DownloadIcon,
+  ExternalIcon,
+  FlagIcon,
+  GlobeIcon,
+  LockIcon,
+  MonitorIcon,
+  PlayCircleIcon,
+  TrashIcon,
+} from "@/app/components/action-icons";
 import { Breadcrumbs } from "@/app/components/breadcrumbs";
 import { TabbedLayout, type TabItem } from "@/app/components/tabbed-layout";
 import { ModalFormButton } from "@/app/components/modal-form";
@@ -62,6 +75,18 @@ export default async function EventPage({ params }: { params: Promise<{ eventId:
 
   const tabs: TabItem[] = [
     {
+      id: "resumen",
+      label: "Resumen",
+      content: (
+        <EventDashboard
+          supabase={supabase}
+          event={event}
+          competitions={(competitions ?? []) as CompetitionWithNames[]}
+          courts={courts ?? []}
+        />
+      ),
+    },
+    {
       id: "canchas",
       label: "Canchas",
       badge: (courts ?? []).length || undefined,
@@ -106,37 +131,45 @@ export default async function EventPage({ params }: { params: Promise<{ eventId:
             )}
           </div>
           {hasCourts ? (
-            <div className="grid sm:grid-cols-2 gap-2 panel-enter-stagger">
+            <div className="grid sm:grid-cols-2 gap-3 panel-enter-stagger">
               {(courts ?? []).map((court: Court) => {
                 const discipline = court.discipline_id ? disciplinesById.get(court.discipline_id) : null;
                 const colors = disciplineColor(discipline);
                 return (
                   <div
                     key={court.id}
-                    className={`rounded-md border-l-4 transition-colors hover:brightness-95 ${colors.border} ${colors.bg} px-3 py-2 space-y-2`}
+                    className={`rounded-lg border-l-4 ${colors.border} ${colors.bg} p-3 flex flex-col gap-2.5`}
                   >
-                    <div className="flex items-center justify-between gap-2">
-                      <span className="text-sm font-medium">{courtDisplayName(court.name, discipline)}</span>
-                      <div className="flex items-center gap-1.5 shrink-0">
-                        <CopyLinkButton path={`/juez/${court.access_token}`} label="Link de juez" compact />
-                        <form action={deleteCourt.bind(null, eventId, court.id)}>
-                          <ConfirmSubmitButton
-                            confirmMessage={`¿Eliminar "${courtDisplayName(court.name, discipline)}"? Los partidos que la tenían asignada quedan sin cancha.`}
-                            className="text-xs rounded-md px-2 py-1 panel-button-danger"
-                          >
-                            Eliminar
-                          </ConfirmSubmitButton>
-                        </form>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-1.5">
-                      <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${colors.dot}`} aria-hidden="true" />
+                    {/* Nombre arriba, a todo el ancho (antes compartía la fila
+                        con los botones y se partía en 3 renglones); disciplina
+                        con su etiqueta; acciones abajo, lo destructivo a la
+                        derecha y separado. */}
+                    <p className="font-display font-semibold leading-snug">
+                      {courtDisplayName(court.name, discipline)}
+                    </p>
+                    <label className="flex flex-col gap-1">
+                      <span className="flex items-center gap-1.5 text-[11px] uppercase tracking-wide panel-label font-semibold">
+                        <span className={`w-2 h-2 rounded-full shrink-0 ${colors.dot}`} aria-hidden="true" />
+                        Disciplina
+                      </span>
                       <CourtDisciplineSelect
                         eventId={eventId}
                         courtId={court.id}
                         disciplineId={court.discipline_id}
                         disciplines={disciplines ?? []}
                       />
+                    </label>
+                    <div className="flex flex-wrap items-center justify-between gap-2 mt-auto">
+                      <CopyLinkButton variant="toolbar" compact path={`/juez/${court.access_token}`} label="Link del juez" />
+                      <form action={deleteCourt.bind(null, eventId, court.id)}>
+                        <ConfirmSubmitButton
+                          confirmMessage={`¿Eliminar "${courtDisplayName(court.name, discipline)}"? Los partidos que la tenían asignada quedan sin cancha.`}
+                          className="panel-action-danger panel-action-sm"
+                        >
+                          <TrashIcon />
+                          Eliminar
+                        </ConfirmSubmitButton>
+                      </form>
                     </div>
                   </div>
                 );
@@ -340,98 +373,147 @@ export default async function EventPage({ params }: { params: Promise<{ eventId:
     <div className="max-w-5xl mx-auto space-y-6">
       <div>
         <Breadcrumbs items={[{ label: "Eventos", href: "/admin" }, { label: event.name }]} />
-        <div className="flex items-center justify-between">
+        <div className="space-y-3">
           <div>
-            <div className="flex items-center gap-2">
-              <h1 className="text-lg font-semibold">{event.name}</h1>
-              <span
-                className={`text-xs rounded-full px-2 py-0.5 font-medium ${
-                  event.is_public ? "panel-chip-success" : "panel-chip-warning"
-                }`}
-                title={
-                  event.is_public
-                    ? "Visible en /publico y en el inicio."
-                    : "Oculto: no aparece en /publico ni en el inicio, aunque tenga link directo alguien no lo ve listado."
-                }
-              >
-                {event.is_public ? "🌐 Público" : "🔒 Privado"}
-              </span>
-            </div>
-            <p className="text-sm panel-label">{event.event_date}</p>
+            <h1 className="text-2xl font-display font-bold leading-tight text-balance">{event.name}</h1>
+            <p className="text-sm panel-label mt-0.5">{event.event_date}</p>
           </div>
-          <div className="flex flex-wrap items-center gap-2">
-            {/* Acciones de uso frecuente, no destructivas — mismo estilo
-                (pill con borde teal) para que se lean como un solo grupo en
-                vez de tres formas distintas (antes "Copiar link" tenía su
-                propio look de outline y el resto eran chips grises lisos). */}
-            {event.accreditation_token && (
-              <CopyLinkButton
-                path={`/acreditacion/${event.accreditation_token}`}
-                label="Copiar link de acreditación"
-              />
-            )}
-            {hasOpenRegistration && (
-              <CopyLinkButton path={`/inscripcion/${eventId}`} label="Copiar link de inscripción" />
-            )}
-            {event.is_public && (
-              <a
-                href={`/evento/${eventId}/pantalla`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="panel-button-secondary text-xs rounded-full px-3 py-1.5 whitespace-nowrap"
-                title="Vista para proyector/TV — todas las canchas en vivo, sin navegación"
-              >
-                🖥️ Abrir modo pantalla
+
+          {/* Barra de acciones: a la izquierda lo que se usa en la jornada
+              (compartir links, pantalla, Excel); a la derecha el estado del
+              evento como controles segmentados — muestran el valor actual y
+              la alternativa, en vez de un chip "Público" suelto más un botón
+              "Hacer privado" que dice lo contrario — y al final, separada,
+              la acción destructiva. */}
+          <div className="panel-card rounded-xl p-2 space-y-2">
+            <div className="flex flex-wrap items-center gap-2">
+              {event.accreditation_token && (
+                <CopyLinkButton
+                  variant="toolbar"
+                  path={`/acreditacion/${event.accreditation_token}`}
+                  label="Link de acreditación"
+                />
+              )}
+              {hasOpenRegistration && (
+                <CopyLinkButton variant="toolbar" path={`/inscripcion/${eventId}`} label="Link de inscripción" />
+              )}
+              {event.is_public && (
+                <a
+                  href={`/evento/${eventId}/pantalla`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="panel-action"
+                  title="Vista para proyector/TV — todas las canchas en vivo, sin navegación (se abre en otra pestaña)"
+                >
+                  <MonitorIcon />
+                  Modo pantalla
+                  <ExternalIcon className="w-3.5 h-3.5 opacity-60" />
+                </a>
+              )}
+              <a href={`/api/eventos/${eventId}/export`} className="panel-action">
+                <DownloadIcon />
+                Exportar a Excel
               </a>
-            )}
-            <a
-              href={`/api/eventos/${eventId}/export`}
-              className="panel-button-secondary text-xs rounded-full px-3 py-1.5 whitespace-nowrap"
-            >
-              📊 Exportar a Excel
-            </a>
+              <form action={deleteEvent.bind(null, eventId)} className="ml-auto">
+                <ConfirmSubmitButton
+                  confirmMessage={`¿Eliminar el evento "${event.name}"? Se borran TODOS sus torneos, canchas, equipos, grupos y partidos. No se puede deshacer.`}
+                  className="panel-action-danger"
+                >
+                  <TrashIcon />
+                  Eliminar
+                </ConfirmSubmitButton>
+              </form>
+            </div>
 
-            {/* Cambios de estado del evento — chip neutro a propósito, para
-                que no compitan visualmente con las acciones de arriba. */}
-            <span className="w-px h-5 bg-neutral-300 dark:bg-neutral-700 mx-0.5" aria-hidden="true" />
-            <form action={setPublic.bind(null, !event.is_public)}>
-              <button
-                type="submit"
-                className="panel-chip text-xs rounded-full px-3 py-1.5 transition-colors whitespace-nowrap"
-                title="Mostrar/ocultar este evento en /publico y en el inicio"
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-2 border-t border-neutral-100 pt-2 px-1">
+              <div className="flex items-center gap-2">
+              <span className="text-xs font-medium panel-label">Visibilidad</span>
+              <div
+                className="panel-segmented"
+                role="group"
+                aria-label="Visibilidad del evento"
+                title="Público: aparece en /publico y en el inicio. Privado: no aparece listado en ningún lado."
               >
-                {event.is_public ? "🔒 Hacer privado" : "🌐 Hacer público"}
-              </button>
-            </form>
-            <form action={setStatus.bind(null, event.status === "active" ? "finished" : "active")}>
-              <button
-                type="submit"
-                className="panel-chip text-xs rounded-full px-3 py-1.5 transition-colors whitespace-nowrap"
-              >
-                {event.status === "active" ? "Marcar finalizado" : "Marcar activo"}
-              </button>
-            </form>
+                {event.is_public ? (
+                  <span className="panel-segment panel-segment-on" aria-current="true">
+                    <GlobeIcon className="w-4 h-4 text-brand-green" />
+                    Público
+                  </span>
+                ) : (
+                  <form action={setPublic.bind(null, true)} className="h-full">
+                    <button type="submit" className="panel-segment">
+                      <GlobeIcon />
+                      Público
+                    </button>
+                  </form>
+                )}
+                {!event.is_public ? (
+                  <span className="panel-segment panel-segment-on" aria-current="true">
+                    <LockIcon className="w-4 h-4 text-brand-orange" />
+                    Privado
+                  </span>
+                ) : (
+                  <form action={setPublic.bind(null, false)} className="h-full">
+                    <button type="submit" className="panel-segment">
+                      <LockIcon />
+                      Privado
+                    </button>
+                  </form>
+                )}
+              </div>
 
-            {/* Destructiva: separada del resto y con fondo rojo suave ya en
-                reposo (no solo al pasar el mouse) para que se note que es
-                zona de peligro antes de tocarla. */}
-            <span className="w-px h-5 bg-neutral-300 dark:bg-neutral-700 mx-0.5" aria-hidden="true" />
-            <form action={deleteEvent.bind(null, eventId)}>
-              <ConfirmSubmitButton
-                confirmMessage={`¿Eliminar el evento "${event.name}"? Se borran TODOS sus torneos, canchas, equipos, grupos y partidos. No se puede deshacer.`}
-                className="text-xs rounded-full panel-button-danger px-3 py-1.5 whitespace-nowrap"
-              >
-                🗑️ Eliminar evento
-              </ConfirmSubmitButton>
-            </form>
+              </div>
+              <div className="flex items-center gap-2">
+              <span className="text-xs font-medium panel-label">Estado</span>
+              <div className="panel-segmented" role="group" aria-label="Estado del evento">
+                {/* Borrador no se elige desde acá (es el estado de un evento
+                    recién creado), pero si lo está se muestra como el valor
+                    actual — si no, ningún segmento quedaría marcado. */}
+                {event.status === "draft" && (
+                  <span className="panel-segment panel-segment-on" aria-current="true">
+                    <span className="w-2 h-2 rounded-full bg-neutral-400" aria-hidden="true" />
+                    Borrador
+                  </span>
+                )}
+                {event.status === "active" ? (
+                  <span className="panel-segment panel-segment-on" aria-current="true">
+                    <PlayCircleIcon className="w-4 h-4 text-brand-teal" />
+                    Activo
+                  </span>
+                ) : (
+                  <form action={setStatus.bind(null, "active")} className="h-full">
+                    <button type="submit" className="panel-segment">
+                      <PlayCircleIcon />
+                      Activo
+                    </button>
+                  </form>
+                )}
+                {event.status === "finished" ? (
+                  <span className="panel-segment panel-segment-on" aria-current="true">
+                    <FlagIcon className="w-4 h-4 text-neutral-600" />
+                    Finalizado
+                  </span>
+                ) : (
+                  <form action={setStatus.bind(null, "finished")} className="h-full">
+                    <button type="submit" className="panel-segment">
+                      <FlagIcon />
+                      Finalizado
+                    </button>
+                  </form>
+                )}
+              </div>
+              </div>
+
+            </div>
           </div>
         </div>
       </div>
 
-      {/* Arranca en Torneos (no en Canchas): es adonde se vuelve casi siempre
-          después de entrar a un torneo puntual, para elegir otra
-          disciplina/categoría del mismo evento. */}
-      <TabbedLayout items={tabs} defaultTabId="torneos" sectionTitle={event.name} sectionEventId={event.id} />
+      {/* Arranca en el Resumen: estado general del evento de un vistazo, y
+          su lista "Avance por torneo" lleva directo a cada torneo (lo que
+          antes se buscaba entrando por la pestaña Torneos). */}
+      <EventRealtime eventId={eventId} />
+      <TabbedLayout items={tabs} defaultTabId="resumen" sectionTitle={event.name} sectionEventId={event.id} />
     </div>
   );
 }

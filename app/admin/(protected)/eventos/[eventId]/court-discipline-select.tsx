@@ -34,7 +34,7 @@ export function CourtDisciplineSelect({
           setCourtDiscipline(eventId, courtId, formData);
         });
       }}
-      className="flex-1 rounded panel-input px-1.5 py-1 text-xs disabled:opacity-50"
+      className="w-full h-9 rounded-md panel-input px-2 text-sm disabled:opacity-50"
     >
       <option value="">Sin disciplina asignada</option>
       {disciplines.map((d) => (

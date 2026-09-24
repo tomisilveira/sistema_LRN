@@ -48,7 +48,7 @@ export default async function ProtectedAdminLayout({ children }: { children: Rea
   // volver a /admin). Liviano: sólo id/nombre/visibilidad/estado.
   const { data: events } = await supabase
     .from("events")
-    .select("id, name, is_public, status")
+    .select("id, name, is_public, status, event_date")
     .order("event_date", { ascending: false });
 
   return (

@@ -7,8 +7,9 @@ import { SignOutButton } from "./sign-out-button";
 import { useSectionNav, type SectionNavItem } from "./section-nav-context";
 import { BrandIcon } from "@/app/components/brand-mark";
 import type { EventRow } from "@/lib/database.types";
+import { LockIcon } from "@/app/components/action-icons";
 
-type SidebarEvent = Pick<EventRow, "id" | "name" | "is_public" | "status">;
+type SidebarEvent = Pick<EventRow, "id" | "name" | "is_public" | "status" | "event_date">;
 
 const NAV_ITEMS = [
   { href: "/admin", label: "Eventos" },
@@ -21,6 +22,39 @@ const eventStatusLabel: Record<EventRow["status"], string> = {
   active: "Activo",
   finished: "Finalizado",
 };
+
+const eventStatusDot: Record<EventRow["status"], string> = {
+  draft: "bg-neutral-400",
+  active: "bg-brand-green",
+  finished: "bg-neutral-300",
+};
+
+/** "2026-10-17" → "17/10/2026" sin pasar por Date (evita el corrimiento de
+ * zona horaria de un date-only). */
+function formatEventDate(iso: string | null | undefined): string {
+  if (!iso) return "";
+  const [y, m, d] = iso.split("-");
+  return d && m && y ? `${d}/${m}/${y}` : iso;
+}
+
+/** Estado + fecha en una línea chica: con dos eventos de nombre parecido
+ * ("Encuentro Regional…") es lo que permite distinguirlos. */
+function EventMeta({ ev, onPrimary = false }: { ev: SidebarEvent; onPrimary?: boolean }) {
+  return (
+    <span className={`flex items-center gap-1.5 text-[11px] leading-tight ${onPrimary ? "text-white/85" : "panel-label"}`}>
+      <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${onPrimary ? "bg-white" : eventStatusDot[ev.status]}`} aria-hidden="true" />
+      {eventStatusLabel[ev.status]}
+      {ev.event_date && <span aria-hidden="true">·</span>}
+      {formatEventDate(ev.event_date)}
+      {!ev.is_public && (
+        <span className="inline-flex items-center gap-0.5 ml-auto" title="Privado: no aparece en el sitio público">
+          <LockIcon className="w-3 h-3" />
+          Privado
+        </span>
+      )}
+    </span>
+  );
+}
 
 // Eventos y Torneos son rutas anidadas conceptualmente bajo "Eventos" — acá
 // se decide si el link de tope queda resaltado y si corresponde mostrar las
@@ -67,24 +101,29 @@ function EventSwitcher({
         type="button"
         onClick={() => setOpen((v) => !v)}
         aria-expanded={open}
-        className={`flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-left transition-all duration-150 active:scale-[0.98] ${
+        aria-label={`Evento actual: ${current?.name ?? "ninguno"}. Cambiar de evento`}
+        className={`flex w-full items-start gap-2 rounded-lg px-3 py-2 text-sm text-left transition-all duration-150 active:scale-[0.98] ${
           underEventos
             ? "panel-button-primary font-medium shadow-sm"
             : "text-neutral-600 dark:text-neutral-400 border border-transparent hover:border-brand-teal/25 hover:bg-brand-teal/8"
         }`}
       >
-        {current && !current.is_public && (
-          <span aria-hidden="true" title="Privado">
-            🔒
-          </span>
-        )}
-        <span className="truncate flex-1">{current?.name ?? "Elegir evento"}</span>
-        <span
-          className={`shrink-0 text-xs transition-transform ${open ? "rotate-180" : ""}`}
-          aria-hidden="true"
-        >
-          ▾
+        <span className="flex-1 min-w-0 space-y-0.5">
+          <span className="block leading-snug line-clamp-2">{current?.name ?? "Elegir evento"}</span>
+          {current && <EventMeta ev={current} onPrimary={underEventos} />}
         </span>
+        <svg
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth={2}
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          aria-hidden="true"
+          className={`w-4 h-4 shrink-0 mt-0.5 transition-transform duration-200 ${open ? "rotate-180" : ""}`}
+        >
+          <path d="m6 9 6 6 6-6" />
+        </svg>
       </button>
 
       {open && (
@@ -98,19 +137,14 @@ function EventSwitcher({
                 href={`/admin/eventos/${ev.id}`}
                 aria-current={isCurrent ? "true" : undefined}
                 onClick={() => setOpen(false)}
-                className={`flex items-center gap-1.5 rounded-md px-2 py-1.5 text-sm transition-colors ${
+                className={`flex flex-col gap-0.5 rounded-md px-2.5 py-2 text-sm transition-colors ${
                   isCurrent
                     ? "bg-brand-teal/12 text-brand-teal-dark dark:text-brand-teal font-medium"
                     : "hover:bg-brand-teal/8 text-neutral-600 dark:text-neutral-300"
                 }`}
               >
-                {!ev.is_public && (
-                  <span aria-hidden="true" title="Privado">
-                    🔒
-                  </span>
-                )}
-                <span className="truncate flex-1">{ev.name}</span>
-                <span className="shrink-0 text-[10px] panel-label">{eventStatusLabel[ev.status]}</span>
+                <span className="block leading-snug line-clamp-2">{ev.name}</span>
+                <EventMeta ev={ev} />
               </Link>
             );
           })}
@@ -119,7 +153,7 @@ function EventSwitcher({
             onClick={() => setOpen(false)}
             className="block rounded-md px-2 py-1.5 text-xs font-medium panel-label hover:bg-brand-teal/8 hover:text-brand-teal-dark dark:hover:text-brand-teal transition-colors"
           >
-            Ver todos los eventos →
+            Ver todos los eventos
           </Link>
         </div>
       )}
@@ -193,9 +227,14 @@ export function AdminSidebar({ userEmail, events }: { userEmail: string; events:
     );
   };
 
+  // En la página del evento el título de la sección ES el nombre del evento,
+  // que ya muestra el selector de arriba — repetirlo (truncado) no suma.
+  const currentEventName = events.find((e) => e.id === currentEventId)?.name;
+  const showSectionTitle = !!section && section.title !== currentEventName;
+
   const nestedSections = showNested && section && (
     <div className="ml-3 pl-2.5 border-l-2 border-neutral-200 dark:border-neutral-800 space-y-1 panel-enter">
-      {section.href ? (
+      {!showSectionTitle ? null : section.href ? (
         <Link
           href={section.href}
           className="flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium panel-label hover:bg-brand-teal/8 hover:text-brand-teal-dark dark:hover:text-brand-teal transition-colors"
@@ -203,14 +242,14 @@ export function AdminSidebar({ userEmail, events }: { userEmail: string; events:
           {section.colorDot && (
             <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${section.colorDot}`} aria-hidden="true" />
           )}
-          <span className="truncate">{section.title}</span>
+          <span className="line-clamp-2">{section.title}</span>
         </Link>
       ) : (
         <div className="flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium panel-label">
           {section.colorDot && (
             <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${section.colorDot}`} aria-hidden="true" />
           )}
-          <span className="truncate">{section.title}</span>
+          <span className="line-clamp-2">{section.title}</span>
         </div>
       )}
       {section.items.map((it) => (
@@ -252,7 +291,7 @@ export function AdminSidebar({ userEmail, events }: { userEmail: string; events:
         <div className="panel-brand-stripe" />
       </header>
 
-      <aside className="hidden md:flex md:flex-col md:w-56 md:shrink-0 md:sticky md:top-0 md:h-screen panel-nav border-r">
+      <aside className="hidden md:flex md:flex-col md:w-64 md:shrink-0 md:sticky md:top-0 md:h-screen panel-nav border-r">
         <Link href="/admin" className="flex items-center gap-2.5 p-4">
           <BrandIcon className="h-8 w-8" priority />
           <span className="min-w-0">
