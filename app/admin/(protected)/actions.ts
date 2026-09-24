@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
+import { requireSuperadmin } from "@/lib/admin-auth";
 import { slugify } from "@/lib/slugify";
 
 export async function createEvent(formData: FormData) {
@@ -30,6 +31,7 @@ export async function setEventStatus(eventId: string, status: "draft" | "active"
 }
 
 export async function createDiscipline(formData: FormData) {
+  await requireSuperadmin();
   const name = String(formData.get("name") ?? "").trim();
   if (!name) throw new Error("Falta el nombre de la disciplina.");
   const allowDrawsDefault = formData.get("allow_draws_default") === "on";

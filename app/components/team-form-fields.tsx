@@ -1,5 +1,6 @@
 import { MemberListInput } from "@/app/components/member-list-input";
 import { MAX_TEAM_MEMBERS } from "@/lib/team-limits";
+import { LocationFields } from "@/app/components/location-fields";
 
 /** Campos de equipo compartidos entre "Agregar equipo"/"Editar equipo" del
  * panel admin y de la mesa de acreditación (sin login) — mismo set de
@@ -21,6 +22,8 @@ export function TeamFormFields({
   defaults?: {
     name: string;
     institution: string;
+    province?: string | null;
+    locality?: string | null;
     robots: string[];
     memberNames: string | null;
     notes: string;
@@ -85,6 +88,7 @@ export function TeamFormFields({
           className="w-full rounded-md panel-input px-3 py-2 text-sm"
         />
       </div>
+      <LocationFields defaults={{ province: defaults?.province ?? null, locality: defaults?.locality ?? null }} />
 
       {showMentor && (
         <div className="rounded-md panel-surface p-3 space-y-2.5">

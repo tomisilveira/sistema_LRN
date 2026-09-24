@@ -2,12 +2,15 @@ import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { joinNameList, parseMemberNames } from "./team-display";
 import { MAX_TEAM_MEMBERS } from "./team-limits";
+import { ALL_PROVINCES } from "./argentina-locations";
 
 export { MAX_TEAM_MEMBERS };
 
 export interface ParsedTeamInput {
   name: string;
   institution: string | null;
+  province: string | null;
+  locality: string | null;
   memberNames: string | null;
   /** Derivado de la lista de integrantes — ya no se pide a mano. */
   memberCount: number;
@@ -25,9 +28,14 @@ export interface ParsedTeamInput {
  * - entre 1 y MAX_TEAM_MEMBERS integrantes (la cantidad sale de la lista,
  *   no de un campo aparte),
  * - fútbol robótico: 2 robots titulares obligatorios (el suplente es
- *   opcional).
+ *   opcional),
+ * - provincia/localidad: obligatorias solo con `requireLocation`
+ *   (inscripción pública); la provincia tiene que ser una de la lista.
  */
-export function parseTeamInput(formData: FormData, opts: { isFutbol: boolean }): ParsedTeamInput {
+export function parseTeamInput(
+  formData: FormData,
+  opts: { isFutbol: boolean; requireLocation?: boolean }
+): ParsedTeamInput {
   const name = String(formData.get("name") ?? "").trim();
   const institution = String(formData.get("institution") ?? "").trim() || null;
   const memberNamesRaw = String(formData.get("member_names") ?? "").trim() || null;
@@ -35,8 +43,16 @@ export function parseTeamInput(formData: FormData, opts: { isFutbol: boolean }):
   const robot2 = String(formData.get("robot_2") ?? "").trim();
   const robot3 = String(formData.get("robot_3") ?? "").trim();
   const notes = String(formData.get("notes") ?? "").trim() || null;
+  const province = String(formData.get("province") ?? "").trim() || null;
+  const locality = String(formData.get("locality") ?? "").trim().slice(0, 80) || null;
 
   if (!name) throw new Error("Falta el nombre del equipo.");
+
+  if (province && !ALL_PROVINCES.includes(province)) throw new Error("La provincia elegida no es válida.");
+  if (opts.requireLocation) {
+    if (!province) throw new Error("Elegí la provincia del equipo.");
+    if (!locality) throw new Error("Elegí o escribí la localidad del equipo.");
+  }
 
   const members = parseMemberNames(memberNamesRaw);
   if (members.length < 1) {
@@ -55,6 +71,8 @@ export function parseTeamInput(formData: FormData, opts: { isFutbol: boolean }):
   return {
     name,
     institution,
+    province,
+    locality: province ? locality : null,
     memberNames: memberNamesRaw,
     memberCount: members.length,
     robotNames: joinNameList([robot1, robot2, robot3]),

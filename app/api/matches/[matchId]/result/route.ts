@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { computeMatchOutcome } from "@/lib/match-logic";
 import { advanceWinner } from "@/lib/bracket-actions";
-import { assertMatchBelongsToCourt, JudgeAuthError } from "@/lib/judge-auth";
+import { assertMatchWithCompetition, JudgeAuthError } from "@/lib/judge-auth";
 import { maybeAdvanceCompetitionPhase } from "@/lib/advance-competition-phase";
 import type { Competition, Match } from "@/lib/database.types";
 
@@ -28,8 +28,9 @@ export async function POST(request: Request, { params }: { params: Promise<{ mat
   const supabase = createAdminClient();
 
   let match: Match;
+  let competition: Competition;
   try {
-    match = await assertMatchBelongsToCourt(supabase, matchId, courtToken);
+    ({ match, competition } = await assertMatchWithCompetition(supabase, matchId, courtToken));
   } catch (e) {
     if (e instanceof JudgeAuthError) return NextResponse.json({ error: e.message }, { status: e.status });
     throw e;
@@ -38,14 +39,6 @@ export async function POST(request: Request, { params }: { params: Promise<{ mat
     return NextResponse.json({ error: "Todavía no están definidos los dos equipos." }, { status: 400 });
   }
 
-  const { data: competition } = await supabase
-    .from("competitions")
-    .select("*")
-    .eq("id", match.competition_id)
-    .single<Competition>();
-  if (!competition) {
-    return NextResponse.json({ error: "Competencia no encontrada." }, { status: 404 });
-  }
 
   let outcome;
   try {

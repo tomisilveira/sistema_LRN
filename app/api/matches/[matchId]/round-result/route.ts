@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { assertMatchBelongsToCourt, JudgeAuthError } from "@/lib/judge-auth";
+import { assertMatchWithCompetition, JudgeAuthError } from "@/lib/judge-auth";
 import { advanceWinner } from "@/lib/bracket-actions";
 import { maybeAdvanceCompetitionPhase } from "@/lib/advance-competition-phase";
 import { roundWinCounts } from "@/lib/match-timer";
@@ -24,8 +24,9 @@ export async function POST(request: Request, { params }: { params: Promise<{ mat
   const supabase = createAdminClient();
 
   let match: Match;
+  let competition: Competition;
   try {
-    match = await assertMatchBelongsToCourt(supabase, matchId, courtToken);
+    ({ match, competition } = await assertMatchWithCompetition(supabase, matchId, courtToken));
   } catch (e) {
     if (e instanceof JudgeAuthError) return NextResponse.json({ error: e.message }, { status: e.status });
     throw e;
@@ -41,14 +42,6 @@ export async function POST(request: Request, { params }: { params: Promise<{ mat
     return NextResponse.json({ error: "El ganador del round no pertenece a este partido." }, { status: 400 });
   }
 
-  const { data: competition } = await supabase
-    .from("competitions")
-    .select("*")
-    .eq("id", match.competition_id)
-    .single<Competition>();
-  if (!competition) {
-    return NextResponse.json({ error: "Competencia no encontrada." }, { status: 404 });
-  }
   if (competition.timer_mode !== "rounds" || !competition.rounds_to_win) {
     return NextResponse.json({ error: "Esta disciplina no juega por rounds." }, { status: 400 });
   }

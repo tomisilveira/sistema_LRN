@@ -65,26 +65,31 @@ export default async function PantallaPage({ params }: { params: Promise<{ event
   const { eventId } = await params;
   const supabase = await createServerSupabaseClient();
 
-  const { data: event } = await supabase
-    .from("events")
-    .select(EVENT_PUBLIC_COLUMNS)
-    .eq("id", eventId)
-    .maybeSingle<EventRow>();
+  // Velocidad (sep 2026): esta pantalla se recarga con cada cambio de
+  // partido, así que importan las consultas en fila (~75 ms c/u). Evento y
+  // torneos van juntos (la RLS ya oculta los torneos de eventos privados);
+  // después, canchas en vivo y la vista de respaldo (posiciones/cuadro)
+  // también juntas — si hay algo en vivo, el respaldo se descarta. Antes
+  // eran hasta 7 tandas en fila.
+  const [{ data: event }, { data: competitions }] = await Promise.all([
+    supabase.from("events").select(EVENT_PUBLIC_COLUMNS).eq("id", eventId).maybeSingle<EventRow>(),
+    supabase
+      .from("competitions")
+      .select("*, disciplines(name, sort_order), categories(name)")
+      .eq("event_id", eventId)
+      .order("created_at"),
+  ]);
   if (!event || !event.is_public) notFound();
-
-  const { data: competitions } = await supabase
-    .from("competitions")
-    .select("*, disciplines(name, sort_order), categories(name)")
-    .eq("event_id", eventId)
-    .order("created_at");
   const competitionList = (competitions ?? []) as CompetitionWithNames[];
 
-  const boards = await buildCourtBoards(supabase, eventId, competitionList);
+  const [boards, fallbackCandidate] = await Promise.all([
+    buildCourtBoards(supabase, eventId, competitionList),
+    buildPantallaFallback(supabase, eventId, competitionList),
+  ]);
   const liveBoards = boards.filter((b) => b.live !== null);
   const hasLive = liveBoards.length > 0;
   const upcoming = hasLive ? [] : boards.flatMap((b) => b.upcoming);
-
-  const fallbackBoards = hasLive ? [] : await buildPantallaFallback(supabase, eventId, competitionList);
+  const fallbackBoards = hasLive ? [] : fallbackCandidate;
   const upcomingGroups = groupUpcomingByDiscipline(upcoming);
 
   return (

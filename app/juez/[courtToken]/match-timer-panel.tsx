@@ -7,7 +7,8 @@ import { MatchClock } from "@/app/components/match-clock";
 import { TeamLabel } from "@/app/components/team-label";
 import { TeamCardBadges } from "@/app/components/team-card-badges";
 import { cardsByTeam } from "@/lib/match-cards";
-import { isStopped } from "@/lib/match-timer";
+import { elapsedSeconds, isStopped } from "@/lib/match-timer";
+import { serverNow } from "@/lib/use-server-now";
 import type { MatchStage } from "@/lib/match-stage";
 import { MatchStageChip } from "@/app/components/match-stage-chip";
 import { ResultForm } from "./result-form";
@@ -52,6 +53,43 @@ export function MatchTimerPanel({
   const [confirmingCancel, setConfirmingCancel] = useState(false);
   const [confirmingRoundTie, setConfirmingRoundTie] = useState(false);
   const [confirmingRedCard, setConfirmingRedCard] = useState<{ teamId: string; teamName: string } | null>(null);
+
+  // Estado optimista del reloj (sep 2026): al tocar Pausar/Reanudar/Ganó
+  // round, el reloj cambia AL INSTANTE en vez de esperar a que el servidor
+  // guarde y la página se recargue (dos idas y vueltas). El parche vale
+  // mientras `match.updated_at` sea el mismo que cuando se tocó: cuando llega
+  // el dato real (router.refresh / realtime), updated_at cambia y se usa
+  // ése. Si el servidor rechaza, se descarta.
+  const [override, setOverride] = useState<{ base: string; patch: Partial<Match> } | null>(null);
+  const shown: Match = override && override.base === match.updated_at ? { ...match, ...override.patch } : match;
+
+  async function optimisticCall(patch: Partial<Match>, path: string, body: Record<string, unknown> = {}) {
+    setOverride({ base: match.updated_at, patch });
+    const res = await call(path, body);
+    if (!res) setOverride(null);
+  }
+
+  function resume() {
+    void optimisticCall({ timer_running_since: new Date(serverNow()).toISOString() }, "resume");
+  }
+
+  function pause() {
+    void optimisticCall(
+      { timer_running_since: null, timer_elapsed_seconds: Math.floor(elapsedSeconds(shown, serverNow())) },
+      "pause"
+    );
+  }
+
+  function roundWon(winnerId: string | null) {
+    void optimisticCall(
+      {
+        round_winner_ids: [...(shown.round_winner_ids ?? []), ...(winnerId ? [winnerId] : [])],
+        timer_running_since: null,
+      },
+      "round-result",
+      { roundWinnerId: winnerId }
+    );
+  }
 
   async function call(path: string, body: Record<string, unknown> = {}) {
     setPending(true);
@@ -185,19 +223,19 @@ export function MatchTimerPanel({
         <TeamCardBadges summary={teamCards.b} className="align-middle" />
       </p>
 
-      <MatchClock match={match} competition={competition} size="hero" />
+      <MatchClock match={shown} competition={competition} size="hero" />
 
       {error && <p className="text-sm text-red-500 dark:text-red-400 text-center panel-enter">{error}</p>}
 
       <div className="flex gap-2">
-        {isStopped(match) ? (
+        {isStopped(shown) ? (
           <button
-            onClick={() => call("resume")}
+            onClick={resume}
             disabled={pending}
             className="flex-1 rounded-lg panel-button-primary font-display font-semibold py-3 text-base disabled:opacity-50"
           >
             ▶{" "}
-            {match.timer_elapsed_seconds > 0
+            {shown.timer_elapsed_seconds > 0
               ? "Reanudar"
               : competition.timer_mode === "periods" && match.current_period > 1
                 ? `Iniciar tiempo ${match.current_period}`
@@ -207,7 +245,7 @@ export function MatchTimerPanel({
           </button>
         ) : (
           <button
-            onClick={() => call("pause")}
+            onClick={pause}
             disabled={pending}
             className="flex-1 rounded-lg panel-button-secondary font-display font-semibold py-3 text-base disabled:opacity-50"
           >
@@ -219,14 +257,14 @@ export function MatchTimerPanel({
       {competition.timer_mode === "rounds" ? (
         <div className="grid grid-cols-2 gap-2">
           <button
-            onClick={() => call("round-result", { roundWinnerId: match.team_a_id })}
+            onClick={() => roundWon(match.team_a_id)}
             disabled={pending}
             className="rounded-lg py-4 text-sm font-display font-semibold border border-brand-teal/50 bg-brand-teal/10 hover:bg-brand-teal/20 transition active:scale-[0.97] disabled:opacity-50"
           >
             Ganó {teamAName}
           </button>
           <button
-            onClick={() => call("round-result", { roundWinnerId: match.team_b_id })}
+            onClick={() => roundWon(match.team_b_id)}
             disabled={pending}
             className="rounded-lg py-4 text-sm font-display font-semibold border border-brand-pink/50 bg-brand-pink/10 hover:bg-brand-pink/20 transition active:scale-[0.97] disabled:opacity-50"
           >

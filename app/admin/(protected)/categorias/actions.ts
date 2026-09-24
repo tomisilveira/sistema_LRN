@@ -2,9 +2,11 @@
 
 import { revalidatePath } from "next/cache";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
+import { requireSuperadmin } from "@/lib/admin-auth";
 import { slugify } from "@/lib/slugify";
 
 export async function createCategory(formData: FormData) {
+  await requireSuperadmin();
   const name = String(formData.get("name") ?? "").trim();
   if (!name) throw new Error("Falta el nombre de la categoría.");
   const minAgeRaw = String(formData.get("min_age") ?? "").trim();
@@ -40,6 +42,7 @@ export async function createCategory(formData: FormData) {
  * del slug, que queda fijo desde la creación (no se usa para mostrar nada,
  * solo como referencia interna, así que no hace falta poder cambiarlo). */
 export async function updateCategory(categoryId: string, formData: FormData) {
+  await requireSuperadmin();
   const name = String(formData.get("name") ?? "").trim();
   if (!name) throw new Error("Falta el nombre de la categoría.");
   const minAgeRaw = String(formData.get("min_age") ?? "").trim();
@@ -66,6 +69,7 @@ export async function updateCategory(categoryId: string, formData: FormData) {
  * competencias/[competitionId]/actions.ts para mover los equipos sin
  * volver a cargarlos). */
 export async function deleteCategory(categoryId: string) {
+  await requireSuperadmin();
   const supabase = await createServerSupabaseClient();
   const { error } = await supabase.from("categories").delete().eq("id", categoryId);
   if (error) {

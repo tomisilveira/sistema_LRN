@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { canManageCompetition } from "@/lib/admin-auth";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import type {
   Competition,
@@ -24,7 +25,6 @@ import {
   assignSchedule,
   submitResult,
   generateBracket,
-  setRegistrationOpen,
   deleteCompetition,
 } from "./actions";
 import { GroupAssignSelect } from "./group-assign-select";
@@ -36,7 +36,6 @@ import { MergeCompetitionButton } from "./merge-competition-button";
 import { BracketView, type BracketDisplayMatch } from "./bracket-view";
 import { RealtimeRefresh } from "./realtime-refresh";
 import { EnsureThirdPlace } from "./ensure-third-place";
-import { CopyLinkButton } from "@/app/components/copy-link-button";
 import { TeamLabel } from "@/app/components/team-label";
 import { TeamFormFields } from "@/app/components/team-form-fields";
 import { TeamCardBadges } from "@/app/components/team-card-badges";
@@ -66,33 +65,33 @@ export default async function CompetitionPage({
   const { competitionId } = await params;
   const supabase = await createServerSupabaseClient();
 
-  const { data: competition } = await supabase
-    .from("competitions")
-    .select("*")
-    .eq("id", competitionId)
-    .maybeSingle<Competition>();
-  if (!competition) notFound();
-
-  // Un solo batch: todo esto depende únicamente de `competition` (que ya
-  // tenemos). Antes eran dos Promise.all encadenados — el segundo esperaba
-  // al primero sin necesidad (courts/siblings filtran por
-  // competition.event_id, no por el resultado de la query de `events`).
+  // Velocidad (sep 2026): cada consulta a Supabase es un viaje de ~75 ms,
+  // así que lo que manda es cuántas tandas van UNA DETRÁS DE OTRA. Tanda 1:
+  // todo lo que solo necesita el id del torneo (el torneo con su
+  // disciplina/categoría/evento embebidos, el permiso, equipos, grupos y
+  // partidos). Tanda 2 (más abajo): lo que necesita algo de la tanda 1
+  // (canchas y hermanos por event_id, tarjetas por match ids, posiciones
+  // por grupo). Antes eran 4 tandas en fila.
   const [
-    { data: discipline },
-    { data: category },
-    { data: event },
+    { data: competitionRow },
+    allowed,
     { data: teams },
     { data: groups },
     { data: groupTeams },
     { data: groupMatches },
     { data: bracketMatches },
-    { data: courtsRaw },
     { data: allDisciplines },
-    { data: siblingCompetitionsRaw },
   ] = await Promise.all([
-    supabase.from("disciplines").select("*").eq("id", competition.discipline_id).single<Discipline>(),
-    supabase.from("categories").select("*").eq("id", competition.category_id).single<Category>(),
-    supabase.from("events").select("id, name").eq("id", competition.event_id).single(),
+    supabase
+      .from("competitions")
+      .select("*, disciplines(*), categories(*), events(id, name)")
+      .eq("id", competitionId)
+      .maybeSingle<
+        Competition & { disciplines: Discipline | null; categories: Category | null; events: { id: string; name: string } | null }
+      >(),
+    // Mismo criterio que la página del evento: un torneo de un evento
+    // público ajeno se lee por RLS, pero no se administra.
+    canManageCompetition(supabase, competitionId),
     supabase.from("teams").select("*").eq("competition_id", competitionId).order("name"),
     supabase.from("groups").select("*").eq("competition_id", competitionId).order("sort_order"),
     supabase
@@ -111,6 +110,15 @@ export default async function CompetitionPage({
       .eq("competition_id", competitionId)
       .eq("phase", "bracket")
       .order("bracket_slot"),
+    supabase.from("disciplines").select("id, name"),
+  ]);
+  if (!competitionRow || !allowed) notFound();
+  const { disciplines: discipline, categories: category, events: event, ...competitionFields } = competitionRow;
+  const competition = competitionFields as Competition;
+
+  // Tanda 2a: canchas y torneos hermanos (necesitan event_id). Van en
+  // paralelo con tarjetas y posiciones (tanda 2b, más abajo).
+  const courtsAndSiblingsPromise = Promise.all([
     // Sin `access_token`: esta página pasa `courts` a MatchScheduleForm
     // (client component) y solo usa id/name/discipline_id/sort_order. El
     // link del juez se copia desde la página del evento, no desde acá.
@@ -119,7 +127,6 @@ export default async function CompetitionPage({
       .select("id, name, discipline_id, sort_order, event_id")
       .eq("event_id", competition.event_id)
       .order("sort_order"),
-    supabase.from("disciplines").select("id, name"),
     // Otros torneos del mismo evento — para poder saltar directo a otra
     // disciplina/categoría sin volver por Eventos > pestaña Torneos.
     supabase
@@ -134,6 +141,24 @@ export default async function CompetitionPage({
   const cardsPromise = allMatchIds.length
     ? supabase.from("match_cards").select("*").in("match_id", allMatchIds).then((r) => ({ data: r.data }))
     : Promise.resolve({ data: [] as MatchCard[] | null });
+
+  // Si la RPC de un grupo puntual falla (red, cold start, etc.), que se
+  // pierda solo ese grupo y no toda la página — antes un error acá tiraba
+  // abajo todo el render del server component.
+  const standingsPromise = Promise.all(
+    ((groups ?? []) as Group[]).map(async (g) => {
+      try {
+        const { data, error } = await supabase.rpc("get_group_standings", { p_group_id: g.id });
+        if (error) throw error;
+        return { group: g, rows: (data ?? []) as GroupStandingRow[] };
+      } catch (err) {
+        console.error(`get_group_standings falló para el grupo ${g.id}:`, err);
+        return { group: g, rows: [] as GroupStandingRow[] };
+      }
+    })
+  );
+
+  const [{ data: courtsRaw }, { data: siblingCompetitionsRaw }] = await courtsAndSiblingsPromise;
 
   const disciplineNameById = new Map(
     (allDisciplines ?? []).map((d: { id: string; name: string }) => [d.id, disciplineDisplayName(d.name)])
@@ -210,22 +235,6 @@ export default async function CompetitionPage({
         ? "Creá los grupos y asigná los equipos antes de iniciar el torneo (pestaña Grupos)."
         : null;
 
-  // Si la RPC de un grupo puntual falla (red, cold start, etc.), que se
-  // pierda solo ese grupo y no toda la página — antes un error acá tiraba
-  // abajo todo el render del server component.
-  const standingsPromise = Promise.all(
-    groupsList.map(async (g) => {
-      try {
-        const { data, error } = await supabase.rpc("get_group_standings", { p_group_id: g.id });
-        if (error) throw error;
-        return { group: g, rows: (data ?? []) as GroupStandingRow[] };
-      } catch (err) {
-        console.error(`get_group_standings falló para el grupo ${g.id}:`, err);
-        return { group: g, rows: [] as GroupStandingRow[] };
-      }
-    })
-  );
-
   const [{ data: allCards }, standingsByGroup] = await Promise.all([cardsPromise, standingsPromise]);
   const cardsByMatchId = new Map<string, MatchCard[]>();
   for (const c of (allCards ?? []) as MatchCard[]) {
@@ -243,7 +252,6 @@ export default async function CompetitionPage({
   const assignScheduleAction = assignSchedule.bind(null, competitionId);
   const submitResultAction = submitResult.bind(null, competitionId);
   const generateBracketAction = generateBracket.bind(null, competitionId);
-  const setRegistrationOpenAction = setRegistrationOpen.bind(null, competitionId);
 
   const bracketDisplayMatches: BracketDisplayMatch[] = (bracketMatches ?? []).map((m: Match) => ({
     ...m,
@@ -317,41 +325,6 @@ export default async function CompetitionPage({
       ),
     },
     {
-      id: "inscripcion",
-      label: "Inscripción",
-      content: (
-        <section className="panel-card rounded-xl p-4 space-y-3">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div>
-              <h2 className="font-medium">Inscripción pública de equipos</h2>
-              <p className="text-xs panel-label mt-0.5">
-                {competition.registration_open
-                  ? "Abierta — este torneo aparece en el link de inscripción del evento."
-                  : "Cerrada — este torneo no aparece en el link de inscripción del evento."}
-              </p>
-            </div>
-            <div className="flex items-center gap-2">
-              <CopyLinkButton path={`/inscripcion/${competition.event_id}`} label="Copiar link de inscripción" />
-              <form action={setRegistrationOpenAction.bind(null, !competition.registration_open)}>
-                <button
-                  type="submit"
-                  className={`text-xs rounded-full px-3 py-1.5 transition-colors ${
-                    competition.registration_open ? "panel-chip" : "panel-button-primary"
-                  }`}
-                >
-                  {competition.registration_open ? "Cerrar inscripción" : "Abrir inscripción"}
-                </button>
-              </form>
-            </div>
-          </div>
-          <p className="text-xs panel-label">
-            El link es <span className="font-medium">uno solo para toda la jornada</span>: el equipo elige ahí la
-            disciplina y la categoría. Solo se ofrecen los torneos con la inscripción abierta.
-          </p>
-        </section>
-      ),
-    },
-    {
       id: "equipos",
       label: "Equipos",
       badge: (teams ?? []).length || undefined,
@@ -374,6 +347,19 @@ export default async function CompetitionPage({
           <p className="text-xs panel-label -mt-1">
             Acreditado y Homologado se pueden tildar acá mismo (queda igual que hacerlo desde el link de
             acreditación del evento).
+          </p>
+          {/* La inscripción pública se abre/cierra desde el evento (pestaña
+              Inscripción), para todos los torneos juntos. */}
+          <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs -mt-1">
+            <span className={competition.registration_open ? "text-brand-green font-medium" : "panel-label"}>
+              Inscripción pública {competition.registration_open ? "abierta" : "cerrada"}
+            </span>
+            <Link
+              href={`/admin/eventos/${competition.event_id}?tab=inscripcion`}
+              className="font-semibold text-brand-teal-dark hover:underline underline-offset-2"
+            >
+              Manejar inscripción →
+            </Link>
           </p>
           {competition.status !== "setup" && siblingCompetitions.length > 1 && (
             <p className="text-xs text-amber-600 dark:text-amber-400 -mt-1">

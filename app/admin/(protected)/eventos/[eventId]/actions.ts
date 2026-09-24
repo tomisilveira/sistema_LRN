@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
+import { getAdminContext } from "@/lib/admin-auth";
 
 export async function addCourt(eventId: string, formData: FormData) {
   const name = String(formData.get("name") ?? "").trim();
@@ -167,4 +168,69 @@ export async function setEventPublicAction(eventId: string, isPublic: boolean) {
   revalidatePath("/admin");
   revalidatePath("/publico");
   revalidatePath("/");
+}
+
+/** Comparte el evento con otro administrador que ya exista. Corre con la
+ * sesión del usuario: la RLS de event_admins (0018) solo lo deja si
+ * administra este evento. */
+export async function shareEvent(eventId: string, formData: FormData) {
+  const userId = String(formData.get("user_id") ?? "").trim();
+  if (!userId) throw new Error("Elegí con quién compartirlo.");
+  const admin = await getAdminContext();
+  const supabase = await createServerSupabaseClient();
+  const { error } = await supabase
+    .from("event_admins")
+    .insert({ event_id: eventId, user_id: userId, added_by: admin?.userId ?? null });
+  if (error) {
+    if (error.code === "23505") throw new Error("Esa persona ya administra este evento.");
+    throw new Error(error.message);
+  }
+  revalidatePath(`/admin/eventos/${eventId}`);
+  revalidatePath("/admin/usuarios");
+}
+
+/** Deja de compartir el evento con alguien. Si es uno mismo (y no es
+ * superusuario), pierde el acceso: se lo manda a la lista de eventos. */
+export async function unshareEvent(eventId: string, userId: string) {
+  const admin = await getAdminContext();
+  const supabase = await createServerSupabaseClient();
+  const { error } = await supabase.from("event_admins").delete().eq("event_id", eventId).eq("user_id", userId);
+  if (error) throw new Error(error.message);
+  revalidatePath("/admin/usuarios");
+  revalidatePath("/admin", "layout");
+  if (admin && userId === admin.userId && !admin.isSuperadmin) redirect("/admin");
+  revalidatePath(`/admin/eventos/${eventId}`);
+}
+
+function revalidateRegistration(eventId: string) {
+  revalidatePath(`/admin/eventos/${eventId}`);
+  revalidatePath(`/inscripcion/${eventId}`);
+}
+
+/** Abre/cierra la inscripción de un torneo desde la pestaña Inscripción del
+ * evento. Un torneo terminado no se puede abrir (la inscripción pública
+ * igual lo rechazaría, ver app/inscripcion/[eventId]/actions.ts). */
+export async function setCompetitionRegistration(eventId: string, competitionId: string, open: boolean) {
+  const supabase = await createServerSupabaseClient();
+  let query = supabase
+    .from("competitions")
+    .update({ registration_open: open })
+    .eq("id", competitionId)
+    .eq("event_id", eventId);
+  if (open) query = query.neq("status", "finished");
+  const { error } = await query;
+  if (error) throw new Error(error.message);
+  revalidateRegistration(eventId);
+}
+
+/** "Abrir todos": solo los torneos que todavía no empezaron (status
+ * 'setup') — abrir de golpe uno en curso sumaría equipos a un fixture ya
+ * armado. "Cerrar todos": todos los abiertos. */
+export async function setAllRegistrations(eventId: string, open: boolean) {
+  const supabase = await createServerSupabaseClient();
+  let query = supabase.from("competitions").update({ registration_open: open }).eq("event_id", eventId);
+  query = open ? query.eq("status", "setup") : query.eq("registration_open", true);
+  const { error } = await query;
+  if (error) throw new Error(error.message);
+  revalidateRegistration(eventId);
 }

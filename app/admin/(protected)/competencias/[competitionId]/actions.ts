@@ -74,16 +74,6 @@ export async function updateCompetitionFormat(competitionId: string, formData: F
   revalidateCompetition(competitionId);
 }
 
-export async function setRegistrationOpen(competitionId: string, open: boolean) {
-  const supabase = await createServerSupabaseClient();
-  const { error } = await supabase
-    .from("competitions")
-    .update({ registration_open: open })
-    .eq("id", competitionId);
-  if (error) throw new Error(error.message);
-  revalidateCompetition(competitionId);
-}
-
 /** Borra el torneo entero: equipos, grupos y partidos se van con él (todos
  * con ON DELETE CASCADE desde `competitions`, ver 0001_init.sql) —
  * irreversible, por eso el confirm fuerte en la UI. */
@@ -119,6 +109,8 @@ export async function addTeam(competitionId: string, formData: FormData) {
     competition_id: competitionId,
     name: input.name,
     institution: input.institution,
+    province: input.province,
+    locality: input.locality,
     mentor_name: mentorName,
     mentor_contact: mentorContact,
     member_count: input.memberCount,
@@ -148,6 +140,8 @@ export async function updateTeam(competitionId: string, teamId: string, formData
     .update({
       name: input.name,
       institution: input.institution,
+      province: input.province,
+      locality: input.locality,
       member_count: input.memberCount,
       member_names: input.memberNames,
       robot_names: input.robotNames,
@@ -216,23 +210,6 @@ export async function setTeamHomologated(competitionId: string, teamId: string, 
   const { error } = await supabase
     .from("teams")
     .update({ homologated: value, homologated_at: value ? new Date().toISOString() : null })
-    .eq("id", teamId)
-    .eq("competition_id", competitionId);
-  if (error) throw new Error(error.message);
-  revalidateCompetition(competitionId);
-}
-
-/** Editar los nombres de las personas de un equipo desde el panel admin —
- * mismo campo que carga el propio equipo al inscribirse (ver
- * app/inscripcion/[eventId]/actions.ts), acá para poder corregirlo o
- * completarlo cuando el equipo lo cargó a mano en la mesa de acreditación
- * en vez de por el form público. */
-export async function setTeamMemberNames(competitionId: string, teamId: string, formData: FormData) {
-  const raw = String(formData.get("member_names") ?? "").trim();
-  const supabase = await createServerSupabaseClient();
-  const { error } = await supabase
-    .from("teams")
-    .update({ member_names: raw || null })
     .eq("id", teamId)
     .eq("competition_id", competitionId);
   if (error) throw new Error(error.message);

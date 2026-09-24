@@ -11,10 +11,13 @@ import { LockIcon } from "@/app/components/action-icons";
 
 type SidebarEvent = Pick<EventRow, "id" | "name" | "is_public" | "status" | "event_date">;
 
+// `superadminOnly`: catálogos globales y usuarios — un administrador de
+// eventos no los ve (la RLS además rechaza la escritura, ver 0018).
 const NAV_ITEMS = [
-  { href: "/admin", label: "Eventos" },
-  { href: "/admin/disciplinas", label: "Disciplinas" },
-  { href: "/admin/categorias", label: "Categorías" },
+  { href: "/admin", label: "Eventos", superadminOnly: false },
+  { href: "/admin/disciplinas", label: "Disciplinas", superadminOnly: true },
+  { href: "/admin/categorias", label: "Categorías", superadminOnly: true },
+  { href: "/admin/usuarios", label: "Usuarios", superadminOnly: true },
 ];
 
 const eventStatusLabel: Record<EventRow["status"], string> = {
@@ -202,7 +205,16 @@ function SectionItemButton({
  * en este MISMO menú — el contenido de esas páginas las publica acá vía
  * SectionNavContext (ver app/components/tabbed-layout.tsx). En mobile se
  * acuesta como barra horizontal arriba. */
-export function AdminSidebar({ userEmail, events }: { userEmail: string; events: SidebarEvent[] }) {
+export function AdminSidebar({
+  userEmail,
+  events,
+  isSuperadmin,
+}: {
+  userEmail: string;
+  events: SidebarEvent[];
+  isSuperadmin: boolean;
+}) {
+  const navItems = NAV_ITEMS.filter((i) => isSuperadmin || !i.superadminOnly);
   const pathname = usePathname();
   const { section, activeId, setActiveId } = useSectionNav();
   const isActive = (href: string) => (href === "/admin" ? pathname === "/admin" : pathname.startsWith(href));
@@ -270,7 +282,7 @@ export function AdminSidebar({ userEmail, events }: { userEmail: string; events:
         <nav className="flex flex-col gap-1 px-3 pb-2" aria-label="Secciones del admin">
           {renderEventosItem(null)}
           <div className="flex gap-1 overflow-x-auto">
-            {NAV_ITEMS.filter((i) => i.href !== "/admin").map((item) => (
+            {navItems.filter((i) => i.href !== "/admin").map((item) => (
               <NavLink key={item.href} href={item.href} label={item.label} active={isActive(item.href)} />
             ))}
           </div>
@@ -303,14 +315,19 @@ export function AdminSidebar({ userEmail, events }: { userEmail: string; events:
 
         <nav className="flex-1 p-3 space-y-1 overflow-y-auto" aria-label="Secciones del admin">
           {renderEventosItem(nestedSections)}
-          {NAV_ITEMS.filter((i) => i.href !== "/admin").map((item) => (
+          {navItems.filter((i) => i.href !== "/admin").map((item) => (
             <NavLink key={item.href} href={item.href} label={item.label} active={isActive(item.href)} />
           ))}
         </nav>
 
         <div className="p-3 border-t panel-nav space-y-2.5">
-          <span className="text-xs panel-label truncate block" title={userEmail}>
-            {userEmail}
+          <span className="block min-w-0">
+            <span className="text-xs panel-label truncate block" title={userEmail}>
+              {userEmail}
+            </span>
+            <span className="text-[11px] font-semibold text-brand-teal-dark">
+              {isSuperadmin ? "Superusuario" : "Administrador de eventos"}
+            </span>
           </span>
           <SignOutButton />
         </div>

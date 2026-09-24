@@ -16,6 +16,7 @@ export type BracketType = "gold" | "silver";
 export type MatchStatus = "pending_teams" | "scheduled" | "in_progress" | "completed";
 export type EventStatus = "draft" | "active" | "finished";
 export type TimerMode = "periods" | "rounds";
+export type AdminRole = "superadmin" | "event_admin";
 
 export interface Discipline {
   id: string;
@@ -55,6 +56,8 @@ export interface EventRow {
   // la service-role key — `anon` no tiene grant de esta columna (ver
   // 0003_accreditation.sql), así que en las páginas públicas viene undefined.
   accreditation_token?: string;
+  // Quién lo creó (0018) — null en eventos anteriores o creados por script.
+  created_by?: string | null;
 }
 
 export interface Competition {
@@ -89,6 +92,11 @@ export interface Team {
   competition_id: string;
   name: string;
   institution: string | null;
+  // De dónde es el equipo (ver 0017_team_location.sql): provincia de la
+  // lista de lib/argentina-locations.ts; localidad elegida de la lista
+  // (Neuquén/Río Negro) o escrita a mano (resto del país).
+  province: string | null;
+  locality: string | null;
   mentor_name: string | null;
   mentor_contact: string | null;
   member_count: number | null;
@@ -217,5 +225,16 @@ export interface GroupStandingRow {
 export interface AdminRow {
   user_id: string;
   full_name: string | null;
+  // Ver 0018_event_admins.sql: 'superadmin' ve todo; 'event_admin' solo
+  // los eventos donde figura en event_admins.
+  role: AdminRole;
+  email: string | null;
+  created_at: string;
+}
+
+export interface EventAdmin {
+  event_id: string;
+  user_id: string;
+  added_by: string | null;
   created_at: string;
 }

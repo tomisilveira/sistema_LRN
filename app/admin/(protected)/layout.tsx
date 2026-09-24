@@ -3,16 +3,17 @@ import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { SignOutButton } from "./sign-out-button";
 import { AdminSidebar } from "./admin-sidebar";
 import { SectionNavProvider } from "./section-nav-context";
+import { listManageableEvents } from "@/lib/admin-auth";
+import type { EventRow } from "@/lib/database.types";
+
+type SidebarEventRow = Pick<EventRow, "id" | "name" | "is_public" | "status" | "event_date">;
 
 export default async function ProtectedAdminLayout({ children }: { children: React.ReactNode }) {
   const supabase = await createServerSupabaseClient();
-  // getClaims en vez de getUser: cuando el proyecto usa signing keys
-  // asimétricas (Auth > JWT Keys) verifica la firma del JWT localmente
-  // contra el JWKS cacheado, sin round-trip al servidor de Auth en cada
-  // navegación del panel. Si el proyecto todavía usa el secreto HS256
-  // compartido, getClaims cae solo a un getUser() (misma latencia que
-  // antes) — nunca es más lento. proxy.ts sigue haciendo el getUser() que
-  // refresca la cookie de sesión una vez por request.
+  // getClaims (dentro de getAdminContext) en vez de getUser: cuando el
+  // proyecto usa signing keys asimétricas verifica la firma del JWT
+  // localmente, sin round-trip al servidor de Auth en cada navegación.
+  // proxy.ts hace lo mismo (getClaims) y además refresca la cookie de sesión.
   const { data: claimsData } = await supabase.auth.getClaims();
   const claims = claimsData?.claims;
 
@@ -20,23 +21,23 @@ export default async function ProtectedAdminLayout({ children }: { children: Rea
     redirect("/admin/login");
   }
 
-  const userId = claims.sub;
   const userEmail = typeof claims.email === "string" ? claims.email : "";
+  // Usuario + eventos del selector del sidebar en una sola tanda (solo los
+  // que administra: un event_admin por RLS también lee los públicos
+  // ajenos, ver lib/admin-auth.ts).
+  const { admin, events } = await listManageableEvents<SidebarEventRow>(
+    supabase,
+    "id, name, is_public, status, event_date"
+  );
 
-  const { data: adminRow } = await supabase
-    .from("admins")
-    .select("user_id")
-    .eq("user_id", userId)
-    .maybeSingle();
-
-  if (!adminRow) {
+  if (!admin) {
     return (
       <main className="flex-1 flex items-center justify-center p-8 min-h-screen">
         <div className="max-w-sm text-center space-y-4">
           <h1 className="text-lg font-semibold">Sin permisos de administrador</h1>
           <p className="text-sm panel-label">
-            Tu cuenta ({userEmail}) inició sesión pero no está habilitada como admin. Pedile a
-            alguien de la mesa de jueces que te agregue en la tabla <code>admins</code>.
+            Tu cuenta ({userEmail}) inició sesión pero no está habilitada como administrador. Pedile
+            al superusuario de la Liga que te dé de alta.
           </p>
           <SignOutButton />
         </div>
@@ -44,17 +45,10 @@ export default async function ProtectedAdminLayout({ children }: { children: Rea
     );
   }
 
-  // Lista de eventos para el selector del sidebar (cambiar de evento sin
-  // volver a /admin). Liviano: sólo id/nombre/visibilidad/estado.
-  const { data: events } = await supabase
-    .from("events")
-    .select("id, name, is_public, status, event_date")
-    .order("event_date", { ascending: false });
-
   return (
     <SectionNavProvider>
       <div className="min-h-screen md:flex">
-        <AdminSidebar userEmail={userEmail} events={events ?? []} />
+        <AdminSidebar userEmail={userEmail} events={events} isSuperadmin={admin.isSuperadmin} />
         <main className="flex-1 p-6 panel-enter min-w-0">{children}</main>
       </div>
     </SectionNavProvider>

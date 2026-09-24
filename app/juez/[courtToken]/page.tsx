@@ -15,74 +15,86 @@ export default async function JudgePage({ params }: { params: Promise<{ courtTok
   const { courtToken } = await params;
   const supabase = createAdminClient();
 
-  const { data: court } = await supabase
-    .from("courts")
-    .select("id, name, event_id, discipline_id")
-    .eq("access_token", courtToken)
-    .maybeSingle();
-
-  if (!court) {
-    return <KioskInvalidLink message="Link de cancha inválido. Pedile el link correcto a la mesa de jueces." />;
-  }
-
-  const [{ data: event }, { data: discipline }] = await Promise.all([
-    supabase.from("events").select("name").eq("id", court.event_id).single(),
-    court.discipline_id
-      ? supabase.from("disciplines").select("name").eq("id", court.discipline_id).maybeSingle()
-      : Promise.resolve({ data: null }),
+  // Velocidad (sep 2026): cada botón del juez termina recargando esta
+  // página, así que importa cuántas consultas van en fila (~75 ms c/u).
+  // Tanda 1: la cancha (con evento y disciplina embebidos) y sus partidos
+  // — los partidos se buscan por el token de la cancha con un inner join,
+  // sin esperar a tener el id. Tanda 2: todo lo demás en paralelo. Antes
+  // eran 5 tandas en fila.
+  const [{ data: courtRow }, { data: matches }] = await Promise.all([
+    supabase
+      .from("courts")
+      .select("id, name, event_id, discipline_id, events(name), disciplines(name)")
+      .eq("access_token", courtToken)
+      .maybeSingle<{
+        id: string;
+        name: string;
+        event_id: string;
+        discipline_id: string | null;
+        events: { name: string } | null;
+        disciplines: { name: string } | null;
+      }>(),
+    supabase
+      .from("matches")
+      .select("*, courts!inner(access_token)")
+      .eq("courts.access_token", courtToken)
+      .in("status", ["scheduled", "in_progress"])
+      .order("turno", { ascending: true, nullsFirst: false }),
   ]);
 
-  const { data: matches } = await supabase
-    .from("matches")
-    .select("*")
-    .eq("court_id", court.id)
-    .in("status", ["scheduled", "in_progress"])
-    .order("turno", { ascending: true, nullsFirst: false });
+  if (!courtRow) {
+    return <KioskInvalidLink message="Link de cancha inválido. Pedile el link correcto a la mesa de jueces." />;
+  }
+  const court = courtRow;
+  const event = courtRow.events;
+  const discipline = courtRow.disciplines;
 
-  const list = (matches ?? []) as Match[];
+  // `courts` embebido solo sirvió para filtrar por token — se descarta.
+  // (Se saca antes de pasar los partidos a componentes de cliente.)
+  const list = ((matches ?? []) as Record<string, unknown>[]).map((row) => {
+    const m = { ...row };
+    delete m.courts;
+    return m as unknown as Match;
+  });
   // Una cancha física corre un partido a la vez: si ya hay uno en curso,
   // queda forzado como activo — el juez recién elige entre los pendientes
   // cuando no hay ninguno corriendo.
   const current = list.find((m) => m.status === "in_progress") ?? null;
   const scheduled = list.filter((m) => m.status === "scheduled");
 
-  const teamIds = list.flatMap((m) => [m.team_a_id, m.team_b_id]).filter((x): x is string => !!x);
-  const { data: teams } = teamIds.length
-    ? await supabase.from("teams").select("id, name, member_names").in("id", teamIds)
-    : { data: [] as Pick<Team, "id" | "name" | "member_names">[] };
-  const teamById = new Map((teams ?? []).map((t) => [t.id, t]));
-  const teamName = new Map((teams ?? []).map((t) => [t.id, t.name]));
-
+  const teamIds = [...new Set(list.flatMap((m) => [m.team_a_id, m.team_b_id]).filter((x): x is string => !!x))];
   // Instancia de cada partido (grupo / ronda / 3er puesto / final) — la
   // cancha puede tener partidos de más de un torneo en la cola.
   const groupIds = [...new Set(list.map((m) => m.group_id).filter((x): x is string => !!x))];
   const competitionIds = [...new Set(list.map((m) => m.competition_id))];
-  const [{ data: groupsData }, { data: formatsData }] = await Promise.all([
+  const [{ data: teams }, { data: groupsData }, { data: competitionsData }, { data: cardsData }] = await Promise.all([
+    teamIds.length
+      ? supabase.from("teams").select("id, name, member_names").in("id", teamIds)
+      : Promise.resolve({ data: [] as Pick<Team, "id" | "name" | "member_names">[] }),
     groupIds.length
       ? supabase.from("groups").select("id, name").in("id", groupIds)
       : Promise.resolve({ data: [] as { id: string; name: string }[] }),
+    // Todos los torneos de la cola (para la instancia oro/plata) — incluye
+    // el del partido en curso, que antes se pedía aparte al final.
     competitionIds.length
-      ? supabase.from("competitions").select("id, format_type").in("id", competitionIds)
-      : Promise.resolve({ data: [] as Pick<Competition, "id" | "format_type">[] }),
+      ? supabase.from("competitions").select("*").in("id", competitionIds)
+      : Promise.resolve({ data: [] as Competition[] }),
+    current
+      ? supabase.from("match_cards").select("*").eq("match_id", current.id).order("created_at")
+      : Promise.resolve({ data: [] as MatchCard[] }),
   ]);
+  const teamById = new Map((teams ?? []).map((t) => [t.id, t]));
+  const teamName = new Map((teams ?? []).map((t) => [t.id, t.name]));
   const groupNameById = new Map((groupsData ?? []).map((g) => [g.id, g.name]));
-  const formatById = new Map((formatsData ?? []).map((c) => [c.id, c.format_type]));
+  const competitionById = new Map(((competitionsData ?? []) as Competition[]).map((c) => [c.id, c]));
   const stageOf = (m: Match) =>
     matchStage(m, {
       groupName: m.group_id ? groupNameById.get(m.group_id) : null,
-      goldSilver: formatById.get(m.competition_id) === "gold_silver",
+      goldSilver: competitionById.get(m.competition_id)?.format_type === "gold_silver",
     });
 
-  let competition: Competition | null = null;
-  let currentCards: MatchCard[] = [];
-  if (current) {
-    const [{ data: competitionData }, { data: cardsData }] = await Promise.all([
-      supabase.from("competitions").select("*").eq("id", current.competition_id).single<Competition>(),
-      supabase.from("match_cards").select("*").eq("match_id", current.id).order("created_at"),
-    ]);
-    competition = competitionData ?? null;
-    currentCards = (cardsData ?? []) as MatchCard[];
-  }
+  const competition: Competition | null = current ? (competitionById.get(current.competition_id) ?? null) : null;
+  const currentCards = (cardsData ?? []) as MatchCard[];
 
   return (
     <div className="panel-page min-h-screen">

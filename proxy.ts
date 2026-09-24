@@ -26,7 +26,13 @@ export async function proxy(request: NextRequest) {
     }
   );
 
-  await supabase.auth.getUser();
+  // getClaims en vez de getUser (sep 2026): el proyecto firma los JWT con
+  // clave asimétrica (ES256, ver /auth/v1/.well-known/jwks.json), así que
+  // la firma se valida en local contra el JWKS cacheado — antes esto era
+  // un viaje a Supabase Auth (~100 ms) en CADA request del panel, incluidos
+  // los de cada botón (Server Action). Si la sesión venció, igual la
+  // refresca y reescribe las cookies (setAll de arriba), como getUser.
+  await supabase.auth.getClaims();
 
   return response;
 }

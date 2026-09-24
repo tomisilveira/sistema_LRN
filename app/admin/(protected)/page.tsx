@@ -3,6 +3,7 @@ import { createServerSupabaseClient } from "@/lib/supabase/server";
 import type { EventRow } from "@/lib/database.types";
 import { createEvent } from "./actions";
 import { ModalFormButton } from "@/app/components/modal-form";
+import { listManageableEvents } from "@/lib/admin-auth";
 
 const statusLabel: Record<EventRow["status"], string> = {
   draft: "Borrador",
@@ -18,7 +19,9 @@ const statusChipClass: Record<EventRow["status"], string> = {
 
 export default async function AdminDashboardPage() {
   const supabase = await createServerSupabaseClient();
-  const { data: events } = await supabase.from("events").select("*").order("event_date", { ascending: false });
+  // Solo los eventos que administra: por RLS un administrador de eventos
+  // también lee los públicos ajenos (como cualquier visitante del sitio).
+  const { events } = await listManageableEvents<EventRow>(supabase, "*");
 
   return (
     <div className="max-w-3xl mx-auto space-y-8">

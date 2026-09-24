@@ -3,6 +3,7 @@
 import { useRef, useState, useTransition } from "react";
 import { registerTeam } from "./actions";
 import { MemberListInput } from "@/app/components/member-list-input";
+import { LocationFields } from "@/app/components/location-fields";
 import { parseMemberNames } from "@/lib/team-display";
 import { MAX_TEAM_MEMBERS } from "@/lib/team-limits";
 import type { DisciplineColorSet } from "@/lib/discipline-colors";
@@ -95,6 +96,8 @@ export function RegistrationForm({
     // (ver actions.ts / lib/team-input.ts).
     const problems: string[] = [];
     if (!teamName) problems.push(isFutbol ? "Falta el nombre del equipo." : "Falta el nombre del robot.");
+    if (!String(formData.get("province") ?? "").trim()) problems.push("Falta elegir la provincia.");
+    else if (!String(formData.get("locality") ?? "").trim()) problems.push("Falta la localidad.");
     if (!String(formData.get("mentor_name") ?? "").trim()) problems.push("Falta el mentor/profesor responsable.");
     if (!String(formData.get("mentor_phone") ?? "").trim()) problems.push("Falta el celular del mentor.");
     const email = String(formData.get("mentor_email") ?? "").trim();
@@ -229,9 +232,10 @@ export function RegistrationForm({
                 id="institution"
                 name="institution"
                 className="w-full rounded-lg panel-input px-3 h-11 text-base"
-                placeholder="Ej. IPET 20 — Neuquén"
+                placeholder="Ej. IPET 20"
               />
             </div>
+            <LocationFields required size="large" />
 
             {isFutbol && (
               <div className="border-t border-neutral-200/70 pt-3.5">

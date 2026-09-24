@@ -32,13 +32,16 @@ export async function registerTeam(competitionId: string, formData: FormData) {
   if (!mentorName) throw new Error("Cargá los datos del mentor/profesor responsable.");
 
   const isFutbol = await isFutbolCompetition(supabase, competitionId);
-  // parseTeamInput valida nombre, 1..4 integrantes y los 2 robots de fútbol.
-  const input = parseTeamInput(formData, { isFutbol });
+  // parseTeamInput valida nombre, 1..4 integrantes, los 2 robots de fútbol y
+  // (acá, obligatorias) provincia y localidad.
+  const input = parseTeamInput(formData, { isFutbol, requireLocation: true });
 
   const { error } = await supabase.from("teams").insert({
     competition_id: competitionId,
     name: input.name,
     institution: input.institution,
+    province: input.province,
+    locality: input.locality,
     mentor_name: mentorName,
     mentor_contact: mentorContact,
     member_count: input.memberCount,

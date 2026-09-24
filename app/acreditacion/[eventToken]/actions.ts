@@ -130,6 +130,8 @@ export async function updateTeam(eventToken: string, teamId: string, formData: F
     .update({
       name: input.name,
       institution: input.institution,
+      province: input.province,
+      locality: input.locality,
       member_count: input.memberCount,
       member_names: input.memberNames,
       robot_names: input.robotNames,
@@ -215,6 +217,8 @@ export async function addTeam(eventToken: string, competitionId: string, formDat
     competition_id: competitionId,
     name: input.name,
     institution: input.institution,
+    province: input.province,
+    locality: input.locality,
     mentor_name: mentorName,
     mentor_contact: mentorContact,
     member_count: input.memberCount,

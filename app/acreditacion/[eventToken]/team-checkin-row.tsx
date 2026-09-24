@@ -8,6 +8,7 @@ import { TeamLabel } from "@/app/components/team-label";
 import { TeamFormFields } from "@/app/components/team-form-fields";
 import { ModalFormButton } from "@/app/components/modal-form";
 import { parseRobotNames } from "@/lib/team-display";
+import { formatLocation } from "@/lib/argentina-locations";
 import { MoveTeamSelect } from "./move-team-select";
 
 const svgBase = {
@@ -172,8 +173,10 @@ export function TeamCheckinRow({
             <p className="font-semibold text-base leading-tight truncate">
               <TeamLabel name={team.name} memberNames={team.member_names} />
             </p>
-            {team.institution && (
-              <p className="text-[12.5px] panel-label truncate mt-0.5">{team.institution}</p>
+            {(team.institution || team.locality) && (
+              <p className="text-[12.5px] panel-label truncate mt-0.5">
+                {[team.institution, formatLocation(team.locality, team.province)].filter(Boolean).join(" · ")}
+              </p>
             )}
           </div>
         </div>
@@ -258,6 +261,8 @@ export function TeamCheckinRow({
                 defaults={{
                   name: team.name,
                   institution: team.institution ?? "",
+                  province: team.province,
+                  locality: team.locality,
                   robots: parseRobotNames(team.robot_names),
                   memberNames: team.member_names,
                   notes: team.notes ?? "",

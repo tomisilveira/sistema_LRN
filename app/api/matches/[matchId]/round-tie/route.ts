@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { assertMatchBelongsToCourt, JudgeAuthError } from "@/lib/judge-auth";
+import { assertMatchWithCompetition, JudgeAuthError } from "@/lib/judge-auth";
 import type { Competition } from "@/lib/database.types";
 
 /** "Torinaoshi": el round actual (sumo/mini sumo, modo 'rounds') terminó
@@ -16,8 +16,9 @@ export async function POST(request: Request, { params }: { params: Promise<{ mat
   const supabase = createAdminClient();
 
   let match;
+  let competition: Pick<Competition, "timer_mode">;
   try {
-    match = await assertMatchBelongsToCourt(supabase, matchId, courtToken);
+    ({ match, competition } = await assertMatchWithCompetition(supabase, matchId, courtToken));
   } catch (e) {
     if (e instanceof JudgeAuthError) return NextResponse.json({ error: e.message }, { status: e.status });
     throw e;
@@ -27,11 +28,6 @@ export async function POST(request: Request, { params }: { params: Promise<{ mat
     return NextResponse.json({ error: "Este partido no está en curso." }, { status: 400 });
   }
 
-  const { data: competition } = await supabase
-    .from("competitions")
-    .select("timer_mode")
-    .eq("id", match.competition_id)
-    .single<Pick<Competition, "timer_mode">>();
   if (competition?.timer_mode !== "rounds") {
     return NextResponse.json({ error: "Esta disciplina no juega por rounds." }, { status: 400 });
   }

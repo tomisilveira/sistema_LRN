@@ -1,6 +1,7 @@
 import ExcelJS from "exceljs";
 import { NextResponse } from "next/server";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
+import { canManageEvent } from "@/lib/admin-auth";
 import { formatTeamWithMembers } from "@/lib/team-display";
 import { disciplineCategoryLabel } from "@/lib/discipline-display";
 import { cardsByTeam, formatCardSummary } from "@/lib/match-cards";
@@ -52,13 +53,9 @@ export async function GET(_req: Request, context: { params: Promise<{ eventId: s
   if (!userId) {
     return NextResponse.json({ error: "No autenticado." }, { status: 401 });
   }
-  const { data: adminRow } = await supabase
-    .from("admins")
-    .select("user_id")
-    .eq("user_id", userId)
-    .maybeSingle();
-  if (!adminRow) {
-    return NextResponse.json({ error: "Sin permisos de administrador." }, { status: 403 });
+  // Solo quien administra ESTE evento (o el superusuario) — ver 0018.
+  if (!(await canManageEvent(supabase, eventId))) {
+    return NextResponse.json({ error: "No administrás este evento." }, { status: 403 });
   }
 
   const { data: event } = await supabase.from("events").select("id, name, event_date").eq("id", eventId).maybeSingle();
@@ -107,6 +104,8 @@ export async function GET(_req: Request, context: { params: Promise<{ eventId: s
     { header: "Equipo", key: "equipo", width: 26 },
     { header: "Integrantes", key: "integrantes", width: 32 },
     { header: "Institución", key: "institucion", width: 26 },
+    { header: "Localidad", key: "localidad", width: 22 },
+    { header: "Provincia", key: "provincia", width: 16 },
     { header: "Grupo", key: "grupo", width: 12 },
     { header: "Acreditado", key: "acreditado", width: 12 },
     { header: "Homologado", key: "homologado", width: 12 },
@@ -193,6 +192,8 @@ export async function GET(_req: Request, context: { params: Promise<{ eventId: s
         equipo: t.name,
         integrantes: (t.member_names ?? "").replace(/\n/g, ", "),
         institucion: t.institution ?? "",
+        localidad: t.locality ?? "",
+        provincia: t.province ?? "",
         grupo: groupNameByTeamId.get(t.id) ?? "",
         acreditado: t.accredited ? "Sí" : "No",
         homologado: t.homologated ? "Sí" : "No",

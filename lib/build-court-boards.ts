@@ -40,36 +40,37 @@ export async function buildCourtBoards(
   eventId: string,
   competitions: CompetitionWithNames[]
 ): Promise<CourtBoard[]> {
-  const { data: courts } = await supabase
-    .from("courts_public")
-    .select("id, name, sort_order, discipline_id")
-    .eq("event_id", eventId)
-    .order("sort_order");
-  const courtsList = (courts ?? []) as { id: string; name: string; sort_order: number; discipline_id: string | null }[];
-  if (courtsList.length === 0) return [];
-
   const competitionIds = competitions.map((c) => c.id);
   const competitionById = new Map(competitions.map((c) => [c.id, c]));
 
-  const { data: matches } = competitionIds.length
-    ? await supabase
-        .from("matches")
-        .select("*")
-        .in("competition_id", competitionIds)
-        .in("status", ["scheduled", "in_progress"])
-        .order("turno", { ascending: true, nullsFirst: false })
-    : { data: [] as Match[] };
+  // 2 tandas en vez de 4 (sep 2026): canchas y partidos no dependen entre
+  // sí; equipos, tarjetas y grupos solo necesitan los partidos.
+  const [{ data: courts }, { data: matches }] = await Promise.all([
+    supabase
+      .from("courts_public")
+      .select("id, name, sort_order, discipline_id")
+      .eq("event_id", eventId)
+      .order("sort_order"),
+    competitionIds.length
+      ? supabase
+          .from("matches")
+          .select("*")
+          .in("competition_id", competitionIds)
+          .in("status", ["scheduled", "in_progress"])
+          .order("turno", { ascending: true, nullsFirst: false })
+      : Promise.resolve({ data: [] as Match[] }),
+  ]);
+  const courtsList = (courts ?? []) as { id: string; name: string; sort_order: number; discipline_id: string | null }[];
+  if (courtsList.length === 0) return [];
   const matchList = (matches ?? []) as Match[];
 
-  const teamIds = matchList.flatMap((m) => [m.team_a_id, m.team_b_id]).filter((x): x is string => !!x);
-  const { data: teams } = teamIds.length
-    ? await supabase.from("teams").select("id, name, member_names").in("id", teamIds)
-    : { data: [] as Pick<Team, "id" | "name" | "member_names">[] };
-  const teamById = new Map((teams ?? []).map((t: Pick<Team, "id" | "name" | "member_names">) => [t.id, t]));
-
+  const teamIds = [...new Set(matchList.flatMap((m) => [m.team_a_id, m.team_b_id]).filter((x): x is string => !!x))];
   const matchIds = matchList.map((m) => m.id);
   const groupIds = [...new Set(matchList.map((m) => m.group_id).filter((x): x is string => !!x))];
-  const [{ data: cardsData }, { data: groupsData }] = await Promise.all([
+  const [{ data: teams }, { data: cardsData }, { data: groupsData }] = await Promise.all([
+    teamIds.length
+      ? supabase.from("teams").select("id, name, member_names").in("id", teamIds)
+      : Promise.resolve({ data: [] as Pick<Team, "id" | "name" | "member_names">[] }),
     matchIds.length
       ? supabase.from("match_cards").select("*").in("match_id", matchIds)
       : Promise.resolve({ data: [] as MatchCard[] }),
@@ -77,6 +78,7 @@ export async function buildCourtBoards(
       ? supabase.from("groups").select("id, name").in("id", groupIds)
       : Promise.resolve({ data: [] as { id: string; name: string }[] }),
   ]);
+  const teamById = new Map((teams ?? []).map((t: Pick<Team, "id" | "name" | "member_names">) => [t.id, t]));
   const groupNameById = new Map(((groupsData ?? []) as { id: string; name: string }[]).map((g) => [g.id, g.name]));
   const cardsByMatchId = new Map<string, MatchCard[]>();
   for (const c of (cardsData ?? []) as MatchCard[]) {

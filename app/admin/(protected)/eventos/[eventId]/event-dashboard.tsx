@@ -122,6 +122,7 @@ export async function EventDashboard({
     pending.push({
       tone: "info",
       text: `Inscripción abierta en ${openRegistration} ${openRegistration === 1 ? "torneo" : "torneos"}.`,
+      action: { tabId: "inscripcion", label: "Ver inscripción" },
     });
   if (!event.is_public)
     pending.push({ tone: "info", text: "El evento es privado: no aparece en el sitio público." });

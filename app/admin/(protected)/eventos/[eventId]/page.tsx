@@ -16,6 +16,9 @@ import { EventDashboard } from "./event-dashboard";
 import { EventRealtime } from "./event-realtime";
 import type { CompetitionWithNames } from "@/lib/build-event-tab-items";
 import { CopyLinkButton } from "@/app/components/copy-link-button";
+import { canManageEvent, getAdminContext } from "@/lib/admin-auth";
+import { EventAdminsPanel } from "./event-admins-panel";
+import { InscriptionPanel } from "./inscription-panel";
 import {
   DownloadIcon,
   ExternalIcon,
@@ -35,34 +38,51 @@ import { disciplineColor } from "@/lib/discipline-colors";
 import { courtDisplayName } from "@/lib/court-display";
 import { disciplineDisplayName, disciplineCategoryLabel } from "@/lib/discipline-display";
 
-export default async function EventPage({ params }: { params: Promise<{ eventId: string }> }) {
+export default async function EventPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ eventId: string }>;
+  searchParams: Promise<{ tab?: string }>;
+}) {
   const { eventId } = await params;
+  // `?tab=inscripcion` abre directo esa pestaña (lo usa el link "Manejar
+  // inscripción" de la página de cada torneo).
+  const { tab: requestedTab } = await searchParams;
   const supabase = await createServerSupabaseClient();
 
-  const { data: event } = await supabase
-    .from("events")
-    .select("*")
-    .eq("id", eventId)
-    .maybeSingle<EventRow>();
-  if (!event) notFound();
-
-  const [{ data: courts }, { data: competitions }, { data: disciplines }, { data: categories }] =
-    await Promise.all([
-      // `access_token` sí hace falta acá: esta pestaña muestra el link del
-      // juez de cada cancha (CopyLinkButton). Es la única página que lo expone.
-      supabase
-        .from("courts")
-        .select("id, name, access_token, discipline_id, sort_order, event_id")
-        .eq("event_id", eventId)
-        .order("sort_order"),
-      supabase
-        .from("competitions")
-        .select("*, disciplines(name, sort_order), categories(name)")
-        .eq("event_id", eventId)
-        .order("created_at"),
-      supabase.from("disciplines").select("*").order("sort_order"),
-      supabase.from("categories").select("*").order("sort_order"),
-    ]);
+  // Una sola tanda (sep 2026): todo depende solo del id del evento. Antes
+  // eran 4 viajes en fila (evento → usuario → permiso → resto), ~75 ms c/u.
+  const [
+    { data: event },
+    me,
+    allowed,
+    { data: courts },
+    { data: competitions },
+    { data: disciplines },
+    { data: categories },
+  ] = await Promise.all([
+    supabase.from("events").select("*").eq("id", eventId).maybeSingle<EventRow>(),
+    getAdminContext(),
+    // Un evento PÚBLICO ajeno se lee igual por RLS, pero no es de este
+    // administrador — para él no existe en el panel.
+    canManageEvent(supabase, eventId),
+    // `access_token` sí hace falta acá: esta pestaña muestra el link del
+    // juez de cada cancha (CopyLinkButton). Es la única página que lo expone.
+    supabase
+      .from("courts")
+      .select("id, name, access_token, discipline_id, sort_order, event_id")
+      .eq("event_id", eventId)
+      .order("sort_order"),
+    supabase
+      .from("competitions")
+      .select("*, disciplines(name, sort_order), categories(name)")
+      .eq("event_id", eventId)
+      .order("created_at"),
+    supabase.from("disciplines").select("*").order("sort_order"),
+    supabase.from("categories").select("*").order("sort_order"),
+  ]);
+  if (!event || !me || !allowed) notFound();
 
   const disciplinesById = new Map((disciplines ?? []).map((d: Discipline) => [d.id, d]));
 
@@ -71,7 +91,7 @@ export default async function EventPage({ params }: { params: Promise<{ eventId:
   const addCourtAction = addCourt.bind(null, eventId);
   const createCompetitionAction = createCompetition.bind(null, eventId);
   const hasCourts = (courts ?? []).length > 0;
-  const hasOpenRegistration = (competitions ?? []).some((c: Competition) => c.registration_open);
+  const openRegistrationCount = (competitions ?? []).filter((c: Competition) => c.registration_open).length;
 
   const tabs: TabItem[] = [
     {
@@ -367,6 +387,25 @@ export default async function EventPage({ params }: { params: Promise<{ eventId:
         </section>
       ),
     },
+    {
+      id: "inscripcion",
+      label: "Inscripción",
+      badge: openRegistrationCount
+        ? `${openRegistrationCount} ${openRegistrationCount === 1 ? "abierto" : "abiertos"}`
+        : undefined,
+      content: (
+        <InscriptionPanel
+          supabase={supabase}
+          eventId={eventId}
+          competitions={(competitions ?? []) as CompetitionWithNames[]}
+        />
+      ),
+    },
+    {
+      id: "administradores",
+      label: "Administradores",
+      content: <EventAdminsPanel supabase={supabase} eventId={eventId} me={me} />,
+    },
   ];
 
   return (
@@ -393,9 +432,6 @@ export default async function EventPage({ params }: { params: Promise<{ eventId:
                   path={`/acreditacion/${event.accreditation_token}`}
                   label="Link de acreditación"
                 />
-              )}
-              {hasOpenRegistration && (
-                <CopyLinkButton variant="toolbar" path={`/inscripcion/${eventId}`} label="Link de inscripción" />
               )}
               {event.is_public && (
                 <a
@@ -513,7 +549,7 @@ export default async function EventPage({ params }: { params: Promise<{ eventId:
           su lista "Avance por torneo" lleva directo a cada torneo (lo que
           antes se buscaba entrando por la pestaña Torneos). */}
       <EventRealtime eventId={eventId} />
-      <TabbedLayout items={tabs} defaultTabId="resumen" sectionTitle={event.name} sectionEventId={event.id} />
+      <TabbedLayout items={tabs} defaultTabId={tabs.some((t) => t.id === requestedTab) ? requestedTab : "resumen"} sectionTitle={event.name} sectionEventId={event.id} />
     </div>
   );
 }

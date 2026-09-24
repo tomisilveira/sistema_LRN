@@ -143,15 +143,27 @@ actualizá la otra.
 
 > Con la CLI de Supabase: `supabase db push` aplica `migrations/` en orden.
 
-### 4. Usuario admin
+### 4. Usuario admin (superusuario)
 
 1. **Authentication → Users → Add user**: creá tu usuario (email + contraseña).
-2. En el **SQL Editor**, habilitalo (reemplazá el email):
+2. En el **SQL Editor**, habilitalo como superusuario (reemplazá el email):
 
    ```sql
-   insert into admins (user_id)
-   select id from auth.users where email = 'tu-email@ejemplo.com';
+   insert into admins (user_id, email, role)
+   select id, email, 'superadmin' from auth.users where email = 'tu-email@ejemplo.com';
    ```
+
+El resto de los usuarios se crean desde el panel, en **Usuarios** (solo lo
+ve el superusuario). Hay dos roles:
+
+- **Superusuario**: ve y edita todos los eventos, crea usuarios y maneja
+  disciplinas y categorías.
+- **Administrador de eventos**: solo los eventos que se le asignan o que crea
+  él; puede compartirlos con otros administradores (pestaña
+  *Administradores* del evento).
+
+La restricción está en la RLS de la base (ver
+`supabase/migrations/0018_event_admins.sql`), no solo en la interfaz.
 
 ### 5. Correr en local
 

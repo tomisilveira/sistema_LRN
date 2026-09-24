@@ -17,36 +17,38 @@ const EVENT_PUBLIC_COLUMNS = "id, name, event_date, status, is_public, created_a
 export default async function Home() {
   const supabase = await createServerSupabaseClient();
 
-  // La jornada de hoy: como mucho un evento debería estar "activo" a la vez.
-  const { data: activeEvents } = await supabase
-    .from("events")
-    .select(EVENT_PUBLIC_COLUMNS)
-    .eq("status", "active")
-    .eq("is_public", true)
-    .order("event_date", { ascending: false })
-    .limit(1);
-  const activeEvent = (activeEvents ?? [])[0] as EventRow | undefined;
-
-  // Eventos públicos para el switcher de jornadas (arriba de todo) — se
-  // muestra igual haya o no un evento activo hoy, para poder saltar directo
-  // a otra jornada sin pasar por /publico.
-  const { data: switcherEventsRaw } = await supabase
-    .from("events")
-    .select(EVENT_PUBLIC_COLUMNS)
-    .eq("is_public", true)
-    .neq("status", "finished")
-    .order("event_date", { ascending: true });
-  const switcherEvents = (switcherEventsRaw ?? []) as EventRow[];
-
-  let competitions: CompetitionWithNames[] = [];
-  if (activeEvent) {
-    const { data } = await supabase
-      .from("competitions")
-      .select("*, disciplines(name, sort_order), categories(name)")
-      .eq("event_id", activeEvent.id)
-      .order("created_at");
-    competitions = (data ?? []) as CompetitionWithNames[];
+  // Una sola tanda (sep 2026): la jornada de hoy trae sus torneos
+  // embebidos, en paralelo con los eventos del switcher. Antes eran 3
+  // consultas en fila.
+  const [{ data: activeEvents }, { data: switcherEventsRaw }] = await Promise.all([
+    // La jornada de hoy: como mucho un evento debería estar "activo" a la vez.
+    supabase
+      .from("events")
+      .select(`${EVENT_PUBLIC_COLUMNS}, competitions(*, disciplines(name, sort_order), categories(name))`)
+      .eq("status", "active")
+      .eq("is_public", true)
+      .order("event_date", { ascending: false })
+      .order("created_at", { referencedTable: "competitions" })
+      .limit(1),
+    // Eventos públicos para el switcher de jornadas (arriba de todo) — se
+    // muestra igual haya o no un evento activo hoy, para poder saltar
+    // directo a otra jornada sin pasar por /publico.
+    supabase
+      .from("events")
+      .select(EVENT_PUBLIC_COLUMNS)
+      .eq("is_public", true)
+      .neq("status", "finished")
+      .order("event_date", { ascending: true }),
+  ]);
+  const activeRow = (activeEvents ?? [])[0] as (EventRow & { competitions: CompetitionWithNames[] | null }) | undefined;
+  let activeEvent: EventRow | undefined;
+  if (activeRow) {
+    const copy: Partial<typeof activeRow> = { ...activeRow };
+    delete copy.competitions;
+    activeEvent = copy as EventRow;
   }
+  const competitions: CompetitionWithNames[] = activeRow?.competitions ?? [];
+  const switcherEvents = (switcherEventsRaw ?? []) as EventRow[];
 
   return (
     <PublicShell>

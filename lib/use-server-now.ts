@@ -38,6 +38,12 @@ function syncOffset(): Promise<void> {
   return syncPromise;
 }
 
+/** Hora del servidor estimada ahora mismo (sin re-render) — para armar
+ * estados optimistas del reloj (ej. pausar/reanudar en el panel del juez). */
+export function serverNow(): number {
+  return Date.now() + offsetMs;
+}
+
 /** Hora "del servidor" estimada en el cliente, re-renderizando cada
  * `tickMs`. Devuelve null en el primer render (server y primera pasada de
  * hidratación deben mostrar lo mismo — ver match-clock.tsx). El tick es

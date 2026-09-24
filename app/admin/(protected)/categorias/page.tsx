@@ -1,4 +1,6 @@
+import { notFound } from "next/navigation";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
+import { getAdminContext } from "@/lib/admin-auth";
 import type { Category } from "@/lib/database.types";
 import { createCategory, updateCategory, deleteCategory } from "./actions";
 import { ModalFormButton } from "@/app/components/modal-form";
@@ -53,6 +55,8 @@ function CategoryFormFields({ defaults }: { defaults?: { name: string; minAge: n
 }
 
 export default async function CategoriasPage() {
+  // Catálogo global: solo el superusuario (la RLS también lo exige, 0018).
+  if (!(await getAdminContext())?.isSuperadmin) notFound();
   const supabase = await createServerSupabaseClient();
   const { data: categories } = await supabase.from("categories").select("*").order("sort_order");
 

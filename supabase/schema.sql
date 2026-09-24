@@ -68,15 +68,33 @@ create table events (
   -- en borrador o ya armado puede quedar oculto de /publico y del inicio
   -- hasta que el admin lo publique. Es una barrera de datos real (ver RLS
   -- más abajo), no solo un filtro de UI.
-  is_public boolean not null default true
+  is_public boolean not null default true,
+  -- Quién lo creó (dato histórico; el acceso lo da event_admins, al que el
+  -- trigger events_add_creator_as_admin suma al creador).
+  created_by uuid default auth.uid() references auth.users (id) on delete set null
 );
 
--- Usuarios habilitados como administrador / mesa de jueces.
+-- Usuarios habilitados en el panel admin. 'superadmin' ve y edita todo,
+-- crea usuarios y maneja disciplinas/categorías; 'event_admin' solo los
+-- eventos donde figura en event_admins. `email` copiado de auth.users
+-- (authenticated no puede leer auth.users) para mostrar/compartir.
 create table admins (
   user_id uuid primary key references auth.users (id) on delete cascade,
   full_name text,
+  email text,
+  role text not null default 'event_admin' check (role in ('superadmin', 'event_admin')),
   created_at timestamptz not null default now()
 );
+
+-- Qué administrador administra qué evento (compartir evento).
+create table event_admins (
+  event_id uuid not null references events (id) on delete cascade,
+  user_id uuid not null references admins (user_id) on delete cascade,
+  added_by uuid references auth.users (id) on delete set null,
+  created_at timestamptz not null default now(),
+  primary key (event_id, user_id)
+);
+create index event_admins_user_idx on event_admins (user_id);
 
 create table competitions (
   id uuid primary key default gen_random_uuid(),
@@ -113,6 +131,12 @@ create table teams (
   competition_id uuid not null references competitions (id) on delete cascade,
   name text not null,
   institution text,
+  -- De dónde es el equipo. Provincia de la lista de
+  -- lib/argentina-locations.ts; localidad elegida de una lista (Neuquén y
+  -- Río Negro) o escrita a mano (resto del país). Obligatorias en la
+  -- inscripción pública, opcionales en el resto (equipos viejos).
+  province text,
+  locality text,
   -- Datos del adulto responsable (mentor/profesor). `mentor_contact` guarda
   -- "celular · email" en una línea, solo para mostrar. Nada de datos de
   -- menores más allá de los nombres de pila de `member_names`.
@@ -339,6 +363,36 @@ create or replace function is_admin() returns boolean as $$
   select exists (select 1 from admins where user_id = auth.uid());
 $$ language sql stable security definer set search_path = public;
 
+create or replace function is_superadmin() returns boolean as $$
+  select exists (select 1 from admins where user_id = auth.uid() and role = 'superadmin');
+$$ language sql stable security definer set search_path = public;
+
+-- Administra el evento: superusuario o figura en event_admins.
+create or replace function can_manage_event(p_event_id uuid) returns boolean as $$
+  select is_superadmin()
+    or exists (select 1 from event_admins where event_id = p_event_id and user_id = auth.uid());
+$$ language sql stable security definer set search_path = public;
+
+create or replace function can_manage_competition(p_competition_id uuid) returns boolean as $$
+  select coalesce((select can_manage_event(event_id) from competitions where id = p_competition_id), false);
+$$ language sql stable security definer set search_path = public;
+
+-- Quien crea un evento queda como su administrador.
+create or replace function add_event_creator_as_admin() returns trigger as $$
+begin
+  if new.created_by is not null and exists (select 1 from admins where user_id = new.created_by) then
+    insert into event_admins (event_id, user_id, added_by)
+    values (new.id, new.created_by, new.created_by)
+    on conflict do nothing;
+  end if;
+  return new;
+end;
+$$ language plpgsql security definer set search_path = public;
+
+create trigger events_add_creator_as_admin
+  after insert on events
+  for each row execute function add_event_creator_as_admin();
+
 create or replace function event_is_public(p_event_id uuid) returns boolean as $$
   select coalesce((select is_public from events where id = p_event_id), false);
 $$ language sql stable security definer set search_path = public;
@@ -354,7 +408,8 @@ $$ language sql stable security definer set search_path = public;
 
 -- ==========================================================================
 -- ROW LEVEL SECURITY
---   · Escritura: solo usuarios de `admins` (is_admin()).
+--   · Escritura: superusuario (is_superadmin()) sobre todo; administrador
+--     de eventos (can_manage_event) sobre sus eventos y lo que cuelga.
 --   · Lectura pública: solo filas que cuelgan de un evento is_public = true.
 --     El admin ve todo. Los clientes con service-role key (juez, inscripción,
 --     acreditación) ignoran RLS y validan el token a mano en la app.
@@ -373,59 +428,86 @@ alter table matches       enable row level security;
 alter table match_cards   enable row level security;
 alter table admins        enable row level security;
 
+alter table event_admins  enable row level security;
+
 -- ---- lectura ----
+-- Lo público (eventos is_public) lo ve cualquiera; además cada admin ve lo
+-- de los eventos que administra (can_manage_*), el superusuario todo.
 create policy "public read disciplines" on disciplines for select using (true);
 create policy "public read categories"  on categories  for select using (true);
 
 create policy "public read events" on events
-  for select using (is_public or is_admin());
+  for select using (is_public or created_by = auth.uid() or can_manage_event(id));
 
 create policy "public read competitions" on competitions
-  for select using (is_admin() or event_is_public(event_id));
+  for select using (event_is_public(event_id) or can_manage_event(event_id));
 
 create policy "public read teams" on teams
-  for select using (is_admin() or competition_is_public(competition_id));
+  for select using (competition_is_public(competition_id) or can_manage_competition(competition_id));
 
 create policy "public read groups" on groups
-  for select using (is_admin() or competition_is_public(competition_id));
+  for select using (competition_is_public(competition_id) or can_manage_competition(competition_id));
 
 create policy "public read group_teams" on group_teams
   for select using (
-    is_admin() or exists (
+    exists (
       select 1 from groups g
       where g.id = group_teams.group_id
-        and competition_is_public(g.competition_id)
+        and (competition_is_public(g.competition_id) or can_manage_competition(g.competition_id))
     )
   );
 
 create policy "public read courts" on courts
-  for select using (is_admin() or event_is_public(event_id));
+  for select using (event_is_public(event_id) or can_manage_event(event_id));
 
 create policy "public read matches" on matches
-  for select using (is_admin() or competition_is_public(competition_id));
+  for select using (competition_is_public(competition_id) or can_manage_competition(competition_id));
 
 create policy "public read match_cards" on match_cards
   for select using (
-    is_admin() or exists (
+    exists (
       select 1 from matches m
       where m.id = match_cards.match_id
-        and competition_is_public(m.competition_id)
+        and (competition_is_public(m.competition_id) or can_manage_competition(m.competition_id))
     )
   );
 
+-- Cualquier admin lee la lista de admins (para compartir). Alta/baja/rol:
+-- solo desde el servidor con service_role (app/admin/(protected)/usuarios).
 create policy "admin read admins" on admins for select using (is_admin());
 
--- ---- escritura/administración (solo admins) ----
-create policy "admin all disciplines"  on disciplines  for all using (is_admin()) with check (is_admin());
-create policy "admin all categories"   on categories   for all using (is_admin()) with check (is_admin());
-create policy "admin all events"        on events        for all using (is_admin()) with check (is_admin());
-create policy "admin all competitions"  on competitions  for all using (is_admin()) with check (is_admin());
-create policy "admin all teams"         on teams         for all using (is_admin()) with check (is_admin());
-create policy "admin all groups"        on groups        for all using (is_admin()) with check (is_admin());
-create policy "admin all group_teams"   on group_teams   for all using (is_admin()) with check (is_admin());
-create policy "admin all courts"        on courts        for all using (is_admin()) with check (is_admin());
-create policy "admin all matches"       on matches       for all using (is_admin()) with check (is_admin());
-create policy "admin all match_cards"   on match_cards   for all using (is_admin()) with check (is_admin());
+-- ---- escritura/administración ----
+-- Catálogos globales: solo el superusuario.
+create policy "admin all disciplines" on disciplines for all using (is_superadmin()) with check (is_superadmin());
+create policy "admin all categories"  on categories  for all using (is_superadmin()) with check (is_superadmin());
+
+-- Eventos: cualquier admin crea (a su nombre); edita/borra quien lo administra.
+create policy "admin insert events" on events for insert with check (is_admin() and created_by = auth.uid());
+create policy "admin update events" on events for update using (can_manage_event(id)) with check (can_manage_event(id));
+create policy "admin delete events" on events for delete using (can_manage_event(id));
+
+create policy "admin all competitions" on competitions
+  for all using (can_manage_event(event_id)) with check (can_manage_event(event_id));
+create policy "admin all courts" on courts
+  for all using (can_manage_event(event_id)) with check (can_manage_event(event_id));
+create policy "admin all teams" on teams
+  for all using (can_manage_competition(competition_id)) with check (can_manage_competition(competition_id));
+create policy "admin all groups" on groups
+  for all using (can_manage_competition(competition_id)) with check (can_manage_competition(competition_id));
+create policy "admin all matches" on matches
+  for all using (can_manage_competition(competition_id)) with check (can_manage_competition(competition_id));
+create policy "admin all group_teams" on group_teams
+  for all
+  using (exists (select 1 from groups g where g.id = group_teams.group_id and can_manage_competition(g.competition_id)))
+  with check (exists (select 1 from groups g where g.id = group_teams.group_id and can_manage_competition(g.competition_id)));
+create policy "admin all match_cards" on match_cards
+  for all
+  using (exists (select 1 from matches m where m.id = match_cards.match_id and can_manage_competition(m.competition_id)))
+  with check (exists (select 1 from matches m where m.id = match_cards.match_id and can_manage_competition(m.competition_id)));
+
+-- Compartir evento: lo gestiona quien administra ese evento.
+create policy "manage event_admins" on event_admins
+  for all using (can_manage_event(event_id)) with check (can_manage_event(event_id));
 
 -- ==========================================================================
 -- VISTA: canchas para la sección pública (sin access_token).
@@ -449,6 +531,9 @@ grant execute on function is_admin()                    to anon, authenticated;
 grant execute on function get_group_standings(uuid)     to anon, authenticated;
 grant execute on function event_is_public(uuid)         to anon, authenticated;
 grant execute on function competition_is_public(uuid)   to anon, authenticated;
+grant execute on function is_superadmin()               to anon, authenticated;
+grant execute on function can_manage_event(uuid)        to anon, authenticated;
+grant execute on function can_manage_competition(uuid)  to anon, authenticated;
 
 -- catálogos y tablas sin datos sensibles: select completo
 grant select on disciplines, categories, competitions, groups, group_teams, matches, match_cards
@@ -491,6 +576,11 @@ grant select, insert, update, delete on
   group_teams, courts, matches, match_cards
   to service_role;
 grant select on courts_public to service_role;
+
+-- compartir eventos (0018): nada para anon
+revoke all on event_admins from anon;
+grant select, insert, delete on event_admins to authenticated;
+grant select, insert, update, delete on event_admins to service_role;
 
 -- ==========================================================================
 -- REALTIME: la vista pública, el modo pantalla y el panel del juez se

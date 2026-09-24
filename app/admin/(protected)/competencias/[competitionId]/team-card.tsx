@@ -5,6 +5,8 @@ import { TeamFormFields } from "@/app/components/team-form-fields";
 import { ModalFormButton } from "@/app/components/modal-form";
 import { ConfirmSubmitButton } from "@/app/components/confirm-submit-button";
 import { parseRobotNames } from "@/lib/team-display";
+import { formatLocation } from "@/lib/argentina-locations";
+import { BuildingIcon, CheckIcon, MapPinIcon, TrashIcon, UserIcon } from "@/app/components/action-icons";
 import { TeamAccreditationControls } from "./team-accreditation-controls";
 import { GroupAssignSelect } from "./group-assign-select";
 import { MoveTeamSelect } from "./move-team-select";
@@ -42,9 +44,19 @@ export function TeamCard({
 }) {
   const ready = team.accredited && team.homologated;
 
+  const location = formatLocation(team.locality, team.province);
+  const robots = parseRobotNames(team.robot_names);
+  const statusLabel = ready
+    ? "Listo"
+    : team.accredited
+      ? "Sin homologar"
+      : team.homologated
+        ? "Sin acreditar"
+        : "No listo";
+
   return (
     <div
-      className={`panel-surface rounded-xl border-l-4 p-3.5 space-y-3 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md dark:hover:shadow-none ${
+      className={`panel-card rounded-xl border-l-4 p-3.5 flex flex-col gap-3 transition-shadow duration-200 hover:shadow-md ${
         ready ? "border-l-brand-green" : "border-l-brand-orange"
       }`}
     >
@@ -56,42 +68,59 @@ export function TeamCard({
           {team.name.trim().charAt(0).toUpperCase() || "?"}
         </div>
         <div className="min-w-0 flex-1">
-          <div className="flex items-start justify-between gap-2">
-            <p className="font-semibold text-base leading-tight truncate pt-0.5">
-              <TeamLabel name={team.name} memberNames={team.member_names} />
-            </p>
-            <span
-              className={`shrink-0 text-[11px] rounded-full px-2 py-0.5 font-medium whitespace-nowrap ${ready ? "panel-chip-success" : "panel-chip-warning"}`}
-              title={ready ? undefined : "Un equipo no listo no puede entrar a ningún grupo"}
-            >
-              {ready
-                ? "✅ Listo"
-                : team.accredited
-                  ? "⏳ Sin homologar"
-                  : team.homologated
-                    ? "⏳ Sin acreditar"
-                    : "⏳ No listo"}
-            </span>
-          </div>
-          {(team.institution || team.mentor_name) && (
-            <p className="text-xs panel-label truncate mt-0.5" title={team.mentor_contact ?? undefined}>
-              {team.institution}
-              {team.institution && team.mentor_name && " · "}
-              {team.mentor_name}
-            </p>
-          )}
+          {/* Nombre completo + integrantes debajo (TeamLabel): antes el
+              nombre se cortaba con "…" al compartir la fila con el chip. */}
+          <p className="font-semibold text-base leading-snug break-words">
+            <TeamLabel name={team.name} memberNames={team.member_names} />
+          </p>
         </div>
+        <span
+          className={`shrink-0 inline-flex items-center gap-1 text-[11px] rounded-full px-2 py-0.5 font-semibold whitespace-nowrap ${
+            ready ? "panel-chip-success" : "panel-chip-warning"
+          }`}
+          title={ready ? "Acreditado y homologado: puede entrar a un grupo" : "Un equipo no listo no puede entrar a ningún grupo"}
+        >
+          {ready ? (
+            <CheckIcon className="w-3 h-3" strokeWidth={3} />
+          ) : (
+            <span className="w-1.5 h-1.5 rounded-full bg-brand-orange" aria-hidden="true" />
+          )}
+          {statusLabel}
+        </span>
       </div>
 
-      {team.robot_names && (
-        <p className="text-[13px] panel-label opacity-90 pl-[42px] -mt-2.5">
-          🤖 {parseRobotNames(team.robot_names).join(", ")}
-        </p>
+      {(team.institution || location || team.mentor_name || robots.length > 0) && (
+        <ul className="space-y-1 text-xs panel-label pl-[46px] -mt-1">
+          {team.institution && (
+            <li className="flex items-start gap-1.5">
+              <BuildingIcon className="w-3.5 h-3.5 mt-px text-neutral-400" />
+              <span className="leading-snug">{team.institution}</span>
+            </li>
+          )}
+          {location && (
+            <li className="flex items-start gap-1.5">
+              <MapPinIcon className="w-3.5 h-3.5 mt-px text-neutral-400" />
+              <span className="leading-snug">{location}</span>
+            </li>
+          )}
+          {team.mentor_name && (
+            <li className="flex items-start gap-1.5" title={team.mentor_contact ?? undefined}>
+              <UserIcon className="w-3.5 h-3.5 mt-px text-neutral-400" />
+              <span className="leading-snug">Responsable: {team.mentor_name}</span>
+            </li>
+          )}
+          {robots.length > 0 && (
+            <li className="flex items-start gap-1.5">
+              <span className="w-3.5 text-center text-[11px] leading-4" aria-hidden="true">🤖</span>
+              <span className="leading-snug">{robots.join(", ")}</span>
+            </li>
+          )}
+        </ul>
       )}
 
       <TeamAccreditationControls competitionId={competitionId} team={team} />
 
-      <div className="flex flex-wrap items-center gap-1.5 pt-2.5 border-t border-neutral-200/70 dark:border-neutral-800">
+      <div className="flex flex-wrap items-center gap-2 pt-2.5 mt-auto border-t border-neutral-100">
         {isBracketOnly && <TeamSeedInput competitionId={competitionId} teamId={team.id} defaultValue={team.seed_order} />}
         {groups.length > 0 && ready && (
           <GroupAssignSelect competitionId={competitionId} teamId={team.id} groups={groups} currentGroupId={currentGroupId} />
@@ -100,7 +129,7 @@ export function TeamCard({
         <div className="ml-auto flex items-center gap-1.5">
           <ModalFormButton
             buttonLabel="Editar"
-            buttonClassName="text-xs px-2 py-0.5 panel-button-xs"
+            buttonClassName="panel-action panel-action-sm"
             title={`Editar ${team.name}`}
             action={updateTeam.bind(null, competitionId, team.id)}
             submitLabel="Guardar"
@@ -110,6 +139,8 @@ export function TeamCard({
               defaults={{
                 name: team.name,
                 institution: team.institution ?? "",
+                province: team.province,
+                locality: team.locality,
                 robots: parseRobotNames(team.robot_names),
                 memberNames: team.member_names,
                 notes: team.notes ?? "",
@@ -119,8 +150,9 @@ export function TeamCard({
           <form action={removeTeam.bind(null, competitionId, team.id)}>
             <ConfirmSubmitButton
               confirmMessage={`¿Quitar a ${team.name} del torneo? Si ya tiene partidos asignados, se pierden.`}
-              className="text-xs rounded-md px-2 py-0.5 panel-button-danger"
+              className="panel-action-danger panel-action-sm"
             >
+              <TrashIcon />
               Quitar
             </ConfirmSubmitButton>
           </form>

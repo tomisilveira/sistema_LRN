@@ -1,4 +1,6 @@
+import { notFound } from "next/navigation";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
+import { getAdminContext } from "@/lib/admin-auth";
 import type { Discipline } from "@/lib/database.types";
 import { createDiscipline } from "../actions";
 import { ModalFormButton } from "@/app/components/modal-form";
@@ -6,6 +8,8 @@ import { disciplineColor } from "@/lib/discipline-colors";
 import { disciplineDisplayName } from "@/lib/discipline-display";
 
 export default async function DisciplinasPage() {
+  // Catálogo global: solo el superusuario (la RLS también lo exige, 0018).
+  if (!(await getAdminContext())?.isSuperadmin) notFound();
   const supabase = await createServerSupabaseClient();
   const { data: disciplines } = await supabase.from("disciplines").select("*").order("sort_order");
 

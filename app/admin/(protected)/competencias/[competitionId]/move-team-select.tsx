@@ -111,7 +111,7 @@ export function MoveTeamSelect({
         setChosen(opt);
         setStep("confirm");
       }}
-      className="text-xs rounded-md panel-input px-2 py-1 disabled:opacity-50 max-w-[160px]"
+      className="h-8 text-xs rounded-lg panel-input px-2 disabled:opacity-50 max-w-[160px]"
     >
       <option value="">Mover a otro torneo…</option>
       {options.map((o) => (
