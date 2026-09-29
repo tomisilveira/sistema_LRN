@@ -1,25 +1,34 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono, Rajdhani } from "next/font/google";
+import localFont from "next/font/local";
 import Script from "next/script";
 import "./globals.css";
 
-const geistSans = Geist({
+// Fuentes servidas desde el propio repo (app/fonts/, licencia SIL OFL) y
+// no desde Google Fonts: `next/font/google` las descarga DURANTE el build,
+// y en una nube interna sin salida a internet el build falla. Mismas
+// familias y pesos que antes (subset latin, que incluye tildes y ñ).
+const geistSans = localFont({
+  src: "./fonts/Geist-Variable.woff2",
   variable: "--font-geist-sans",
-  subsets: ["latin"],
+  weight: "100 900",
 });
 
-const geistMono = Geist_Mono({
+const geistMono = localFont({
+  src: "./fonts/GeistMono-Variable.woff2",
   variable: "--font-geist-mono",
-  subsets: ["latin"],
+  weight: "100 900",
 });
 
 // Display técnico/esports para el "scoreboard de cancha" (título de cancha,
 // nombres de equipo en el timer) — ver juez y pantalla pública por cancha.
 // Restringido a esos usos puntuales, no reemplaza a geist-sans en el resto.
-const rajdhani = Rajdhani({
+const rajdhani = localFont({
+  src: [
+    { path: "./fonts/Rajdhani-500.woff2", weight: "500", style: "normal" },
+    { path: "./fonts/Rajdhani-600.woff2", weight: "600", style: "normal" },
+    { path: "./fonts/Rajdhani-700.woff2", weight: "700", style: "normal" },
+  ],
   variable: "--font-rajdhani",
-  weight: ["500", "600", "700"],
-  subsets: ["latin"],
 });
 
 const SITE_NAME = "Liga Robótica Neuquina";
@@ -29,8 +38,11 @@ const SITE_DESCRIPTION = "Sistema de administración y visualización de jornada
 // hace falta declararlos acá (ver node_modules/next/dist/docs/.../app-icons.md
 // y .../opengraph-image.md). metadataBase sí hace falta: sin él, Next no
 // puede armar la URL absoluta de esas imágenes para los crawlers y tira un
-// warning en build. VERCEL_URL lo inyecta Vercel solo en cada deploy.
-const siteUrl = process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "http://localhost:3000";
+// warning en build. SITE_URL es la URL pública del sistema (ej.
+// https://liga.neuquen.gob.ar) — en Docker/nube propia hay que setearla;
+// VERCEL_URL queda de respaldo para deploys en Vercel.
+const siteUrl =
+  process.env.SITE_URL ?? (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "http://localhost:3000");
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),

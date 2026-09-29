@@ -18,9 +18,27 @@ const securityHeaders = [
   { key: "X-DNS-Prefetch-Control", value: "on" },
 ];
 
+// Orígenes extra desde los que se aceptan Server Actions (los botones del
+// panel), separados por coma — solo si el proxy/balanceador de la nube
+// reescribe el Host y los botones fallan con "Invalid Server Actions
+// request". Ej: "liga.neuquen.gob.ar,*.neuquen.gob.ar". Se lee en BUILD
+// (next.config se serializa dentro de la imagen). Ver docs/DEPLOY.md.
+const allowedOrigins = (process.env.SERVER_ACTIONS_ALLOWED_ORIGINS ?? "")
+  .split(",")
+  .map((o) => o.trim())
+  .filter(Boolean);
+
 const nextConfig: NextConfig = {
+  // Build autocontenido para Docker: `.next/standalone` trae server.js y
+  // solo los node_modules necesarios (ver Dockerfile).
+  output: "standalone",
   // No anunciar el framework/versión en cada respuesta.
   poweredByHeader: false,
+  // Con varias réplicas detrás de un balanceador: mismo id en todas para
+  // que un navegador con la versión vieja recargue en vez de romperse
+  // durante un deploy gradual. Opcional (ver docs/DEPLOY.md).
+  ...(process.env.DEPLOYMENT_ID ? { deploymentId: process.env.DEPLOYMENT_ID } : {}),
+  ...(allowedOrigins.length > 0 ? { experimental: { serverActions: { allowedOrigins } } } : {}),
   async headers() {
     return [{ source: "/:path*", headers: securityHeaders }];
   },

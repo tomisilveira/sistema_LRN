@@ -7,7 +7,7 @@
 # el server al llegar cada request, no durante el build (verificado corriendo
 # el build sin ninguna variable seteada).
 
-image: node:20-alpine
+image: node:24-alpine
 
 stages:
   - install

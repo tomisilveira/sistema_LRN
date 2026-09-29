@@ -1,0 +1,29 @@
+# Nada de secretos ni artefactos locales dentro del contexto de build.
+.env
+.env.*
+!.env.docker.example
+
+node_modules
+.next
+out
+build
+coverage
+*.tsbuildinfo
+npm-debug.log*
+
+.git
+.gitlab-ci.yml
+.github
+.vscode
+.idea
+.claude
+.DS_Store
+
+# No hacen falta para compilar la app
+docs
+scripts
+supabase
+netlify.toml
+Dockerfile
+docker-compose*.yml
+*.md

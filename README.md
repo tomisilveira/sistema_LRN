@@ -207,6 +207,11 @@ copias.
 
 ## Deploy
 
+- **Docker / nube propia**: ver [`docs/DEPLOY.md`](docs/DEPLOY.md) — imagen
+  (`Dockerfile`, build `standalone`, usuario sin privilegios, health check en
+  `/api/health`), variables de build vs runtime, proxy, réplicas y las
+  opciones de base de datos (Supabase Cloud, Supabase self-hosted y cómo
+  migrar los datos).
 - **Vercel**: importar el repo, cargar las 3 variables de entorno del paso 1,
   deploy. No hace falta configuración extra.
 - Supabase ya corre en la nube desde el paso 1; no hay otro backend que

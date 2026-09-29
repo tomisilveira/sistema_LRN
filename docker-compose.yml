@@ -1,0 +1,38 @@
+# Ejemplo mínimo para levantar la app con Docker Compose (una réplica).
+# Base de datos: Supabase (cloud o self-hosted) — NO está acá adentro; ver
+# docs/DEPLOY.md para las opciones.
+#
+#   cp .env.docker.example .env.docker   # y completar
+#   docker compose --env-file .env.docker up -d --build
+#   curl http://localhost:3000/api/health?deep=1
+services:
+  app:
+    image: sistema-lrn:${IMAGE_TAG:-latest}
+    build:
+      context: .
+      args:
+        NEXT_PUBLIC_SUPABASE_URL: ${NEXT_PUBLIC_SUPABASE_URL:?falta NEXT_PUBLIC_SUPABASE_URL}
+        NEXT_PUBLIC_SUPABASE_ANON_KEY: ${NEXT_PUBLIC_SUPABASE_ANON_KEY:?falta NEXT_PUBLIC_SUPABASE_ANON_KEY}
+        SITE_URL: ${SITE_URL:-}
+        SERVER_ACTIONS_ALLOWED_ORIGINS: ${SERVER_ACTIONS_ALLOWED_ORIGINS:-}
+        NEXT_SERVER_ACTIONS_ENCRYPTION_KEY: ${NEXT_SERVER_ACTIONS_ENCRYPTION_KEY:-}
+        DEPLOYMENT_ID: ${DEPLOYMENT_ID:-}
+        NPM_CONFIG_REGISTRY: ${NPM_CONFIG_REGISTRY:-}
+    environment:
+      SUPABASE_SERVICE_ROLE_KEY: ${SUPABASE_SERVICE_ROLE_KEY:?falta SUPABASE_SERVICE_ROLE_KEY}
+      SITE_URL: ${SITE_URL:-}
+      TZ: America/Argentina/Buenos_Aires
+    ports:
+      - "3000:3000"
+    restart: unless-stopped
+    read_only: true
+    tmpfs:
+      - /tmp
+      - /app/.next/cache
+    security_opt:
+      - no-new-privileges:true
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
