@@ -26,9 +26,12 @@ Supabase, y toda la autorización vive en Row Level Security.
 | Auth | Supabase Auth (email + contraseña, solo para el panel admin) |
 | Tiempo real | Supabase Realtime (canal sobre `matches` y `match_cards`) |
 | Export | `exceljs` (planilla del evento) |
-| Deploy sugerido | Vercel (frontend) + Supabase (datos), ambos en plan gratuito |
+| Deploy | Imagen Docker (build `standalone`, ver [`docs/DEPLOY.md`](docs/DEPLOY.md)) o Vercel/Netlify; datos en Supabase |
 
-El plan gratuito de Supabase alcanza de sobra para un evento de un día.
+El plan gratuito de Supabase alcanza en volumen para un evento de un día,
+pero **pausa el proyecto tras 7 días sin actividad** (queda fuera de línea
+hasta reactivarlo a mano) y no tiene backups diarios: para uso real conviene
+el plan Pro.
 
 ---
 
@@ -43,7 +46,9 @@ El plan gratuito de Supabase alcanza de sobra para un evento de un día.
 | `/acreditacion/[eventToken]` | no | Mesa de acreditación: marcar acreditado/homologado, contar presentes, corregir/mover/agregar equipos |
 | `/juez/[courtToken]` | no | Panel del juez de cancha: abrir partido, cronómetro pausable, marcador en vivo, tarjetas, cierre |
 | `/admin/login` | — | Ingreso del panel |
-| `/admin` · `/admin/eventos/[eventId]` · `/admin/competencias/[competitionId]` · `/admin/categorias` · `/admin/disciplinas` | sí | Panel de administración completo |
+| `/admin` · `/admin/eventos/[eventId]` · `/admin/competencias/[competitionId]` | sí | Panel: eventos (Resumen, Canchas, Torneos, Inscripción, Administradores) y torneos |
+| `/admin/usuarios` · `/admin/categorias` · `/admin/disciplinas` | sí, superusuario | Alta de usuarios y catálogos globales |
+| `/api/health` | no | Chequeo de salud para Docker/balanceador (`?deep=1` verifica Supabase) |
 
 Las pantallas sin login se autentican con un **token opaco en la URL**
 (`courtToken`, `eventToken`, o el `eventId` para inscripción). Ver
@@ -61,7 +66,7 @@ events ──┬── competitions ──┬── teams ──── group_tea
          │                  └── matches ──── match_cards
          │
 disciplines / categories   (catálogos fijos, sembrados en schema.sql)
-admins                     (user_id → auth.users, habilita el panel)
+admins ──── event_admins   (usuarios del panel con su rol, y qué eventos administra cada uno)
 ```
 
 - **`events`** — la jornada. `status` (`draft`/`active`/`finished`) e
@@ -74,12 +79,18 @@ admins                     (user_id → auth.users, habilita el panel)
   tiene un `access_token` (link del juez) y una `discipline_id` opcional para
   color/orden.
 - **`teams`** — datos del equipo, integrantes y robots (texto libre, solo
-  para mostrar), responsable adulto, flags de acreditación/homologación.
+  para mostrar), provincia y localidad, responsable adulto, flags de
+  acreditación/homologación.
   Nada de datos de menores más allá de los nombres de pila que carga el
   propio equipo.
 - **`matches`** — un partido. Sirve para grupos y para cuadro
   (`next_match_id`/`consolation_match_id` arman el árbol). Incluye el estado
   del reloj pausable del período/ronda actual.
+- **`admins`** — usuarios del panel. `role`: `superadmin` (ve y edita todo,
+  crea usuarios, maneja catálogos) o `event_admin` (solo sus eventos).
+- **`event_admins`** — qué administrador maneja qué evento. Quien crea un
+  evento queda como su administrador (trigger); se comparte desde la pestaña
+  *Administradores* del evento.
 - **`get_group_standings(group_id)`** — función SQL que calcula la tabla de
   posiciones (puntos → diferencia → goles a favor → nombre), respetando el
   `manual_rank_override` que el admin puede fijar para desempatar 3+ equipos.
@@ -138,7 +149,7 @@ archivo tiene un encabezado que explica qué hace y son todas aditivas (salvo
 `schema.sql` y `migrations/` describen **el mismo estado final**:
 `migrations/` es la historia incremental (útil para actualizar una base vieja
 y para entender por qué cada cosa es como es); `schema.sql` es el resultado
-consolidado, para arrancar de cero sin correr 15 archivos. Si tocás una,
+consolidado, para arrancar de cero sin correr 18 archivos. Si tocás una,
 actualizá la otra.
 
 > Con la CLI de Supabase: `supabase db push` aplica `migrations/` en orden.
@@ -167,7 +178,8 @@ La restricción está en la RLS de la base (ver
 
 ### 5. Correr en local
 
-Requiere **Node.js ≥ 20.9** (lo que pide Next 16; ver `engines` en
+Requiere **Node.js ≥ 20.9** (lo que pide Next 16; se recomienda Node 24 LTS,
+que es el que usan la imagen Docker y el CI; ver `engines` en
 `package.json`).
 
 ```bash
@@ -229,7 +241,8 @@ copias.
 toca Supabase (todas las páginas son dinámicas, se renderizan recién al
 llegar cada request) — verificado corriendo `next build` sin ninguna
 variable seteada. El pipeline solo valida; el deploy es un paso aparte
-(Vercel se dispara solo con su propia integración, sin pasar por acá).
+(imagen Docker, ver [`docs/DEPLOY.md`](docs/DEPLOY.md), o la integración
+propia de Vercel/Netlify).
 
 ---
 
@@ -237,10 +250,13 @@ variable seteada. El pipeline solo valida; el deploy es un paso aparte
 
 La autorización está en la base, no en la UI.
 
-- **RLS en todas las tablas.** Escritura solo para usuarios de la tabla
-  `admins` (`is_admin()`). Lectura pública **acotada a eventos con
-  `is_public = true`** (`event_is_public()` / `competition_is_public()`) — un
-  evento privado no se puede leer por la REST API enumerando UUIDs.
+- **RLS en todas las tablas.** El superusuario (`is_superadmin()`) escribe
+  todo; un administrador de eventos solo lo que cuelga de los eventos que
+  administra (`can_manage_event()` / `can_manage_competition()`), aunque
+  arme el request a mano. Disciplinas y categorías, solo el superusuario.
+  Lectura pública **acotada a eventos con `is_public = true`**
+  (`event_is_public()` / `competition_is_public()`) — un evento privado no
+  se puede leer por la REST API enumerando UUIDs.
 - **La `anon` key es pública** (viaja en el HTML). Las columnas sensibles
   (`courts.access_token`, `events.accreditation_token`,
   `teams.mentor_contact`, `teams.notes`) están fuera del grant de `anon`:
@@ -249,7 +265,10 @@ La autorización está en la base, no en la UI.
 - **La `service_role` key solo se usa server-side** en:
   - `lib/supabase/admin.ts` (protegido con `import "server-only"`),
   - los Route Handlers del juez (`app/api/matches/[matchId]/*`),
-  - las Server Actions públicas de inscripción y acreditación.
+  - las Server Actions públicas de inscripción y acreditación,
+  - el alta y gestión de usuarios (`app/admin/(protected)/usuarios`),
+    siempre después de verificar que quien lo pide es superusuario
+    (`requireSuperadmin()` en `lib/admin-auth.ts`).
 
   En todos esos casos no hay sesión de Supabase Auth, así que **antes de
   escribir se re-valida a mano el token** (`lib/judge-auth.ts` para la
@@ -284,15 +303,20 @@ app/
   juez/[courtToken]/           panel del juez de cancha (sin login, token de cancha)
   admin/
     login/
-    (protected)/               panel: eventos, torneos, categorías, disciplinas
+    (protected)/               panel: eventos, torneos, usuarios, categorías, disciplinas
   api/
     matches/[matchId]/         endpoints del juez (start, result, pause/resume,
                                advance-period, round-result, round-tie, card, live-score)
-    eventos/[eventId]/export/  planilla Excel del evento (requiere sesión admin)
+    eventos/[eventId]/export/  planilla Excel del evento (requiere administrar el evento)
+    health/                    chequeo de salud (Docker / balanceador)
+    time/                      hora del servidor (sincroniza los relojes en vivo)
+  fonts/                        tipografías servidas desde el repo (el build no necesita internet)
   components/                   UI compartida (kiosk/public shells, realtime, brackets...)
 
 lib/
   supabase/                    clientes: client (browser), server (SSR), admin (service-role)
+  admin-auth.ts                quién usa el panel y qué eventos administra (roles)
+  argentina-locations.ts       provincias + localidades de Neuquén y Río Negro (inscripción)
   judge-auth.ts                validación del token de cancha, compartida por los endpoints del juez
   round-robin.ts               generación de partidos todos-contra-todos
   bracket.ts                   armado puro del cuadro (seeding, byes)
@@ -307,8 +331,10 @@ lib/
   database.types.ts            tipos del schema, mantenidos a mano
 
 supabase/schema.sql            schema completo consolidado (para bases nuevas)
-supabase/migrations/           las 15 migraciones incrementales, en orden (historia / bases viejas)
+supabase/migrations/           las 18 migraciones incrementales, en orden (historia / bases viejas)
 scripts/                       seed-demo, seed-full-demo, sim-1-setup, sim-2-finish, sim-lib
+docs/DEPLOY.md                 guía de despliegue para infraestructura (+ versión PDF)
+Dockerfile · docker-compose.yml · .env.docker.example   imagen de producción y ejemplo de variables
 ```
 
 ---
@@ -316,11 +342,14 @@ scripts/                       seed-demo, seed-full-demo, sim-1-setup, sim-2-fin
 ## Flujo de uso el día del evento
 
 1. **Antes**: en `/admin`, crear el evento y cargar cuántas canchas hay. Recién
-   ahí se puede crear un torneo por cada disciplina/categoría que corre.
-2. En cada torneo: revisar la sugerencia de formato, cargar equipos a mano o
-   abrir la **Inscripción pública**. El link de inscripción es **uno solo por
-   jornada** (botón junto al título del evento): el equipo elige ahí su
-   disciplina y categoría, y solo ve las que tienen la inscripción abierta.
+   ahí se puede crear un torneo por cada disciplina/categoría que corre. Si
+   otra persona va a manejar el evento, el superusuario la da de alta en
+   **Usuarios** y se lo comparte (pestaña *Administradores* del evento).
+2. Abrir la **Inscripción** desde la pestaña del mismo nombre en el evento:
+   ahí está el link (**uno solo por jornada**) y una llave por torneo para
+   abrirla o cerrarla (o todas juntas). El equipo elige su disciplina y
+   categoría, y carga provincia y localidad. En cada torneo se puede revisar
+   la sugerencia de formato y cargar equipos a mano.
 3. Compartir el **link de acreditación** (botón junto al título del evento)
    con la mesa: ahí marcan acreditado + homologado y cuentan presentes. Un
    equipo que no esté acreditado **y** homologado no entra al sorteo.
@@ -332,7 +361,10 @@ scripts/                       seed-demo, seed-full-demo, sim-1-setup, sim-2-fin
 7. A medida que entran resultados, las posiciones se actualizan solas. Al
    cerrarse la fase de grupos, el cuadro se genera solo (o el torneo queda
    terminado si es "solo grupos").
-8. Al final: **Exportar a Excel** desde la página del evento para el archivo
+8. Durante toda la jornada, la pestaña **Resumen** del evento muestra el
+   estado general: equipos acreditados, partidos jugados, canchas en vivo,
+   avance de cada torneo, ganadores y lo que falta resolver.
+9. Al final: **Exportar a Excel** desde la página del evento para el archivo
    con todos los equipos, partidos y posiciones de la jornada.
 
 ---
@@ -342,8 +374,9 @@ scripts/                       seed-demo, seed-full-demo, sim-1-setup, sim-2-fin
 - El puntaje default (3/1/0 + orden de desempate) es configurable por torneo
   pero **no está formalizado en el Reglamento General de la Liga** —
   confirmar con la organización antes de dar el sistema por cerrado.
-- No hay una pantalla única para administrar varios torneos en simultáneo:
-  cada uno se maneja entrando a su página.
+- La vista de conjunto de todos los torneos es de lectura (Resumen) y la
+  inscripción se abre en bloque (pestaña Inscripción); el resto (grupos,
+  fixture, cuadro) se sigue manejando entrando a cada torneo.
 - Un empate entre 3+ equipos en puntos, diferencia y goles a favor no se
   resuelve solo (haría falta una sub-liguilla): el admin carga un "orden
   manual" en la tabla de posiciones.
