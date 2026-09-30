@@ -43,8 +43,20 @@ function toEntry(position: 1 | 2 | 3, team: Team): PodiumEntry {
 
 /** Podio de un cuadro de eliminación (un `bracket_type` puntual): 1º/2º de la
  * final, 3º del partido por el 3er puesto. Si ese partido todavía no se
- * jugó (o no existe), NO se inventa un 3º — se deja una nota. */
-function bracketBoard(label: string, matches: Match[], teamsById: Map<string, Team>): PodiumBoard {
+ * jugó (o no existe), NO se inventa un 3º — se deja una nota.
+ *
+ * `groupStandings`: tablas de los grupos que alimentaron ESTE cuadro. Se usa
+ * cuando el cuadro es solo una final (ej. un grupo de 3 donde pasan 2): no
+ * hay semis ni 3er puesto que jugar, así que el 3º es el mejor equipo del
+ * grupo que no llegó a la final. Con un grupo es automático; con varios no
+ * hay forma justa de elegir entre los de cada grupo, así que se nombran los
+ * candidatos en la nota. */
+function bracketBoard(
+  label: string,
+  matches: Match[],
+  teamsById: Map<string, Team>,
+  groupStandings?: { group: Group; rows: GroupStandingRow[] }[]
+): PodiumBoard {
   const final = matches.find((m) => m.round === "F");
   const third = matches.find((m) => m.round === "3P");
   const semis = matches.filter((m) => m.round === "SF");
@@ -65,6 +77,22 @@ function bracketBoard(label: string, matches: Match[], teamsById: Map<string, Te
   if (third && third.status === "completed" && third.winner_id) {
     const t = teamsById.get(third.winner_id);
     if (t) entries.push(toEntry(3, t));
+  } else if (!third && semis.length === 0) {
+    // Cuadro de solo final (2 equipos): no hay partido por el 3er puesto.
+    if (final?.status === "completed" && groupStandings && groupStandings.length > 0) {
+      const inBracket = new Set(matches.flatMap((m) => [m.team_a_id, m.team_b_id]).filter(Boolean));
+      const bestOutside = groupStandings
+        .map(({ group, rows }) => ({ group, row: rows.find((r) => !inBracket.has(r.team_id)) }))
+        .filter((c): c is { group: Group; row: GroupStandingRow } => !!c.row);
+      if (bestOutside.length === 1) {
+        const t = teamsById.get(bestOutside[0].row.team_id);
+        if (t) entries.push(toEntry(3, t));
+      } else if (bestOutside.length > 1) {
+        const names = bestOutside.map((c) => `${c.row.team_name} (${c.group.name})`).join(", ");
+        note = `No hay partido por el 3er puesto en este formato. Candidatos, los mejores de cada grupo que no llegaron a la final: ${names}.`;
+      }
+    }
+    // Sin grupos (solo cuadro con 2 equipos) no hay un 3º: nada que avisar.
   } else {
     // 3er puesto sin definir: nombramos a los dos que lo disputan, sin
     // ponerlos a ambos como "tercero".
@@ -94,6 +122,7 @@ export function buildPodium({
   bracketMatches,
 }: BuildPodiumInput): PodiumBoard[] {
   const teamsById = new Map(teams.map((t) => [t.id, t]));
+  const nullBracket = bracketMatches.filter((m) => m.bracket_type === null);
 
   if (competition.format_type === "gold_silver") {
     return [
@@ -102,12 +131,26 @@ export function buildPodium({
     ];
   }
 
-  if (competition.format_type === "single_elimination" || competition.format_type === "bracket_only") {
-    return [bracketBoard("Podio", bracketMatches.filter((m) => m.bracket_type === null), teamsById)];
+  if (competition.format_type === "bracket_only") {
+    return [bracketBoard("Podio", nullBracket, teamsById)];
   }
 
-  // groups_only: sólo hay podio si el torneo tiene UN solo grupo (decisión
-  // explícita — con varios grupos y sin fase final no hay ranking único).
+  // Con fase final generada (automática en 'single_elimination', a mano en
+  // 'groups_only'), el podio sale del cuadro — antes 'groups_only' la
+  // ignoraba y mostraba la tabla del grupo aunque la final ya se hubiera
+  // jugado. Se pasan las tablas por si el cuadro es solo una final.
+  if (nullBracket.length > 0) {
+    return [bracketBoard("Podio", nullBracket, teamsById, standingsByGroup)];
+  }
+
+  // Sin cuadro: 'groups_only', o 'single_elimination' donde clasificó un
+  // solo equipo y no hubo fase final (ver maybeAdvanceCompetitionPhase).
+  // Hay podio si el torneo tiene UN solo grupo (decisión explícita — con
+  // varios grupos y sin fase final no hay ranking único).
+  if (competition.format_type === "single_elimination" && competition.status !== "finished") {
+    return [{ label: "Podio", entries: [], note: "El cuadro todavía no se generó — termina la fase de grupos primero." }];
+  }
+
   if (groups.length === 1 && standingsByGroup.length === 1) {
     const rows = standingsByGroup[0].rows.slice(0, 3);
     const entries: PodiumEntry[] = rows

@@ -64,6 +64,9 @@ export function BracketView({
               // La final espera a que se juegue el 3er puesto: tiene sus dos
               // finalistas pero sigue en 'pending_teams'.
               const finalWaitingForThird = m.round === "F" && bothTeams && m.status === "pending_teams";
+              // Cerrado con un solo equipo: pase directo (ronda 1 con menos
+              // equipos que lugares) o 3er puesto sin rival (cuadro de 3).
+              const noRival = decided && !bothTeams;
               return (
                 <div
                   key={m.id}
@@ -75,6 +78,7 @@ export function BracketView({
                     name={m.team_a_name}
                     memberNames={m.team_a_member_names}
                     won={m.winner_id !== null && m.winner_id === m.team_a_id}
+                    emptyLabel={decided ? "Sin rival" : "Por definir"}
                     score={m.score_a}
                     cardSummary={m.team_a_id ? cardsByTeam(m.cards, m.team_a_id, m.team_b_id).a : null}
                   />
@@ -82,10 +86,17 @@ export function BracketView({
                     name={m.team_b_name}
                     memberNames={m.team_b_member_names}
                     won={m.winner_id !== null && m.winner_id === m.team_b_id}
+                    emptyLabel={decided ? "Sin rival" : "Por definir"}
                     score={m.score_b}
                     cardSummary={m.team_b_id ? cardsByTeam(m.cards, m.team_a_id, m.team_b_id).b : null}
                   />
-                  {decided ? (
+                  {noRival ? (
+                    <p className="text-[10px] panel-label">
+                      {m.round === "3P"
+                        ? "3º directo: la otra semifinal fue un pase directo, no hubo rival"
+                        : "Pasa directo, sin rival"}
+                    </p>
+                  ) : decided ? (
                     <p className="text-[10px] panel-label">✅ Jugado</p>
                   ) : finalWaitingForThird ? (
                     <p className="text-[10px] text-brand-orange">⏳ Primero se juega el 3er puesto</p>
@@ -139,12 +150,14 @@ function TeamLine({
   name,
   memberNames,
   won,
+  emptyLabel = "Por definir",
   score,
   cardSummary,
 }: {
   name: string | null;
   memberNames: string | null;
   won: boolean;
+  emptyLabel?: string;
   score: number | null;
   cardSummary?: ReturnType<typeof cardsByTeam>["a"];
 }) {
@@ -152,7 +165,7 @@ function TeamLine({
     <div className={`flex items-start justify-between gap-2 text-base ${won ? "font-semibold text-brand-green" : "panel-label"}`}>
       <span className="truncate">
         {won && "🏆 "}
-        {name ? <TeamLabel name={name} memberNames={memberNames} /> : "Por definir"}{" "}
+        {name ? <TeamLabel name={name} memberNames={memberNames} /> : <span className="italic opacity-70">{emptyLabel}</span>}{" "}
         <TeamCardBadges summary={cardSummary} />
       </span>
       {score !== null && <span className="shrink-0 ml-2">{score}</span>}

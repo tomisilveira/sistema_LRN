@@ -1,6 +1,7 @@
 import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { generateBracketForCompetition, ensureThirdPlaceMatch } from "./generate-bracket-for-competition";
+import { resolveThirdPlaceWithoutRival } from "./bracket-actions";
 import type { BracketType, Competition } from "./database.types";
 
 /** `bracket_type`s relevantes para cada formato — `gold_silver` tiene dos
@@ -50,6 +51,18 @@ export async function maybeAdvanceCompetitionPhase(
       if (allDone) {
         if (competition.format_type === "single_elimination" || competition.format_type === "gold_silver") {
           await generateBracketForCompetition(supabase, competitionId);
+          // Si no se pudo armar ningún cuadro (clasificó 1 solo equipo en
+          // total, ej. un grupo con "pasan 1"), el torneo quedaba para
+          // siempre en fase de grupos: se da por terminado y el podio sale
+          // de la tabla de posiciones (ver lib/podium.ts).
+          const { count } = await supabase
+            .from("matches")
+            .select("id", { count: "exact", head: true })
+            .eq("competition_id", competitionId)
+            .eq("phase", "bracket");
+          if ((count ?? 0) === 0) {
+            await supabase.from("competitions").update({ status: "finished" }).eq("id", competitionId);
+          }
         } else {
           await supabase.from("competitions").update({ status: "finished" }).eq("id", competitionId);
         }
@@ -62,6 +75,20 @@ export async function maybeAdvanceCompetitionPhase(
       // existen), así aparece la columna "3er puesto" sin ningún paso
       // manual. Idempotente: si ya está, no hace nada.
       await ensureThirdPlaceMatch(supabase, competitionId);
+
+      // Reparación de cuadros de 3 equipos que ya quedaron trabados con un
+      // 3er puesto de un solo equipo (antes de este arreglo): se resuelve
+      // acá, con el próximo resultado que se cargue en el torneo.
+      const { data: pendingThird } = await supabase
+        .from("matches")
+        .select("id")
+        .eq("competition_id", competitionId)
+        .eq("phase", "bracket")
+        .eq("round", "3P")
+        .neq("status", "completed");
+      for (const tp of pendingThird ?? []) {
+        await resolveThirdPlaceWithoutRival(supabase, tp.id);
+      }
 
       const types = relevantBracketTypes(competition.format_type);
       const finalsDone = await Promise.all(

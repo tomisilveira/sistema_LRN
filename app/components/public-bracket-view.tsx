@@ -62,6 +62,7 @@ export function PublicBracketView({ matches }: { matches: BracketDisplayMatch[] 
                     name={m.team_a_name}
                     memberNames={m.team_a_member_names}
                     won={m.winner_id !== null && m.winner_id === m.team_a_id}
+                    emptyLabel={decided ? "Sin rival" : "Por definir"}
                     score={m.score_a}
                     cardSummary={cardsByTeam(m.cards, m.team_a_id, m.team_b_id).a}
                   />
@@ -69,9 +70,13 @@ export function PublicBracketView({ matches }: { matches: BracketDisplayMatch[] 
                     name={m.team_b_name}
                     memberNames={m.team_b_member_names}
                     won={m.winner_id !== null && m.winner_id === m.team_b_id}
+                    emptyLabel={decided ? "Sin rival" : "Por definir"}
                     score={m.score_b}
                     cardSummary={cardsByTeam(m.cards, m.team_a_id, m.team_b_id).b}
                   />
+                  {decided && m.round === "3P" && (!m.team_a_name || !m.team_b_name) && (
+                    <p className="text-[11px] panel-label">3º directo: no hubo rival para este partido</p>
+                  )}
                   {m.round === "F" && m.status === "pending_teams" && m.team_a_name && m.team_b_name && (
                     <p className="text-[11px] text-brand-orange">⏳ Se juega después del 3er puesto</p>
                   )}
@@ -90,12 +95,14 @@ function TeamLine({
   name,
   memberNames,
   won,
+  emptyLabel = "Por definir",
   score,
   cardSummary,
 }: {
   name: string | null;
   memberNames: string | null;
   won: boolean;
+  emptyLabel?: string;
   score: number | null;
   cardSummary: ReturnType<typeof cardsByTeam>["a"];
 }) {
@@ -107,7 +114,7 @@ function TeamLine({
     >
       <span className="truncate">
         {won && "🏆 "}
-        {name ? <TeamLabel name={name} memberNames={memberNames} /> : "Por definir"}{" "}
+        {name ? <TeamLabel name={name} memberNames={memberNames} /> : <span className="italic opacity-70">{emptyLabel}</span>}{" "}
         <TeamCardBadges summary={cardSummary} />
       </span>
       {score !== null && <span className="shrink-0 ml-2 tabular-nums">{score}</span>}

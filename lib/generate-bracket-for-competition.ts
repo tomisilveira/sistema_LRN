@@ -1,7 +1,7 @@
 import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { buildSeedOrder, generateBracketRounds } from "./bracket";
-import { persistBracket } from "./bracket-actions";
+import { persistBracket, resolveThirdPlaceWithoutRival } from "./bracket-actions";
 import { autoScheduleAndPersist } from "./apply-auto-schedule";
 import type { SchedulableMatch } from "./auto-schedule";
 import type { BracketType, Competition, GroupStandingRow, Match, Team } from "./database.types";
@@ -296,6 +296,10 @@ export async function ensureThirdPlaceMatch(
     if (finals[0].status === "scheduled") {
       await supabase.from("matches").update({ status: "pending_teams" }).eq("id", finals[0].id);
     }
+
+    // Cuadro de 3 equipos: una semi fue pase directo → el 3º sale directo,
+    // sin partido (y la final vuelve a habilitarse). Nada que agendar.
+    if (await resolveThirdPlaceWithoutRival(supabase, tp.id)) continue;
 
     await autoScheduleAndPersist(supabase, competition.event_id, competition.discipline_id, [
       { id: tp.id, team_a_id: tpNow?.team_a_id ?? null, team_b_id: tpNow?.team_b_id ?? null },

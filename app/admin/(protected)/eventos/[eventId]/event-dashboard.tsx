@@ -422,11 +422,18 @@ async function buildWinners(
       const groupsClosed = competition.status === "groups_done" || competition.status === "finished";
       if (competition.format_type === "groups_only" && !groupsClosed) return null;
 
-      let standingsByGroup: { group: Group; rows: GroupStandingRow[] }[] = [];
-      if (competition.format_type === "groups_only" && cGroups.length === 1) {
-        const { data } = await supabase.rpc("get_group_standings", { p_group_id: cGroups[0].id });
-        standingsByGroup = [{ group: cGroups[0], rows: (data ?? []) as GroupStandingRow[] }];
-      }
+      // Tablas de todos los grupos (con los grupos cerrados): las usa el
+      // podio de "solo grupos" y también el 3º de un cuadro que es solo una
+      // final (ej. grupo de 3 donde pasan 2 — ver lib/podium.ts).
+      const groupPhaseOver = groupsClosed || competition.status === "bracket_in_progress";
+      const standingsByGroup: { group: Group; rows: GroupStandingRow[] }[] = groupPhaseOver
+        ? await Promise.all(
+            cGroups.map(async (g) => {
+              const { data } = await supabase.rpc("get_group_standings", { p_group_id: g.id });
+              return { group: g, rows: (data ?? []) as GroupStandingRow[] };
+            })
+          )
+        : [];
 
       const boards = buildPodium({
         competition,

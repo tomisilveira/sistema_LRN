@@ -196,6 +196,51 @@ async function unblockFinalAfterThirdPlace(supabase: SupabaseClient, thirdPlaceM
 }
 
 /**
+ * 3er puesto SIN RIVAL: con 3 equipos en un cuadro (se arma de 4 lugares),
+ * una de las semifinales es un pase directo — nunca tiene perdedor — así
+ * que al partido por el 3er puesto solo llega UN equipo (el perdedor de la
+ * otra semi) y se quedaba esperando para siempre. Encima la final espera al
+ * 3er puesto (ver finalMustWaitForThirdPlace), así que tampoco se
+ * habilitaba y el torneo nunca terminaba.
+ *
+ * Acá: si el 3er puesto tiene un solo equipo y la otra semifinal es un pase
+ * directo (completada con un solo equipo), ese equipo queda 3º directo — el
+ * partido se da por completado sin jugarse (sin marcador) y se habilita la
+ * final. Idempotente; devuelve true si lo resolvió.
+ */
+export async function resolveThirdPlaceWithoutRival(
+  supabase: SupabaseClient,
+  thirdPlaceMatchId: string
+): Promise<boolean> {
+  const { data: tp } = await supabase
+    .from("matches")
+    .select("*")
+    .eq("id", thirdPlaceMatchId)
+    .maybeSingle<Match>();
+  if (!tp || tp.round !== "3P" || tp.status === "completed") return false;
+
+  const onlyTeam = tp.team_a_id && !tp.team_b_id ? tp.team_a_id : !tp.team_a_id && tp.team_b_id ? tp.team_b_id : null;
+  if (!onlyTeam) return false; // 0 equipos (falta jugar la semi real) o 2 (se juega normal)
+
+  const { data: semis } = await supabase
+    .from("matches")
+    .select("status, team_a_id, team_b_id")
+    .eq("consolation_match_id", tp.id);
+  const byeSemi = (semis ?? []).some((s) => s.status === "completed" && (!s.team_a_id || !s.team_b_id));
+  if (!byeSemi) return false;
+
+  const { error } = await supabase
+    .from("matches")
+    .update({ status: "completed", winner_id: onlyTeam, score_a: null, score_b: null })
+    .eq("id", tp.id)
+    .neq("status", "completed");
+  if (error) throw error;
+
+  await unblockFinalAfterThirdPlace(supabase, { ...tp, status: "completed", winner_id: onlyTeam });
+  return true;
+}
+
+/**
  * Al completarse un partido de cuadro eliminatorio, propaga los equipos que
  * correspondan:
  * - GANADOR → team_a_id/team_b_id del match apuntado por
@@ -222,5 +267,7 @@ export async function advanceWinner(supabase: SupabaseClient, match: Match): Pro
   if (match.consolation_match_id && match.consolation_slot && match.team_a_id && match.team_b_id) {
     const loserId = match.winner_id === match.team_a_id ? match.team_b_id : match.team_a_id;
     await pushTeamInto(supabase, match.consolation_match_id, match.consolation_slot, loserId);
+    // Si la otra semi fue un pase directo, este perdedor ya es el 3º.
+    await resolveThirdPlaceWithoutRival(supabase, match.consolation_match_id);
   }
 }
