@@ -19,6 +19,7 @@ import { CopyLinkButton } from "@/app/components/copy-link-button";
 import { canManageEvent, getAdminContext } from "@/lib/admin-auth";
 import { EventAdminsPanel } from "./event-admins-panel";
 import { InscriptionPanel } from "./inscription-panel";
+import { RebalanceCourtsButton } from "./rebalance-courts-button";
 import {
   DownloadIcon,
   ExternalIcon,
@@ -112,7 +113,7 @@ export default async function EventPage({
       badge: (courts ?? []).length || undefined,
       content: (
         <section className="panel-card rounded-xl p-4 space-y-4">
-          <div className="flex items-start justify-between gap-3">
+          <div className="flex flex-wrap items-start justify-between gap-3">
             <div>
               <h2 className="font-medium">Canchas</h2>
               <p className="text-xs panel-label mt-0.5">
@@ -121,33 +122,36 @@ export default async function EventPage({
               </p>
             </div>
             {hasCourts && (
-              <ModalFormButton
-                buttonLabel="+ Agregar cancha"
-                buttonClassName="rounded-md panel-button-primary font-medium px-4 py-2 text-sm shrink-0 whitespace-nowrap"
-                title="Agregar cancha"
-                action={addCourtAction}
-              >
-                <div>
-                  <label className="block text-sm panel-label mb-1">Nombre</label>
-                  <input
-                    name="name"
-                    required
-                    placeholder="Cancha extra"
-                    className="w-full rounded-md panel-input px-3 py-2 text-sm"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm panel-label mb-1">Disciplina</label>
-                  <select name="discipline_id" defaultValue="" className="w-full rounded-md panel-input px-3 py-2 text-sm">
-                    <option value="">Sin disciplina asignada</option>
-                    {(disciplines ?? []).map((d: Discipline) => (
-                      <option key={d.id} value={d.id}>
-                        {disciplineDisplayName(d.name)}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </ModalFormButton>
+              <div className="flex flex-wrap items-start justify-end gap-2">
+                <RebalanceCourtsButton eventId={eventId} />
+                <ModalFormButton
+                  buttonLabel="+ Agregar cancha"
+                  buttonClassName="rounded-md panel-button-primary font-medium px-4 py-2 text-sm shrink-0 whitespace-nowrap"
+                  title="Agregar cancha"
+                  action={addCourtAction}
+                >
+                  <div>
+                    <label className="block text-sm panel-label mb-1">Nombre</label>
+                    <input
+                      name="name"
+                      required
+                      placeholder="Cancha extra"
+                      className="w-full rounded-md panel-input px-3 py-2 text-sm"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm panel-label mb-1">Disciplina</label>
+                    <select name="discipline_id" defaultValue="" className="w-full rounded-md panel-input px-3 py-2 text-sm">
+                      <option value="">Sin disciplina asignada</option>
+                      {(disciplines ?? []).map((d: Discipline) => (
+                        <option key={d.id} value={d.id}>
+                          {disciplineDisplayName(d.name)}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </ModalFormButton>
+              </div>
             )}
           </div>
           {hasCourts ? (

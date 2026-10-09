@@ -50,6 +50,7 @@ import { disciplineCategoryLabel, disciplineDisplayName } from "@/lib/discipline
 import { FormatAdvisory } from "./format-advisory";
 import { EditFormatForm } from "./edit-format-form";
 import { PodiumPanel } from "./podium-panel";
+import { RebalanceCourtsButton } from "@/app/admin/(protected)/eventos/[eventId]/rebalance-courts-button";
 import { buildPodium } from "@/lib/podium";
 
 // Esta página nunca necesita el `access_token` de las canchas (el link del
@@ -671,8 +672,8 @@ export default async function CompetitionPage({
     badge: (groupMatches ?? []).length || undefined,
     content: (
       <section className="panel-card rounded-xl p-4 space-y-3">
-        <div className="flex items-center justify-between gap-3">
-          <h2 className="font-medium">Partidos de fase de grupos</h2>
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <h2 className="font-medium pt-1.5">Partidos de fase de grupos</h2>
           {(groupMatches ?? []).length === 0 ? (
             startBlockedReason ? (
               <span
@@ -692,7 +693,8 @@ export default async function CompetitionPage({
               </form>
             )
           ) : (
-            <div className="flex flex-wrap items-center gap-2">
+            <div className="flex flex-wrap items-start justify-end gap-2">
+              <RebalanceCourtsButton eventId={competition.event_id} compact />
               <form action={syncGroupFixtureAction}>
                 <button
                   type="submit"

@@ -3,7 +3,30 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
-import { getAdminContext } from "@/lib/admin-auth";
+import { canManageEvent, getAdminContext } from "@/lib/admin-auth";
+import { rebalanceEventCourts, type RebalanceSummary } from "@/lib/rebalance-courts";
+
+export type RebalanceResult = { ok: true; summary: RebalanceSummary } | { ok: false; error: string };
+
+/** Botón "Redistribuir canchas": reparte parejo entre las canchas de cada
+ * disciplina todos los partidos sin jugar del evento (ver
+ * lib/rebalance-courts.ts). Devuelve el resumen para mostrarlo en el botón. */
+export async function rebalanceCourts(eventId: string): Promise<RebalanceResult> {
+  const supabase = await createServerSupabaseClient();
+  if (!(await canManageEvent(supabase, eventId))) {
+    return { ok: false, error: "No tenés permiso para administrar este evento." };
+  }
+  try {
+    const summary = await rebalanceEventCourts(supabase, eventId);
+    revalidatePath(`/admin/eventos/${eventId}`);
+    revalidatePath("/admin/(protected)/competencias/[competitionId]", "page");
+    revalidatePath(`/evento/${eventId}/pantalla`);
+    revalidatePath("/publico");
+    return { ok: true, summary };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : "No se pudo redistribuir." };
+  }
+}
 
 export async function addCourt(eventId: string, formData: FormData) {
   const name = String(formData.get("name") ?? "").trim();
