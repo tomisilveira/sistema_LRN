@@ -1,6 +1,7 @@
 import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { bracketStage, rebalanceSchedule, type RebalanceMatch } from "./auto-schedule";
+import { bracketStage, rebalanceSchedule, type RebalanceMatch, type ScheduleAssignment } from "./auto-schedule";
+import { persistCourtAssignments } from "./apply-auto-schedule";
 import { disciplineDisplayName } from "./discipline-display";
 
 export interface RebalanceSummaryRow {
@@ -94,7 +95,7 @@ export async function rebalanceEventCourts(
   }
 
   const stageOf = (m: MatchRow) => (m.phase === "group" ? 0 : bracketStage(m.round));
-  const updates: { id: string; court_id: string; turno: number }[] = [];
+  const updates: ScheduleAssignment[] = [];
   const rows: RebalanceSummaryRow[] = [];
 
   for (const pool of pools.values()) {
@@ -134,7 +135,7 @@ export async function rebalanceEventCourts(
       perCourt.set(a.courtId, (perCourt.get(a.courtId) ?? 0) + 1);
       const prev = before.get(a.matchId);
       if (prev?.court_id !== a.courtId || prev?.turno !== a.turno) {
-        updates.push({ id: a.matchId, court_id: a.courtId, turno: a.turno });
+        updates.push(a);
       }
     }
     const loads = [...perCourt.values()];
@@ -149,23 +150,8 @@ export async function rebalanceEventCourts(
     });
   }
 
-  // De a tandas en paralelo: un viaje por partido, pero no 1 detrás del otro.
-  for (let i = 0; i < updates.length; i += 25) {
-    const results = await Promise.all(
-      updates
-        .slice(i, i + 25)
-        .map((u) =>
-          supabase
-            .from("matches")
-            .update({ court_id: u.court_id, turno: u.turno })
-            .eq("id", u.id)
-            // Si el juez lo arrancó mientras tanto, no se lo mueve.
-            .in("status", [...MOVABLE])
-        )
-    );
-    const failed = results.find((r) => r.error);
-    if (failed?.error) throw new Error(failed.error.message);
-  }
+  // Si el juez arrancó alguno mientras tanto, ese no se mueve.
+  await persistCourtAssignments(supabase, updates, [...MOVABLE]);
 
   return { moved: updates.length, rows };
 }

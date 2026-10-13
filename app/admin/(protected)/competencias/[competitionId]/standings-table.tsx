@@ -41,8 +41,8 @@ export function StandingsTable({
             {rows.map((r, i) => (
               <tr
                 key={r.team_id}
-                className={`border-t border-neutral-200 dark:border-neutral-800 transition-colors hover:bg-neutral-100 dark:hover:bg-neutral-800/60 ${
-                  i % 2 === 1 ? "bg-neutral-50/60 dark:bg-neutral-900/40" : ""
+                className={`border-t border-neutral-200 transition-colors hover:bg-neutral-100 ${
+                  i % 2 === 1 ? "bg-neutral-50/60" : ""
                 }`}
               >
                 <td className="py-1.5 pr-2">
@@ -92,9 +92,9 @@ function RankBadge({ rank }: { rank: number }) {
     return <span className="panel-label text-sm px-1.5">{rank}</span>;
   }
   const styles = {
-    1: "bg-brand-orange/20 text-amber-800 dark:text-brand-orange border-brand-orange/40",
-    2: "bg-neutral-300/40 text-neutral-700 dark:bg-neutral-400/20 dark:text-neutral-300 border-neutral-400/40",
-    3: "bg-brand-teal/15 text-brand-teal-dark dark:text-brand-teal border-brand-teal/40",
+    1: "bg-brand-orange/20 text-amber-800 border-brand-orange/40",
+    2: "bg-neutral-300/40 text-neutral-700 border-neutral-400/40",
+    3: "bg-brand-teal/15 text-brand-teal-dark border-brand-teal/40",
   } as const;
   return (
     <span

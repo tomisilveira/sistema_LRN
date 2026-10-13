@@ -1,4 +1,5 @@
-# Pipeline de CI: valida que el código instale, tipee, pase lint y compile
+# Pipeline de CI: valida que el código instale, tipee, pase lint y los tests
+# (lógica de cuadros, fixture, reparto de canchas, podio) y compile
 # limpio en cada push. No hace deploy — el deploy real depende de dónde se
 # hostee el sitio (Vercel, o self-hosted; ver README → Deploy).
 #
@@ -51,9 +52,18 @@ typecheck:
   script:
     - npm run typecheck
 
+test:
+  stage: check
+  needs: ["install"]
+  cache:
+    <<: *npm_cache
+    policy: pull
+  script:
+    - npm test
+
 build:
   stage: build
-  needs: ["lint", "typecheck"]
+  needs: ["lint", "typecheck", "test"]
   cache:
     <<: *npm_cache
     policy: pull

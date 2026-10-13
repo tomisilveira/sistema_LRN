@@ -95,15 +95,17 @@ export async function persistBracket(
     if (consErr) throw consErr;
 
     const sfIds = idsByRound[sfIndex] ?? {};
-    for (const [slot, matchId] of Object.entries(sfIds)) {
-      await supabase
-        .from("matches")
-        .update({
-          consolation_match_id: consolation.id,
-          consolation_slot: Number(slot) === 0 ? "a" : "b",
-        })
-        .eq("id", matchId);
-    }
+    await Promise.all(
+      Object.entries(sfIds).map(([slot, matchId]) =>
+        supabase
+          .from("matches")
+          .update({
+            consolation_match_id: consolation.id,
+            consolation_slot: Number(slot) === 0 ? "a" : "b",
+          })
+          .eq("id", matchId)
+      )
+    );
   }
 
   // Los "byes" de la ronda 1 ya quedaron con status completed + winner_id;
@@ -117,6 +119,8 @@ export async function persistBracket(
     .in("id", round1Ids);
   if (fetchErr) throw fetchErr;
 
+  // De a uno a propósito: dos pases directos pueden caer en el mismo
+  // partido de la ronda 2 y pisarse si van a la vez.
   for (const match of (round1Matches ?? []) as Match[]) {
     if (match.status === "completed" && match.winner_id) {
       await advanceWinner(supabase, match);

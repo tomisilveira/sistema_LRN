@@ -57,8 +57,8 @@ export function MergeCompetitionButton({
     return (
       <div className="rounded-md border border-red-500/30 bg-red-500/8 p-3 space-y-2 panel-enter">
         <p className="text-sm panel-label">
-          ¿Mover los <span className="font-medium text-neutral-800 dark:text-neutral-100">{teamCount}</span> equipos
-          de este torneo a <span className="font-medium text-neutral-800 dark:text-neutral-100">{chosen.label}</span>?
+          ¿Mover los <span className="font-medium text-neutral-800">{teamCount}</span> equipos
+          de este torneo a <span className="font-medium text-neutral-800">{chosen.label}</span>?
           Este torneo va a quedar vacío (no se borra solo).
           {chosen.crossDiscipline && ' Cambia de disciplina — revisá los robots de cada equipo después con "Editar".'}
         </p>
@@ -90,7 +90,7 @@ export function MergeCompetitionButton({
         className={`text-sm rounded-md px-3 py-2 panel-enter ${
           step === "success"
             ? "panel-chip-success"
-            : "text-red-600 dark:text-red-400 border border-red-500/30 bg-red-500/8 cursor-pointer"
+            : "text-red-600 border border-red-500/30 bg-red-500/8 cursor-pointer"
         }`}
         onClick={step === "error" ? reset : undefined}
         title={step === "error" ? "Tocar para cerrar" : undefined}

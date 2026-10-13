@@ -48,7 +48,7 @@ export function BracketView({
             className={`text-xs font-semibold uppercase tracking-wide text-center pb-2 mb-2 border-b-2 ${
               isThird
                 ? "text-brand-orange border-brand-orange/40"
-                : "text-brand-teal-dark dark:text-brand-teal border-brand-teal/30"
+                : "text-brand-teal-dark border-brand-teal/30"
             }`}
           >
             {isThird && "🥉 "}
@@ -71,7 +71,7 @@ export function BracketView({
                 <div
                   key={m.id}
                   className={`rounded-xl panel-card p-3 space-y-2 border-l-4 transition-colors duration-300 panel-enter ${
-                    decided ? "border-brand-green" : "border-neutral-300 dark:border-neutral-700"
+                    decided ? "border-brand-green" : "border-neutral-300"
                   }`}
                 >
                   <TeamLine

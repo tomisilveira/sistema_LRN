@@ -4,7 +4,6 @@ import { canManageCompetition } from "@/lib/admin-auth";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import type {
   Competition,
-  Court,
   Discipline,
   Category,
   Team,
@@ -29,8 +28,7 @@ import {
 } from "./actions";
 import { GroupAssignSelect } from "./group-assign-select";
 import { StandingsTable } from "./standings-table";
-import { MatchResultForm } from "./match-result-form";
-import { MatchScheduleForm } from "./match-schedule-form";
+import { MatchRow, type CourtOption } from "./match-row";
 import { TeamCard } from "./team-card";
 import { MergeCompetitionButton } from "./merge-competition-button";
 import { BracketView, type BracketDisplayMatch } from "./bracket-view";
@@ -38,8 +36,6 @@ import { RealtimeRefresh } from "./realtime-refresh";
 import { EnsureThirdPlace } from "./ensure-third-place";
 import { TeamLabel } from "@/app/components/team-label";
 import { TeamFormFields } from "@/app/components/team-form-fields";
-import { TeamCardBadges } from "@/app/components/team-card-badges";
-import { cardsByTeam } from "@/lib/match-cards";
 import { Breadcrumbs } from "@/app/components/breadcrumbs";
 import { TabbedLayout, type TabItem } from "@/app/components/tabbed-layout";
 import { ConfirmSubmitButton } from "@/app/components/confirm-submit-button";
@@ -53,10 +49,6 @@ import { PodiumPanel } from "./podium-panel";
 import { RebalanceCourtsButton } from "@/app/admin/(protected)/eventos/[eventId]/rebalance-courts-button";
 import { buildPodium } from "@/lib/podium";
 
-// Esta página nunca necesita el `access_token` de las canchas (el link del
-// juez se copia desde la página del evento) y además pasa la lista a un
-// client component — así el token no viaja al browser.
-type CourtOption = Pick<Court, "id" | "name" | "discipline_id" | "sort_order">;
 
 export default async function CompetitionPage({
   params,
@@ -308,7 +300,7 @@ export default async function CompetitionPage({
           </section>
 
           <section className="rounded-xl p-4 space-y-3 border border-red-500/30 bg-red-500/[0.03]">
-            <h2 className="font-medium text-red-600 dark:text-red-400">Zona de peligro</h2>
+            <h2 className="font-medium text-red-600">Zona de peligro</h2>
             <p className="text-xs panel-label">
               Borra este torneo y todo lo que tiene adentro: equipos, grupos, partidos y resultados. No
               se puede deshacer.
@@ -363,13 +355,13 @@ export default async function CompetitionPage({
             </Link>
           </p>
           {competition.status !== "setup" && siblingCompetitions.length > 1 && (
-            <p className="text-xs text-amber-600 dark:text-amber-400 -mt-1">
+            <p className="text-xs text-amber-600 -mt-1">
               Para mover equipos de este torneo a otro (unificar/dividir categorías), primero hay que
               reiniciarlo — ya tiene fixture armado.
             </p>
           )}
           {competition.status === "setup" && moveTargets.length === 0 && blockedMoveSiblings.length > 0 && (
-            <p className="text-xs text-amber-600 dark:text-amber-400 -mt-1">
+            <p className="text-xs text-amber-600 -mt-1">
               &quot;Mover a otro torneo&quot; no tiene destino ahora — {blockedMoveSiblings.join(", ")} ya
               arrancó{blockedMoveSiblings.length > 1 ? "ron" : ""} (tiene fixture armado). Reiniciálo si
               necesitás mover equipos ahí.
@@ -523,7 +515,7 @@ export default async function CompetitionPage({
           )}
 
           {unassignedReady.length > 0 && (
-            <div className="pt-2 border-t border-neutral-200 dark:border-neutral-800">
+            <div className="pt-2 border-t border-neutral-200">
               <p className="text-xs panel-label mb-1.5">
                 Listos sin grupo ({unassignedReady.length}) — elegí el grupo de cada uno. Si el torneo
                 ya arrancó, después usá &ldquo;Armar partidos que falten&rdquo; en la pestaña Partidos.
@@ -555,7 +547,7 @@ export default async function CompetitionPage({
           )}
 
           {unassignedNotReady.length > 0 && (
-            <div className="pt-2 border-t border-neutral-200 dark:border-neutral-800">
+            <div className="pt-2 border-t border-neutral-200">
               <p className="text-xs panel-label mb-1.5">
                 Fuera de los grupos ({unassignedNotReady.length}) — falta acreditar y/o homologar. No
                 entran a ningún grupo hasta estar listos (pestaña Equipos o el link de Acreditación).
@@ -609,7 +601,7 @@ export default async function CompetitionPage({
                         {groupTeams.length} equipo{groupTeams.length === 1 ? "" : "s"}
                       </span>
                     </div>
-                    <p className="text-2xl font-bold text-brand-teal-dark dark:text-brand-teal">
+                    <p className="text-2xl font-bold text-brand-teal-dark">
                       {totalPeople} <span className="text-sm font-normal panel-label">personas</span>
                     </p>
                     {missingCount > 0 && (
@@ -623,7 +615,7 @@ export default async function CompetitionPage({
               })}
             </div>
           )}
-          <div className="pt-3 border-t border-neutral-200 dark:border-neutral-800 flex items-center justify-between">
+          <div className="pt-3 border-t border-neutral-200 flex items-center justify-between">
             <span className="text-sm font-medium">Total del torneo</span>
             <span className="text-lg font-bold">
               {grandTotalPeople} personas · {(teams ?? []).length} equipos
@@ -716,7 +708,7 @@ export default async function CompetitionPage({
           )}
         </div>
         {(groupMatches ?? []).length > 0 && unassignedReady.length > 0 && (
-          <p className="text-xs text-amber-600 dark:text-amber-400">
+          <p className="text-xs text-amber-600">
             Hay {unassignedReady.length} equipo{unassignedReady.length === 1 ? "" : "s"} listo
             {unassignedReady.length === 1 ? "" : "s"} sin grupo. Asigná
             {unassignedReady.length === 1 ? "lo" : "los"} en la pestaña Grupos y después apretá
@@ -893,7 +885,7 @@ export default async function CompetitionPage({
             </div>
           )}
           {silverMatches.length > 0 && (
-            <div className="space-y-3 pt-4 border-t border-neutral-200 dark:border-neutral-800">
+            <div className="space-y-3 pt-4 border-t border-neutral-200">
               <h3 className="text-sm font-semibold text-neutral-500">🥈 Copa Plata</h3>
               <BracketView competitionId={competitionId} matches={silverMatches} />
             </div>
@@ -999,7 +991,7 @@ export default async function CompetitionPage({
                   className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium transition-colors ${
                     isCurrent
                       ? "panel-button-primary"
-                      : "panel-chip hover:bg-neutral-300 dark:hover:bg-neutral-700"
+                      : "panel-chip hover:bg-neutral-300"
                   }`}
                 >
                   <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${sColors.dot}`} aria-hidden="true" />
@@ -1018,121 +1010,6 @@ export default async function CompetitionPage({
         sectionEventId={competition.event_id}
         sectionHref={event ? `/admin/eventos/${event.id}` : undefined}
       />
-    </div>
-  );
-}
-
-function MatchRow({
-  match,
-  teamAName,
-  teamBName,
-  teamAMemberNames,
-  teamBMemberNames,
-  cards,
-  courts,
-  competitionDisciplineId,
-  disciplineNameById,
-  allowDraws,
-  onSchedule,
-  onResult,
-}: {
-  match: Match;
-  teamAName: string;
-  teamBName: string;
-  teamAMemberNames: string | null;
-  teamBMemberNames: string | null;
-  cards: MatchCard[];
-  courts: CourtOption[];
-  competitionDisciplineId: string;
-  disciplineNameById: Map<string, string>;
-  allowDraws: boolean;
-  onSchedule: (matchId: string, formData: FormData) => Promise<void>;
-  onResult: (formData: FormData) => Promise<void>;
-}) {
-  const courtName = match.court_id ? courts.find((c) => c.id === match.court_id)?.name : null;
-  const teamCards = cardsByTeam(cards, match.team_a_id, match.team_b_id);
-
-  return (
-    <div
-      className={`rounded-lg px-3 py-2.5 space-y-2.5 text-[15px] transition-colors ${
-        match.status === "in_progress"
-          ? "bg-brand-orange/5 border border-brand-orange/40"
-          : "panel-surface hover:border-brand-teal/30"
-      }`}
-    >
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <div className="min-w-[180px]">
-          <TeamLabel
-            name={teamAName}
-            memberNames={teamAMemberNames}
-            className={match.winner_id === match.team_a_id ? "font-semibold" : ""}
-          />{" "}
-          <TeamCardBadges summary={teamCards.a} />
-          {" vs "}
-          <TeamLabel
-            name={teamBName}
-            memberNames={teamBMemberNames}
-            className={match.winner_id === match.team_b_id ? "font-semibold" : ""}
-          />{" "}
-          <TeamCardBadges summary={teamCards.b} />
-          {match.status === "completed" && match.score_a !== null && match.score_b !== null && (
-            <span className="panel-label"> · {match.score_a}-{match.score_b}</span>
-          )}
-          {match.status === "in_progress" && (
-            <span className="text-brand-orange font-medium inline-flex items-center gap-1">
-              {" · "}
-              <span className="panel-live-dot" aria-hidden="true" />
-              en curso
-            </span>
-          )}
-        </div>
-        {match.status === "completed" ? (
-          <span className="panel-chip-success text-xs rounded-full px-2 py-0.5 font-medium shrink-0">
-            ✅ Jugado
-          </span>
-        ) : courtName ? (
-          <span className="panel-chip text-xs rounded-full px-2 py-0.5 shrink-0">
-            🏟 {courtName}
-            {match.turno !== null ? ` · Turno ${match.turno}` : ""}
-          </span>
-        ) : (
-          <span className="panel-chip-warning text-xs rounded-full px-2 py-0.5 shrink-0">
-            Sin cancha asignada
-          </span>
-        )}
-      </div>
-
-      {match.status !== "completed" && (
-        <div className="flex flex-wrap items-start gap-x-5 gap-y-2 pt-2 border-t border-neutral-200 dark:border-neutral-800">
-          {/* Cancha y turno se asignan solos al iniciar el torneo — esto es
-              solo para pisar esa asignación a mano si hace falta (ej. una
-              cancha se rompe a mitad de la jornada). */}
-          <div className="flex items-center gap-2">
-            <span className="text-[11px] uppercase tracking-wide panel-label shrink-0">Cancha/turno</span>
-            <MatchScheduleForm
-              matchId={match.id}
-              courtId={match.court_id}
-              turno={match.turno}
-              courts={courts}
-              competitionDisciplineId={competitionDisciplineId}
-              disciplineNameById={disciplineNameById}
-              onSchedule={onSchedule}
-            />
-          </div>
-
-          <div className="flex items-center gap-2">
-            <span className="text-[11px] uppercase tracking-wide panel-label shrink-0">Resultado</span>
-            <MatchResultForm
-              action={onResult}
-              teamAId={match.team_a_id}
-              teamBId={match.team_b_id}
-              teamAName={teamAName}
-              teamBName={teamBName}
-              allowDraws={allowDraws}
-            />
-          </div>
-        </div>
-      )}
     </div>
   );
 }

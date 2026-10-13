@@ -3,7 +3,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { buildSeedOrder, generateBracketRounds } from "./bracket";
 import { persistBracket, resolveThirdPlaceWithoutRival } from "./bracket-actions";
 import { autoScheduleAndPersist } from "./apply-auto-schedule";
-import type { SchedulableMatch } from "./auto-schedule";
+import { bracketStage, type SchedulableMatch } from "./auto-schedule";
 import type { BracketType, Competition, GroupStandingRow, Match, Team } from "./database.types";
 
 type StandingsSelector = (standings: GroupStandingRow[]) => GroupStandingRow[];
@@ -36,17 +36,18 @@ async function collectGroupSeeds(supabase: SupabaseClient, competitionId: string
     .order("sort_order");
   if (!groups || groups.length === 0) throw new Error("No hay grupos cargados.");
 
-  const qualifiersByGroup = [];
-  for (const g of groups) {
-    const { data: standings, error } = await supabase.rpc("get_group_standings", { p_group_id: g.id });
-    if (error) throw new Error(error.message);
-    const rows = select((standings ?? []) as GroupStandingRow[]);
-    qualifiersByGroup.push({
-      groupName: g.name,
-      teams: rows.map((r, i) => ({ teamId: r.team_id, teamName: r.team_name, rank: i + 1 })),
-    });
-  }
-  return qualifiersByGroup;
+  // Todas las tablas a la vez (antes, grupo por grupo).
+  return Promise.all(
+    groups.map(async (g) => {
+      const { data: standings, error } = await supabase.rpc("get_group_standings", { p_group_id: g.id });
+      if (error) throw new Error(error.message);
+      const rows = select((standings ?? []) as GroupStandingRow[]);
+      return {
+        groupName: g.name,
+        teams: rows.map((r, i) => ({ teamId: r.team_id, teamName: r.team_name, rank: i + 1 })),
+      };
+    })
+  );
 }
 
 /** Arma y persiste un cuadro a partir de la tabla de posiciones de los
@@ -147,10 +148,8 @@ export async function generateBracketForCompetition(supabase: SupabaseClient, co
     .eq("phase", "bracket")
     .neq("status", "completed");
 
-  const roundOrder = (round: string | null) =>
-    ({ R32: 0, R16: 1, QF: 2, SF: 3, "3P": 4, F: 5 })[round ?? ""] ?? 3;
   const toSchedule = [...(bracketMatches ?? [])].sort(
-    (a, b) => roundOrder(a.round) - roundOrder(b.round)
+    (a, b) => bracketStage(a.round) - bracketStage(b.round)
   );
 
   if (toSchedule.length > 0) {

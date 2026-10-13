@@ -145,9 +145,11 @@ export async function GET(_req: Request, context: { params: Promise<{ eventId: s
   ];
   posiciones.getRow(1).font = { bold: true };
 
-  for (const competition of competitionList) {
-    const label = competitionLabel(competition);
-
+  // Todos los torneos se cargan en paralelo (2 tandas por torneo, todas a
+  // la vez) y recién después se escriben las filas, en orden. Antes iba
+  // torneo por torneo y grupo por grupo: con 10 torneos eran ~40 viajes
+  // seguidos a la base.
+  const loadCompetition = async (competition: CompetitionRow) => {
     const [{ data: teams }, { data: groups }, { data: groupTeams }, { data: matches }] = await Promise.all([
       supabase.from("teams").select("*").eq("competition_id", competition.id).order("name"),
       supabase.from("groups").select("*").eq("competition_id", competition.id).order("sort_order"),
@@ -157,11 +159,29 @@ export async function GET(_req: Request, context: { params: Promise<{ eventId: s
         .eq("groups.competition_id", competition.id),
       supabase.from("matches").select("*").eq("competition_id", competition.id).order("turno"),
     ]);
-
     const matchIds = ((matches ?? []) as Match[]).map((m) => m.id);
-    const { data: cardsData } = matchIds.length
-      ? await supabase.from("match_cards").select("*").in("match_id", matchIds)
-      : { data: [] as MatchCard[] };
+    const [{ data: cardsData }, standings] = await Promise.all([
+      matchIds.length
+        ? supabase.from("match_cards").select("*").in("match_id", matchIds)
+        : Promise.resolve({ data: [] as MatchCard[] }),
+      Promise.all(
+        ((groups ?? []) as Group[]).map(async (g) => {
+          const { data, error } = await supabase.rpc("get_group_standings", { p_group_id: g.id });
+          if (error) {
+            console.error(`get_group_standings falló para el grupo ${g.id} en export:`, error);
+            return { group: g, rows: [] as GroupStandingRow[] };
+          }
+          return { group: g, rows: (data ?? []) as GroupStandingRow[] };
+        })
+      ),
+    ]);
+    return { competition, teams, groups, groupTeams, matches, cardsData, standings };
+  };
+  const loaded = await Promise.all(competitionList.map(loadCompetition));
+
+  for (const { competition, teams, groups, groupTeams, matches, cardsData, standings } of loaded) {
+    const label = competitionLabel(competition);
+
     const cardsByMatchId = new Map<string, MatchCard[]>();
     for (const c of (cardsData ?? []) as MatchCard[]) {
       const list = cardsByMatchId.get(c.match_id) ?? [];
@@ -229,11 +249,8 @@ export async function GET(_req: Request, context: { params: Promise<{ eventId: s
       });
     }
 
-    for (const g of groupsList) {
-      try {
-        const { data, error } = await supabase.rpc("get_group_standings", { p_group_id: g.id });
-        if (error) throw error;
-        (data ?? []).forEach((row: GroupStandingRow, i: number) => {
+    for (const { group: g, rows } of standings) {
+      rows.forEach((row, i) => {
           posiciones.addRow({
             torneo: label,
             grupo: g.name,
@@ -246,10 +263,7 @@ export async function GET(_req: Request, context: { params: Promise<{ eventId: s
             dif: row.score_diff,
             pts: row.points,
           });
-        });
-      } catch (err) {
-        console.error(`get_group_standings falló para el grupo ${g.id} en export:`, err);
-      }
+      });
     }
   }
 

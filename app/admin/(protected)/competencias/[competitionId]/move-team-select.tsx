@@ -67,9 +67,9 @@ export function MoveTeamSelect({
 
   if (step === "confirm" && chosen) {
     return (
-      <div className="flex flex-col gap-1.5 text-xs rounded-md border border-brand-teal/40 bg-brand-teal/8 dark:bg-brand-teal/10 p-2 max-w-[220px] panel-enter">
+      <div className="flex flex-col gap-1.5 text-xs rounded-md border border-brand-teal/40 bg-brand-teal/8 p-2 max-w-[220px] panel-enter">
         <p className="panel-label">
-          ¿Mover a <span className="font-medium text-neutral-800 dark:text-neutral-100">{chosen.label}</span>?
+          ¿Mover a <span className="font-medium text-neutral-800">{chosen.label}</span>?
           {chosen.crossDiscipline && " Cambia de disciplina — revisá los robots después con \"Editar\"."}
         </p>
         <div className="flex gap-1.5">
@@ -90,7 +90,7 @@ export function MoveTeamSelect({
         className={`text-xs rounded-md px-2 py-1 max-w-[200px] panel-enter ${
           step === "success"
             ? "panel-chip-success"
-            : "text-red-600 dark:text-red-400 border border-red-500/30 bg-red-500/8 cursor-pointer"
+            : "text-red-600 border border-red-500/30 bg-red-500/8 cursor-pointer"
         }`}
         onClick={step === "error" ? reset : undefined}
         title={step === "error" ? "Tocar para cerrar" : undefined}

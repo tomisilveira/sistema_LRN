@@ -205,6 +205,10 @@ spec:
   CSRF: si el proxy lo reescribe, fallan con *"Invalid Server Actions
   request"*. Si no se puede preservar el Host, construir la imagen con
   `SERVER_ACTIONS_ALLOWED_ORIGINS=liga.ejemplo.gob.ar`.
+- **Reenviar la IP real del cliente** en `X-Forwarded-For` (o `X-Real-IP`).
+  La inscripción pública limita los envíos por IP (30 cada 10 minutos)
+  contra el spam: si el proxy no pasa la IP, todas las inscripciones del
+  evento cuentan como una sola conexión y el tope se alcanza enseguida.
 - **Timeouts** de al menos **60 s** (la exportación a Excel de un evento
   grande tarda unos segundos).
 - **WebSockets: no hacen falta hacia la app.** El tiempo real va del
@@ -230,6 +234,9 @@ spec:
     romperse.
   - **No** hacen falta sesiones pegajosas ni caché compartido (Redis): la
     sesión va en cookies y no hay caché de páginas.
+  - El tope anti-spam de la inscripción se cuenta en la memoria de cada
+    réplica: con N réplicas el tope real es N × 30 envíos cada 10 minutos.
+    Alcanza igual para frenar un script; no hace falta un Redis.
 - **Actualizar**: construir un tag nuevo y hacer rolling update. Si la
   versión trae cambios de base de datos (archivos nuevos en
   `supabase/migrations/`), **aplicar la migración antes** de desplegar la

@@ -189,8 +189,9 @@ npm run dev
 
 Abrí `http://localhost:3000` → `/admin/login`.
 
-Antes de subir un cambio: `npm run lint`, `npm run typecheck` y `npm run
-build` deberían quedar sin errores — es lo mismo que corre
+Antes de subir un cambio: `npm run lint`, `npm run typecheck`, `npm test`
+(lógica pura de cuadros, fixture, reparto de canchas y podio, en `tests/`)
+y `npm run build` deberían quedar sin errores — es lo mismo que corre
 [`.gitlab-ci.yml`](.gitlab-ci.yml) en cada push.
 
 ---
@@ -279,15 +280,16 @@ La autorización está en la base, no en la UI.
   mesa de acreditación entren desde el celular sin login. Quien tiene el
   link puede operar esa cancha / esa acreditación: compartilos con cuidado y
   no los pegues en lugares indexables.
-- **Sin rate limiting.** La inscripción pública podría spamearse; para un
-  evento de un día se asume aceptable, pero si se expone por mucho tiempo
-  conviene sumar un límite.
-- **`npm audit`**: `exceljs` arrastra `uuid < 11.1.1` (severidad *moderate*,
-  solo afecta a `uuid` v3/v5/v6 con `buffer` explícito — no es la ruta que
-  usa `exceljs`). No hay fix sin downgrade mayor de `exceljs`; se revisa
-  cuando saquen release.
+- **Anti-spam en la inscripción pública**: campo trampa invisible
+  (`lib/honeypot.ts`) + tope de 30 envíos cada 10 minutos por IP, en memoria
+  de cada instancia (`lib/rate-limit.ts`). Necesita que el proxy pase la IP
+  real en `X-Forwarded-For` (ver [docs/DEPLOY.md](docs/DEPLOY.md)).
+- **`npm audit --omit=dev`** da 0. `exceljs` arrastra `uuid < 11.1.1`; se
+  fuerza `uuid ^11.1.1` con `overrides` en `package.json` (exceljs solo usa
+  `v4()`, que no cambió). Quedan avisos solo en dependencias de desarrollo
+  (lint), que no van a producción.
 
-`npm run lint` y `npx tsc --noEmit` pasan sin warnings.
+`npm run lint`, `npm run typecheck` y `npm test` pasan sin warnings.
 
 ---
 

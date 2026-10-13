@@ -73,7 +73,7 @@ function NavLink({ href, label, active }: { href: string; label: string; active:
       className={`flex items-center rounded-lg px-3 py-2 text-sm whitespace-nowrap transition-all duration-150 active:scale-[0.98] ${
         active
           ? "panel-button-primary font-medium shadow-sm"
-          : "text-neutral-600 dark:text-neutral-400 border border-transparent hover:border-brand-teal/25 hover:bg-brand-teal/8 hover:text-brand-teal-dark dark:hover:text-brand-teal dark:hover:bg-brand-teal/10"
+          : "text-neutral-600 border border-transparent hover:border-brand-teal/25 hover:bg-brand-teal/8 hover:text-brand-teal-dark"
       }`}
     >
       {label}
@@ -108,7 +108,7 @@ function EventSwitcher({
         className={`flex w-full items-start gap-2 rounded-lg px-3 py-2 text-sm text-left transition-all duration-150 active:scale-[0.98] ${
           underEventos
             ? "panel-button-primary font-medium shadow-sm"
-            : "text-neutral-600 dark:text-neutral-400 border border-transparent hover:border-brand-teal/25 hover:bg-brand-teal/8"
+            : "text-neutral-600 border border-transparent hover:border-brand-teal/25 hover:bg-brand-teal/8"
         }`}
       >
         <span className="flex-1 min-w-0 space-y-0.5">
@@ -142,8 +142,8 @@ function EventSwitcher({
                 onClick={() => setOpen(false)}
                 className={`flex flex-col gap-0.5 rounded-md px-2.5 py-2 text-sm transition-colors ${
                   isCurrent
-                    ? "bg-brand-teal/12 text-brand-teal-dark dark:text-brand-teal font-medium"
-                    : "hover:bg-brand-teal/8 text-neutral-600 dark:text-neutral-300"
+                    ? "bg-brand-teal/12 text-brand-teal-dark font-medium"
+                    : "hover:bg-brand-teal/8 text-neutral-600"
                 }`}
               >
                 <span className="block leading-snug line-clamp-2">{ev.name}</span>
@@ -154,7 +154,7 @@ function EventSwitcher({
           <Link
             href="/admin"
             onClick={() => setOpen(false)}
-            className="block rounded-md px-2 py-1.5 text-xs font-medium panel-label hover:bg-brand-teal/8 hover:text-brand-teal-dark dark:hover:text-brand-teal transition-colors"
+            className="block rounded-md px-2 py-1.5 text-xs font-medium panel-label hover:bg-brand-teal/8 hover:text-brand-teal-dark transition-colors"
           >
             Ver todos los eventos
           </Link>
@@ -184,7 +184,7 @@ function SectionItemButton({
       className={`flex items-center justify-between gap-2 w-full rounded-md px-2.5 py-1.5 text-sm text-left whitespace-nowrap transition-all duration-150 active:scale-[0.98] ${
         active
           ? "panel-button-primary font-medium shadow-sm"
-          : "text-neutral-600 dark:text-neutral-400 border border-transparent hover:border-brand-teal/25 hover:bg-brand-teal/8 hover:text-brand-teal-dark dark:hover:text-brand-teal dark:hover:bg-brand-teal/10"
+          : "text-neutral-600 border border-transparent hover:border-brand-teal/25 hover:bg-brand-teal/8 hover:text-brand-teal-dark"
       }`}
     >
       <span className="truncate">{item.label}</span>
@@ -245,11 +245,11 @@ export function AdminSidebar({
   const showSectionTitle = !!section && section.title !== currentEventName;
 
   const nestedSections = showNested && section && (
-    <div className="ml-3 pl-2.5 border-l-2 border-neutral-200 dark:border-neutral-800 space-y-1 panel-enter">
+    <div className="ml-3 pl-2.5 border-l-2 border-neutral-200 space-y-1 panel-enter">
       {!showSectionTitle ? null : section.href ? (
         <Link
           href={section.href}
-          className="flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium panel-label hover:bg-brand-teal/8 hover:text-brand-teal-dark dark:hover:text-brand-teal transition-colors"
+          className="flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium panel-label hover:bg-brand-teal/8 hover:text-brand-teal-dark transition-colors"
         >
           {section.colorDot && (
             <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${section.colorDot}`} aria-hidden="true" />

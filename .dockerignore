@@ -22,6 +22,7 @@ npm-debug.log*
 # No hacen falta para compilar la app
 docs
 scripts
+tests
 supabase
 netlify.toml
 Dockerfile

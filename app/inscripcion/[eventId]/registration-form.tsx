@@ -1,7 +1,8 @@
 "use client";
 
 import { useRef, useState, useTransition } from "react";
-import { registerTeam } from "./actions";
+import { registerTeam, type RegisterTeamResult } from "./actions";
+import { HONEYPOT_FIELD } from "@/lib/honeypot";
 import { MemberListInput } from "@/app/components/member-list-input";
 import { LocationFields } from "@/app/components/location-fields";
 import { parseMemberNames } from "@/lib/team-display";
@@ -118,12 +119,14 @@ export function RegistrationForm({
     setFieldErrors([]);
 
     startTransition(async () => {
-      try {
-        await registerTeam(competitionId, formData);
+      const result = await registerTeam(competitionId, formData).catch(
+        (): RegisterTeamResult => ({ ok: false, error: "No se pudo conectar. Revisá internet y probá de nuevo." })
+      );
+      if (result.ok) {
         setSubmitted(teamName);
         form.reset();
-      } catch (err) {
-        setError((err as Error).message ?? "No se pudo registrar el equipo.");
+      } else {
+        setError(result.error);
         requestAnimationFrame(() => summaryRef.current?.focus());
       }
     });
@@ -208,6 +211,14 @@ export function RegistrationForm({
       )}
 
       <form onSubmit={handleSubmit} className="space-y-4">
+        {/* Campo trampa anti-spam (ver lib/honeypot.ts): fuera de pantalla,
+            sin foco con Tab y oculto a lectores de pantalla. */}
+        <div aria-hidden="true" className="absolute -left-[9999px] w-px h-px overflow-hidden">
+          <label>
+            No completar
+            <input type="text" name={HONEYPOT_FIELD} tabIndex={-1} autoComplete="off" defaultValue="" />
+          </label>
+        </div>
         {/* 1 — Tu equipo / Tu robot */}
         <section className="panel-card rounded-xl overflow-hidden">
           {sectionHeader(1, isFutbol ? "Tu equipo" : "Tu robot")}

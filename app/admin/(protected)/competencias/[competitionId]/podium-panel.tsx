@@ -47,9 +47,9 @@ function PodiumCard({ entry }: { entry: PodiumEntry }) {
         )}
       </div>
 
-      <div className="pt-2 border-t border-neutral-200/70 dark:border-neutral-800">
+      <div className="pt-2 border-t border-neutral-200/70">
         <p className="text-sm panel-label">
-          <span className="font-semibold text-brand-teal-dark dark:text-brand-teal text-lg">
+          <span className="font-semibold text-brand-teal-dark text-lg">
             {entry.participantCount}
           </span>{" "}
           participante{entry.participantCount === 1 ? "" : "s"}
