@@ -1,73 +1,103 @@
 image: docker:latest
 
 variables:
-    TAG_NAME: $CI_COMMIT_REF_NAME
-    IMAGE_NAME: $CI_REGISTRY_IMAGE:$TAG_NAME 
+  TAG_NAME: $CI_COMMIT_REF_NAME
+  IMAGE_NAME: $CI_REGISTRY_IMAGE:$TAG_NAME
 
 stages:
-    - build
-    - push
-    - notify
+  - build
+  - push
+  - notify
 
 # STAGE 1: Docker image build
 build_image:
-    stage: build
-    tags:
-        - build
-    script:
-        - echo "STAGE - BUILDING"
-        - echo $IMAGE_NAME
-        - echo "Autenticando en el Docker Registry...(build)"
-        - unset DOCKER_HOST
-        - echo $CI_REGISTRY_PASSWORD | docker login --username $CI_REGISTRY_USER --password-stdin $CI_REGISTRY
-        - echo "Construyendo la imagen Docker...."
-        - docker build -t $IMAGE_NAME .
-    only:
-        - main
-        - dev
+  stage: build
+  tags:
+    - build
+
+  script:
+    - echo "STAGE - BUILDING"
+    - echo "$IMAGE_NAME"
+
+    - echo "Autenticando en el Docker Registry...(build)"
+    - unset DOCKER_HOST
+    - echo "$CI_REGISTRY_PASSWORD" | docker login --username "$CI_REGISTRY_USER" --password-stdin "$CI_REGISTRY"
+
+    - echo "Verificando variables de Supabase..."
+    - test -n "$NEXT_PUBLIC_SUPABASE_URL" || (echo "ERROR - Falta NEXT_PUBLIC_SUPABASE_URL" && exit 1)
+    - test -n "$NEXT_PUBLIC_SUPABASE_ANON_KEY" || (echo "ERROR - Falta NEXT_PUBLIC_SUPABASE_ANON_KEY" && exit 1)
+
+    - echo "Construyendo la imagen Docker...."
+    - |
+      docker build \
+        --build-arg NEXT_PUBLIC_SUPABASE_URL="$NEXT_PUBLIC_SUPABASE_URL" \
+        --build-arg NEXT_PUBLIC_SUPABASE_ANON_KEY="$NEXT_PUBLIC_SUPABASE_ANON_KEY" \
+        -t "$IMAGE_NAME" .
+
+  only:
+    - main
+    - dev
+
 
 # STAGE 2: Image publish to Docker registry
 push_image:
-    stage: push
-    tags:
-        - build
-    script:
-        - echo "STAGE - PUSHING"
-        - echo "Autenticando en el Docker Registry..."
-        - echo $CI_REGISTRY_PASSWORD | docker login --username $CI_REGISTRY_USER --password-stdin $CI_REGISTRY
-        - echo "Subiendo la imagen Docker al registro..."
-        - docker push $IMAGE_NAME
-    when: manual
-    only:
-        - main
-        - dev
+  stage: push
+  tags:
+    - build
+
+  script:
+    - echo "STAGE - PUSHING"
+
+    - echo "Autenticando en el Docker Registry..."
+    - echo "$CI_REGISTRY_PASSWORD" | docker login --username "$CI_REGISTRY_USER" --password-stdin "$CI_REGISTRY"
+
+    - echo "Subiendo la imagen Docker al registro..."
+    - docker push "$IMAGE_NAME"
+
+  when: manual
+
+  only:
+    - main
+    - dev
+
 
 # STAGE 3: Execute Webhook for container update in Portainer
 notify_prod:
-    stage: notify
-    tags:
-        - build
-    script:
-        - echo "STAGE - NOTIFYING MAIN"
-        - echo "Instalando curl..."
-        - apk update && apk add curl # Use apk for curl installation
-        - echo "Ejecutando el Webhook para actualizar el contenedor en Portainer..."
-        - curl -X POST $WEBHOOK_URL_MAIN
-    when: manual
-    only:
-        - main # Only in the main branch (which is named "main")
+  stage: notify
+  tags:
+    - build
+
+  script:
+    - echo "STAGE - NOTIFYING MAIN"
+
+    - echo "Instalando curl..."
+    - apk add --no-cache curl
+
+    - echo "Ejecutando el Webhook para actualizar el contenedor en Portainer..."
+    - curl --fail -X POST "$WEBHOOK_URL_MAIN"
+
+  when: manual
+
+  only:
+    - main
+
 
 # STAGE 3: Execute Webhook for container update in Portainer
 notify_dev:
-    stage: notify
-    tags:
-        - build
-    script:
-        - echo "STAGE - NOTIFYING DEV"
-        - echo "Instalando curl..."
-        - apk update && apk add curl # Use apk for curl installation
-        - echo "Ejecutando el Webhook para actualizar el contenedor en Portainer..."
-        - curl -X POST $WEBHOOK_URL_DEV
-    when: manual
-    only:
-        - dev
+  stage: notify
+  tags:
+    - build
+
+  script:
+    - echo "STAGE - NOTIFYING DEV"
+
+    - echo "Instalando curl..."
+    - apk add --no-cache curl
+
+    - echo "Ejecutando el Webhook para actualizar el contenedor en Portainer..."
+    - curl --fail -X POST "$WEBHOOK_URL_DEV"
+
+  when: manual
+
+  only:
+    - dev
