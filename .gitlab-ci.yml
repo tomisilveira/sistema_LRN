@@ -26,12 +26,15 @@ build_image:
     - echo "Verificando variables de Supabase..."
     - test -n "$NEXT_PUBLIC_SUPABASE_URL" || (echo "ERROR - Falta NEXT_PUBLIC_SUPABASE_URL" && exit 1)
     - test -n "$NEXT_PUBLIC_SUPABASE_ANON_KEY" || (echo "ERROR - Falta NEXT_PUBLIC_SUPABASE_ANON_KEY" && exit 1)
+    - test -n "$SITE_URL" || (echo "ERROR - Falta SITE_URL" && exit 1)
 
-    - echo "Construyendo la imagen Docker...."
+    - echo "Construyendo la imagen Docker..."
+
     - |
       docker build \
         --build-arg NEXT_PUBLIC_SUPABASE_URL="$NEXT_PUBLIC_SUPABASE_URL" \
         --build-arg NEXT_PUBLIC_SUPABASE_ANON_KEY="$NEXT_PUBLIC_SUPABASE_ANON_KEY" \
+        --build-arg SITE_URL="$SITE_URL" \
         -t "$IMAGE_NAME" .
 
   only:
