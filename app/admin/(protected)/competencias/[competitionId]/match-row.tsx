@@ -4,6 +4,8 @@ import { TeamCardBadges } from "@/app/components/team-card-badges";
 import { cardsByTeam } from "@/lib/match-cards";
 import { MatchResultForm } from "./match-result-form";
 import { MatchScheduleForm } from "./match-schedule-form";
+import { MatchAdminControls } from "./match-admin-controls";
+import type { MatchActionResult } from "./actions";
 
 // Esta página nunca necesita el `access_token` de las canchas (el link del
 // juez se copia desde la página del evento) y además pasa la lista a un
@@ -25,6 +27,7 @@ export function MatchRow({
   allowDraws,
   onSchedule,
   onResult,
+  onReset,
 }: {
   match: Match;
   teamAName: string;
@@ -37,7 +40,8 @@ export function MatchRow({
   disciplineNameById: Map<string, string>;
   allowDraws: boolean;
   onSchedule: (matchId: string, formData: FormData) => Promise<void>;
-  onResult: (formData: FormData) => Promise<void>;
+  onResult: (formData: FormData) => Promise<MatchActionResult>;
+  onReset: () => Promise<MatchActionResult>;
 }) {
   const courtName = match.court_id ? courts.find((c) => c.id === match.court_id)?.name : null;
   const teamCards = cardsByTeam(cards, match.team_a_id, match.team_b_id);
@@ -92,6 +96,23 @@ export function MatchRow({
         )}
       </div>
 
+      {match.status === "completed" && (
+        <div className="pt-2 border-t border-neutral-200">
+          <MatchAdminControls
+            played
+            correctAction={onResult}
+            resetAction={onReset}
+            teamAId={match.team_a_id}
+            teamBId={match.team_b_id}
+            teamAName={teamAName}
+            teamBName={teamBName}
+            allowDraws={allowDraws}
+            scoreA={match.score_a}
+            scoreB={match.score_b}
+          />
+        </div>
+      )}
+
       {match.status !== "completed" && (
         <div className="flex flex-wrap items-start gap-x-5 gap-y-2 pt-2 border-t border-neutral-200">
           {/* Cancha y turno se asignan solos al iniciar el torneo — esto es
@@ -121,6 +142,21 @@ export function MatchRow({
               allowDraws={allowDraws}
             />
           </div>
+
+          {match.status === "in_progress" && (
+            <MatchAdminControls
+              played={false}
+              correctAction={onResult}
+              resetAction={onReset}
+              teamAId={match.team_a_id}
+              teamBId={match.team_b_id}
+              teamAName={teamAName}
+              teamBName={teamBName}
+              allowDraws={allowDraws}
+              scoreA={match.score_a}
+              scoreB={match.score_b}
+            />
+          )}
         </div>
       )}
     </div>

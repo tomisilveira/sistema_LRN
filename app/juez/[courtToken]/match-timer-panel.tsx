@@ -7,7 +7,7 @@ import { MatchClock } from "@/app/components/match-clock";
 import { TeamLabel } from "@/app/components/team-label";
 import { TeamCardBadges } from "@/app/components/team-card-badges";
 import { cardsByTeam } from "@/lib/match-cards";
-import { elapsedSeconds, isStopped } from "@/lib/match-timer";
+import { elapsedSeconds, isStopped, roundWinCounts } from "@/lib/match-timer";
 import { serverNow } from "@/lib/use-server-now";
 import type { MatchStage } from "@/lib/match-stage";
 import { MatchStageChip } from "@/app/components/match-stage-chip";
@@ -53,6 +53,10 @@ export function MatchTimerPanel({
   const [confirmingCancel, setConfirmingCancel] = useState(false);
   const [confirmingRoundTie, setConfirmingRoundTie] = useState(false);
   const [confirmingRedCard, setConfirmingRedCard] = useState<{ teamId: string; teamName: string } | null>(null);
+  // Sumo/mini sumo: el punto de cada round se confirma antes de guardarse
+  // (oct 2026 — un toque de más en el botón equivocado cerraba el partido
+  // con el ganador cambiado y había que corregirlo en la base).
+  const [confirmingRound, setConfirmingRound] = useState<{ teamId: string; teamName: string } | null>(null);
 
   // Estado optimista del reloj (sep 2026): al tocar Pausar/Reanudar/Ganó
   // round, el reloj cambia AL INSTANTE en vez de esperar a que el servidor
@@ -256,21 +260,46 @@ export function MatchTimerPanel({
 
       {competition.timer_mode === "rounds" ? (
         <div className="grid grid-cols-2 gap-2">
-          <button
-            onClick={() => roundWon(match.team_a_id)}
-            disabled={pending}
-            className="rounded-lg py-4 text-sm font-display font-semibold border border-brand-teal/50 bg-brand-teal/10 hover:bg-brand-teal/20 transition active:scale-[0.97] disabled:opacity-50"
-          >
-            Ganó {teamAName}
-          </button>
-          <button
-            onClick={() => roundWon(match.team_b_id)}
-            disabled={pending}
-            className="rounded-lg py-4 text-sm font-display font-semibold border border-brand-pink/50 bg-brand-pink/10 hover:bg-brand-pink/20 transition active:scale-[0.97] disabled:opacity-50"
-          >
-            Ganó {teamBName}
-          </button>
-          {confirmingRoundTie ? (
+          {confirmingRound ? (
+            <RoundConfirm
+              teamName={confirmingRound.teamName}
+              roundNumber={(shown.round_winner_ids ?? []).length + 1}
+              projected={roundWinCounts(
+                [...(shown.round_winner_ids ?? []), confirmingRound.teamId],
+                teamAId,
+                teamBId
+              )}
+              teamAName={teamAName}
+              teamBName={teamBName}
+              roundsToWin={competition.rounds_to_win}
+              periodsCount={competition.periods_count}
+              pending={pending}
+              onConfirm={() => {
+                const { teamId } = confirmingRound;
+                setConfirmingRound(null);
+                roundWon(teamId);
+              }}
+              onCancel={() => setConfirmingRound(null)}
+            />
+          ) : (
+            <>
+              <button
+                onClick={() => setConfirmingRound({ teamId: teamAId, teamName: teamAName })}
+                disabled={pending}
+                className="rounded-lg py-4 text-sm font-display font-semibold border border-brand-teal/50 bg-brand-teal/10 hover:bg-brand-teal/20 transition active:scale-[0.97] disabled:opacity-50"
+              >
+                Ganó {teamAName}
+              </button>
+              <button
+                onClick={() => setConfirmingRound({ teamId: teamBId, teamName: teamBName })}
+                disabled={pending}
+                className="rounded-lg py-4 text-sm font-display font-semibold border border-brand-pink/50 bg-brand-pink/10 hover:bg-brand-pink/20 transition active:scale-[0.97] disabled:opacity-50"
+              >
+                Ganó {teamBName}
+              </button>
+            </>
+          )}
+          {confirmingRound ? null : confirmingRoundTie ? (
             <div className="col-span-2 rounded-lg border border-red-500/30 bg-red-500/8 p-2.5 space-y-2 panel-enter">
               <p className="text-sm panel-label">
                 ¿Empataron este round? Se repite desde cero, no cuenta para ninguno de los dos.
@@ -435,5 +464,71 @@ export function MatchTimerPanel({
         </button>
       )}
     </section>
+  );
+}
+
+/** Cartel de confirmación del punto de un round (sumo/mini sumo): dice a
+ * quién se le da, cómo queda el marcador y, si con ese round se termina el
+ * partido, quién gana — para que el juez lo lea antes de guardarlo. */
+function RoundConfirm({
+  teamName,
+  roundNumber,
+  projected,
+  teamAName,
+  teamBName,
+  roundsToWin,
+  periodsCount,
+  pending,
+  onConfirm,
+  onCancel,
+}: {
+  teamName: string;
+  roundNumber: number;
+  projected: { a: number; b: number };
+  teamAName: string;
+  teamBName: string;
+  roundsToWin: number | null;
+  periodsCount: number | null;
+  pending: boolean;
+  onConfirm: () => void;
+  onCancel: () => void;
+}) {
+  const decided =
+    (roundsToWin != null && (projected.a >= roundsToWin || projected.b >= roundsToWin)) ||
+    (periodsCount != null && roundNumber >= periodsCount);
+  const winner = projected.a === projected.b ? null : projected.a > projected.b ? teamAName : teamBName;
+
+  return (
+    <div className="col-span-2 rounded-lg border-2 border-brand-teal/50 bg-brand-teal/8 p-3 space-y-2.5 panel-enter">
+      <p className="text-sm panel-label">Confirmá el punto:</p>
+      <p className="text-lg font-display font-semibold">
+        Round {roundNumber} para {teamName}
+      </p>
+      <p className="text-sm">
+        Marcador: {teamAName} <span className="font-semibold">{projected.a}</span> –{" "}
+        <span className="font-semibold">{projected.b}</span> {teamBName}
+      </p>
+      {decided && (
+        <p className="text-sm font-semibold text-brand-orange">
+          {winner ? `Con este round termina el partido: gana ${winner}.` : "Con este round termina el partido en empate."}
+        </p>
+      )}
+      <div className="flex gap-2">
+        <button
+          onClick={onConfirm}
+          disabled={pending}
+          className="flex-1 rounded-lg panel-button-primary font-display font-semibold py-2.5 text-sm disabled:opacity-50"
+        >
+          {decided ? "Sí, cerrar partido" : "Sí, confirmar"}
+        </button>
+        <button
+          onClick={onCancel}
+          disabled={pending}
+          className="flex-1 rounded-lg panel-button-secondary font-display font-semibold py-2.5 text-sm disabled:opacity-50"
+        >
+          Volver
+        </button>
+      </div>
+    </div>
   );
 }

@@ -72,3 +72,26 @@ test("solo grupos con un grupo: podio desde la tabla", () => {
     [3, "c"],
   ]);
 });
+
+test("solo grupos con varios grupos: un podio por grupo", () => {
+  const groupB = { id: "g2", name: "Grupo B" } as Group;
+  const boards = buildPodium({
+    competition: { format_type: "groups_only", status: "finished" },
+    teams: ["a", "b", "c", "d", "e", "f"].map(team),
+    groups: [group, groupB],
+    standingsByGroup: [
+      { group, rows: ["b", "a", "c"].map(row) },
+      { group: groupB, rows: ["f", "e", "d"].map(row) },
+    ],
+    bracketMatches: [],
+  });
+  assert.deepEqual(
+    boards.map((b) => b.label),
+    ["Podio — Grupo A", "Podio — Grupo B"]
+  );
+  assert.deepEqual(positions(boards[1].entries), [
+    [1, "f"],
+    [2, "e"],
+    [3, "d"],
+  ]);
+});

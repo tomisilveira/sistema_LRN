@@ -8,16 +8,30 @@ export function StandingsTable({
   groupName,
   rows,
   editable = false,
+  showPodium = false,
 }: {
   competitionId: string;
   groupId: string;
   groupName: string;
   rows: GroupStandingRow[];
   editable?: boolean;
+  /** Torneo solo de grupos: los 3 primeros de la tabla son el podio del
+   * grupo — se nombran arriba de la tabla. */
+  showPodium?: boolean;
 }) {
+  const podium = showPodium && rows.some((r) => r.played > 0) ? rows.slice(0, 3) : [];
   return (
     <div>
       <h3 className="inline-block text-sm font-semibold mb-2 panel-chip-brand rounded-md px-2 py-0.5">{groupName}</h3>
+      {podium.length > 0 && (
+        <p className="flex flex-wrap gap-x-3 gap-y-1 text-sm mb-2">
+          {podium.map((r, i) => (
+            <span key={r.team_id} className="font-medium">
+              {["🥇", "🥈", "🥉"][i]} {i + 1}º {r.team_name}
+            </span>
+          ))}
+        </p>
+      )}
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
           <thead>

@@ -8,6 +8,12 @@ import { advanceWinner } from "@/lib/bracket-actions";
 import { computeMatchOutcome } from "@/lib/match-logic";
 import { generateBracketForCompetition, ensureThirdPlaceMatch } from "@/lib/generate-bracket-for-competition";
 import { maybeAdvanceCompetitionPhase } from "@/lib/advance-competition-phase";
+import {
+  assertCanRetract,
+  MatchCorrectionError,
+  retractBracketPropagation,
+  syntheticRoundWinners,
+} from "@/lib/match-correction";
 import { parseTeamInput, parseMentorInput, isFutbolCompetition } from "@/lib/team-input";
 import { autoScheduleAndPersist } from "@/lib/apply-auto-schedule";
 import type { SchedulableMatch } from "@/lib/auto-schedule";
@@ -638,32 +644,228 @@ export async function submitResult(competitionId: string, matchId: string, formD
   const scoreBRaw = formData.get("score_b");
   const winnerIdIfNoScore = String(formData.get("winner_id") ?? "") || null;
 
+  const scoreA = scoreARaw !== null && scoreARaw !== "" ? Number(scoreARaw) : null;
+  const scoreB = scoreBRaw !== null && scoreBRaw !== "" ? Number(scoreBRaw) : null;
+
   const outcome = computeMatchOutcome({
     allowDraws: competition.allow_draws,
     teamAId: match.team_a_id,
     teamBId: match.team_b_id,
-    scoreA: scoreARaw !== null && scoreARaw !== "" ? Number(scoreARaw) : null,
-    scoreB: scoreBRaw !== null && scoreBRaw !== "" ? Number(scoreBRaw) : null,
+    scoreA,
+    scoreB,
     winnerIdIfNoScore,
   });
+
+  // Corrección de un partido ya jugado: en el cuadro, si cambia el ganador,
+  // primero se saca al ganador viejo del partido siguiente (y al perdedor
+  // viejo del 3er puesto). Se valida antes de tocar nada.
+  const winnerChanged = match.status === "completed" && match.winner_id !== outcome.winner_id;
+  if (winnerChanged && match.phase === "bracket") {
+    try {
+      await assertCanRetract(supabase, match);
+      await retractBracketPropagation(supabase, match);
+    } catch (err) {
+      if (err instanceof MatchCorrectionError) throw new Error(err.message);
+      throw err;
+    }
+  }
 
   const { data: updated, error } = await supabase
     .from("matches")
     .update({
-      score_a: scoreARaw !== null && scoreARaw !== "" ? Number(scoreARaw) : null,
-      score_b: scoreBRaw !== null && scoreBRaw !== "" ? Number(scoreBRaw) : null,
+      score_a: scoreA,
+      score_b: scoreB,
       winner_id: outcome.winner_id,
       status: outcome.status,
+      timer_running_since: null,
+      ...(competition.timer_mode === "rounds"
+        ? {
+            round_winner_ids: syntheticRoundWinners(
+              match.team_a_id,
+              match.team_b_id,
+              scoreA,
+              scoreB,
+              outcome.winner_id
+            ),
+          }
+        : {}),
     })
     .eq("id", matchId)
     .select("*")
     .single<Match>();
   if (error) throw new Error(error.message);
 
-  if (updated.phase === "bracket") {
+  if (updated.phase === "bracket" && (match.status !== "completed" || winnerChanged)) {
     await advanceWinner(supabase, updated);
   }
+  if (winnerChanged && competition.status === "finished" && updated.phase === "bracket") {
+    // Cambió quién pasa: el torneo vuelve a estar en juego hasta que se
+    // (re)juegue lo que quedó pendiente; maybeAdvance lo vuelve a cerrar.
+    await supabase.from("competitions").update({ status: "bracket_in_progress" }).eq("id", competitionId);
+  }
   await maybeAdvanceCompetitionPhase(supabase, competitionId);
+
+  revalidateCompetition(competitionId);
+}
+
+export interface MatchActionResult {
+  ok: boolean;
+  error?: string;
+}
+
+// En producción Next oculta el texto de los errores que tira un server
+// action — para que el admin vea POR QUÉ no se pudo (ej. "el partido
+// siguiente ya se jugó"), estas acciones devuelven el mensaje en vez de tirar.
+async function asResult(fn: () => Promise<void>, fallback: string): Promise<MatchActionResult> {
+  try {
+    await fn();
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error && e.message ? e.message : fallback };
+  }
+}
+
+/** submitResult con el error devuelto (ver asResult) — lo usan los
+ * formularios de resultado del panel (cargar y corregir). */
+export async function submitResultChecked(
+  competitionId: string,
+  matchId: string,
+  formData: FormData
+): Promise<MatchActionResult> {
+  return asResult(() => submitResult(competitionId, matchId, formData), "No se pudo guardar el resultado.");
+}
+
+export async function resetMatch(competitionId: string, matchId: string): Promise<MatchActionResult> {
+  return asResult(() => resetMatchOrThrow(competitionId, matchId), "No se pudo reiniciar el partido.");
+}
+
+export async function finishWithGroupsOnly(competitionId: string): Promise<MatchActionResult> {
+  return asResult(() => finishWithGroupsOnlyOrThrow(competitionId), "No se pudo terminar el torneo.");
+}
+
+/**
+ * Reinicia UN partido (admin): vuelve a "sin jugar" con el reloj, los rounds
+ * y las tarjetas en cero — mantiene cancha y turno. En el cuadro, si ya
+ * estaba jugado, saca al ganador del partido siguiente (y al perdedor del
+ * 3er puesto), lo que solo se puede si esos todavía no arrancaron. Si el
+ * torneo estaba terminado, vuelve a "en curso".
+ */
+async function resetMatchOrThrow(competitionId: string, matchId: string) {
+  const supabase = await createServerSupabaseClient();
+
+  const { data: match } = await supabase.from("matches").select("*").eq("id", matchId).single<Match>();
+  if (!match || match.competition_id !== competitionId) throw new Error("Partido no encontrado.");
+  if (!match.team_a_id || !match.team_b_id) {
+    throw new Error("Este partido es un pase directo (sin rival): no hay nada que reiniciar.");
+  }
+
+  try {
+    await assertCanRetract(supabase, match);
+    await retractBracketPropagation(supabase, match);
+  } catch (err) {
+    if (err instanceof MatchCorrectionError) throw new Error(err.message);
+    throw err;
+  }
+
+  // La final, si el 3er puesto de su cuadro sigue sin jugarse, espera.
+  let status: Match["status"] = "scheduled";
+  if (match.round === "F") {
+    let q = supabase
+      .from("matches")
+      .select("status")
+      .eq("competition_id", competitionId)
+      .eq("phase", "bracket")
+      .eq("round", "3P");
+    q = match.bracket_type ? q.eq("bracket_type", match.bracket_type) : q.is("bracket_type", null);
+    const { data: third } = await q;
+    if ((third ?? []).some((t) => t.status !== "completed")) status = "pending_teams";
+  }
+
+  const [{ error }, { error: cardsError }] = await Promise.all([
+    supabase
+      .from("matches")
+      .update({
+        status,
+        score_a: null,
+        score_b: null,
+        winner_id: null,
+        started_at: null,
+        timer_running_since: null,
+        timer_elapsed_seconds: 0,
+        current_period: 1,
+        round_winner_ids: [],
+      })
+      .eq("id", matchId),
+    supabase.from("match_cards").delete().eq("match_id", matchId),
+  ]);
+  if (error) throw new Error(error.message);
+  if (cardsError) throw new Error(cardsError.message);
+
+  const { data: competition } = await supabase
+    .from("competitions")
+    .select("status")
+    .eq("id", competitionId)
+    .single<Pick<Competition, "status">>();
+  if (competition?.status === "finished") {
+    const { count } = await supabase
+      .from("matches")
+      .select("id", { count: "exact", head: true })
+      .eq("competition_id", competitionId)
+      .eq("phase", "bracket");
+    await supabase
+      .from("competitions")
+      .update({ status: (count ?? 0) > 0 ? "bracket_in_progress" : "groups_in_progress" })
+      .eq("id", competitionId);
+  }
+
+  revalidateCompetition(competitionId);
+}
+
+/**
+ * "Terminar sin fase final": el torneo se queda solo con la fase de grupos
+ * y el podio sale de la tabla de cada grupo. Pasa el formato a
+ * 'groups_only' (así nunca se arma el cuadro solo) y borra el cuadro si ya
+ * se había generado, siempre que no se haya jugado ningún partido de él. Si
+ * quedan partidos de grupo sin jugar, el torneo sigue en curso y se termina
+ * solo al cargar el último (como cualquier torneo 'groups_only').
+ */
+async function finishWithGroupsOnlyOrThrow(competitionId: string) {
+  const supabase = await createServerSupabaseClient();
+
+  const [{ data: competition }, { data: matches }] = await Promise.all([
+    supabase.from("competitions").select("status").eq("id", competitionId).single<Pick<Competition, "status">>(),
+    supabase
+      .from("matches")
+      .select("id, phase, status, team_a_id, team_b_id")
+      .eq("competition_id", competitionId),
+  ]);
+  if (!competition) throw new Error("Competencia no encontrada.");
+  if (competition.status === "setup") throw new Error("El torneo todavía no empezó.");
+
+  const groupMatches = (matches ?? []).filter((m) => m.phase === "group");
+  const bracketMatches = (matches ?? []).filter((m) => m.phase === "bracket");
+  if (groupMatches.length === 0) throw new Error("Este torneo no tiene fase de grupos.");
+
+  const bracketPlayed = bracketMatches.some(
+    (m) => m.status === "in_progress" || (m.status === "completed" && m.team_a_id && m.team_b_id)
+  );
+  if (bracketPlayed) {
+    throw new Error(
+      "Ya se jugó (o se está jugando) un partido de la fase final. Reinicialo primero si querés terminar solo con los grupos."
+    );
+  }
+
+  if (bracketMatches.length > 0) {
+    const { error } = await supabase.from("matches").delete().eq("competition_id", competitionId).eq("phase", "bracket");
+    if (error) throw new Error(error.message);
+  }
+
+  const allDone = groupMatches.every((m) => m.status === "completed");
+  const { error } = await supabase
+    .from("competitions")
+    .update({ format_type: "groups_only", status: allDone ? "finished" : "groups_in_progress" })
+    .eq("id", competitionId);
+  if (error) throw new Error(error.message);
 
   revalidateCompetition(competitionId);
 }

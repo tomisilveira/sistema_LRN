@@ -1,5 +1,9 @@
 import type { Match, MatchCard } from "@/lib/database.types";
-import { submitResult } from "./actions";
+import { assignSchedule, resetMatch, submitResultChecked } from "./actions";
+import type { CourtOption } from "./match-row";
+import { MatchResultForm } from "./match-result-form";
+import { MatchAdminControls } from "./match-admin-controls";
+import { MatchScheduleForm } from "./match-schedule-form";
 import { TeamLabel } from "@/app/components/team-label";
 import { TeamCardBadges } from "@/app/components/team-card-badges";
 import { cardsByTeam } from "@/lib/match-cards";
@@ -18,9 +22,17 @@ const ROUND_ORDER = ["R32", "R16", "QF", "SF", "F", "3P"];
 export function BracketView({
   competitionId,
   matches,
+  courts,
+  competitionDisciplineId,
+  disciplineNameById,
+  allowDraws,
 }: {
   competitionId: string;
   matches: BracketDisplayMatch[];
+  courts: CourtOption[];
+  competitionDisciplineId: string;
+  disciplineNameById: Map<string, string>;
+  allowDraws: boolean;
 }) {
   const byRound = new Map<string, BracketDisplayMatch[]>();
   for (const m of matches) {
@@ -36,7 +48,7 @@ export function BracketView({
     })
     .map(([round, ms]) => [round, ms.sort((a, b) => (a.bracket_slot ?? 0) - (b.bracket_slot ?? 0))] as const);
 
-  const submit = submitResult.bind(null, competitionId);
+  const schedule = assignSchedule.bind(null, competitionId);
 
   return (
     <div className="flex items-stretch gap-3 overflow-x-auto pb-2">
@@ -97,43 +109,76 @@ export function BracketView({
                         : "Pasa directo, sin rival"}
                     </p>
                   ) : decided ? (
-                    <p className="text-[10px] panel-label">✅ Jugado</p>
+                    <>
+                      <p className="text-[10px] panel-label">✅ Jugado</p>
+                      <MatchAdminControls
+                        played
+                        layout="stacked"
+                        correctAction={submitResultChecked.bind(null, competitionId, m.id)}
+                        resetAction={resetMatch.bind(null, competitionId, m.id)}
+                        teamAId={m.team_a_id}
+                        teamBId={m.team_b_id}
+                        teamAName={m.team_a_name ?? "A"}
+                        teamBName={m.team_b_name ?? "B"}
+                        allowDraws={allowDraws}
+                        scoreA={m.score_a}
+                        scoreB={m.score_b}
+                      />
+                    </>
                   ) : finalWaitingForThird ? (
                     <p className="text-[10px] text-brand-orange">⏳ Primero se juega el 3er puesto</p>
                   ) : bothTeams ? (
-                    <form action={submit.bind(null, m.id)} className="flex flex-col gap-1.5 pt-1">
-                      <div className="flex gap-1">
-                        <input
-                          name="score_a"
-                          type="number"
-                          placeholder="A"
-                          className="w-full rounded panel-input px-1.5 py-1 text-xs"
+                    <div className="space-y-1.5">
+                      {m.status === "in_progress" && (
+                        <p className="text-[10px] text-brand-orange font-medium inline-flex items-center gap-1">
+                          <span className="panel-live-dot" aria-hidden="true" /> En curso
+                        </p>
+                      )}
+                      <MatchResultForm
+                        layout="stacked"
+                        action={submitResultChecked.bind(null, competitionId, m.id)}
+                        teamAId={m.team_a_id}
+                        teamBId={m.team_b_id}
+                        teamAName={m.team_a_name ?? "A"}
+                        teamBName={m.team_b_name ?? "B"}
+                        allowDraws={allowDraws}
+                        submitLabel="Guardar resultado"
+                      />
+                      {m.status === "in_progress" && (
+                        <MatchAdminControls
+                          played={false}
+                          correctAction={submitResultChecked.bind(null, competitionId, m.id)}
+                          resetAction={resetMatch.bind(null, competitionId, m.id)}
+                          teamAId={m.team_a_id}
+                          teamBId={m.team_b_id}
+                          teamAName={m.team_a_name ?? "A"}
+                          teamBName={m.team_b_name ?? "B"}
+                          allowDraws={allowDraws}
+                          scoreA={m.score_a}
+                          scoreB={m.score_b}
                         />
-                        <input
-                          name="score_b"
-                          type="number"
-                          placeholder="B"
-                          className="w-full rounded panel-input px-1.5 py-1 text-xs"
-                        />
-                      </div>
-                      <select
-                        name="winner_id"
-                        className="w-full rounded panel-input px-1.5 py-1 text-xs"
-                        defaultValue=""
-                      >
-                        <option value="">(o elegir ganador directo)</option>
-                        <option value={m.team_a_id ?? ""}>{m.team_a_name}</option>
-                        <option value={m.team_b_id ?? ""}>{m.team_b_name}</option>
-                      </select>
-                      <button
-                        type="submit"
-                        className="text-xs rounded panel-button-primary py-1 font-medium transition-colors"
-                      >
-                        Guardar resultado
-                      </button>
-                    </form>
+                      )}
+                    </div>
                   ) : (
                     <p className="text-[10px] panel-label opacity-70">Esperando clasificados</p>
+                  )}
+                  {!decided && (
+                    // Cancha/turno se asignan solos al generar el cuadro; esto
+                    // es para cambiarlos a mano (ej. jugar la final en la
+                    // cancha central). Se puede antes de que estén los dos
+                    // equipos, para dejar la final ya ubicada.
+                    <div className="pt-2 border-t border-neutral-200 space-y-1">
+                      <span className="text-[10px] uppercase tracking-wide panel-label">Cancha/turno</span>
+                      <MatchScheduleForm
+                        matchId={m.id}
+                        courtId={m.court_id}
+                        turno={m.turno}
+                        courts={courts}
+                        competitionDisciplineId={competitionDisciplineId}
+                        disciplineNameById={disciplineNameById}
+                        onSchedule={schedule}
+                      />
+                    </div>
                   )}
                 </div>
               );

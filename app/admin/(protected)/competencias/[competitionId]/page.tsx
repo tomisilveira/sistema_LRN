@@ -22,10 +22,13 @@ import {
   restartTournament,
   syncGroupFixture,
   assignSchedule,
-  submitResult,
+  submitResultChecked,
+  resetMatch,
+  finishWithGroupsOnly,
   generateBracket,
   deleteCompetition,
 } from "./actions";
+import { FinishGroupsOnlyButton } from "./finish-groups-only-button";
 import { GroupAssignSelect } from "./group-assign-select";
 import { StandingsTable } from "./standings-table";
 import { MatchRow, type CourtOption } from "./match-row";
@@ -243,7 +246,9 @@ export default async function CompetitionPage({
   const restartTournamentAction = restartTournament.bind(null, competitionId);
   const syncGroupFixtureAction = syncGroupFixture.bind(null, competitionId);
   const assignScheduleAction = assignSchedule.bind(null, competitionId);
-  const submitResultAction = submitResult.bind(null, competitionId);
+  const submitResultAction = submitResultChecked.bind(null, competitionId);
+  const resetMatchAction = resetMatch.bind(null, competitionId);
+  const finishWithGroupsOnlyAction = finishWithGroupsOnly.bind(null, competitionId);
   const generateBracketAction = generateBracket.bind(null, competitionId);
 
   const bracketDisplayMatches: BracketDisplayMatch[] = (bracketMatches ?? []).map((m: Match) => ({
@@ -259,6 +264,29 @@ export default async function CompetitionPage({
   const plainMatches = bracketDisplayMatches.filter((m) => m.bracket_type === null);
   const goldMatches = bracketDisplayMatches.filter((m) => m.bracket_type === "gold");
   const silverMatches = bracketDisplayMatches.filter((m) => m.bracket_type === "silver");
+  const bracketViewProps = {
+    courts,
+    competitionDisciplineId: competition.discipline_id,
+    disciplineNameById,
+    allowDraws: competition.allow_draws,
+  };
+
+  // "Terminar sin fase final" (single_elimination / gold_silver): mientras
+  // ya haya arrancado la fase de grupos y no se haya jugado ningún partido
+  // del cuadro (los pases directos no cuentan).
+  const groupMatchesPending = ((groupMatches ?? []) as Match[]).filter((m) => m.status !== "completed").length;
+  const bracketStarted = bracketDisplayMatches.some(
+    (m) => m.status === "in_progress" || (m.status === "completed" && m.team_a_id && m.team_b_id)
+  );
+  const canFinishWithGroupsOnly =
+    competition.status !== "setup" && (groupMatches ?? []).length > 0 && !bracketStarted;
+  const finishGroupsOnlyButton = canFinishWithGroupsOnly ? (
+    <FinishGroupsOnlyButton
+      action={finishWithGroupsOnlyAction}
+      hasBracket={bracketDisplayMatches.length > 0}
+      groupsPending={groupMatchesPending}
+    />
+  ) : null;
 
   // ¿Falta el partido por el 3er puesto en un cuadro ya armado? (cuadros
   // generados antes de la migración 0014). El 3er puesto es obligatorio; si
@@ -650,6 +678,7 @@ export default async function CompetitionPage({
               groupName={group.name}
               rows={rows}
               editable
+              showPodium={competition.format_type === "groups_only" && plainMatches.length === 0}
             />
           ))}
         </section>
@@ -745,6 +774,7 @@ export default async function CompetitionPage({
               allowDraws={competition.allow_draws}
               onSchedule={assignScheduleAction}
               onResult={submitResultAction.bind(null, m.id)}
+              onReset={resetMatchAction.bind(null, m.id)}
             />
           ))}
         </div>
@@ -760,28 +790,31 @@ export default async function CompetitionPage({
       badge: plainMatches.length || undefined,
       content: (
         <section className="panel-card rounded-xl p-4 space-y-4">
-          <div className="flex items-center justify-between gap-3">
-            <h2 className="font-medium">Cuadro de eliminatoria simple</h2>
-            {plainMatches.length === 0 ? (
-              <form action={generateBracketAction}>
-                <button
-                  type="submit"
-                  className="text-xs rounded-md panel-button-accent px-3 py-1.5 font-medium whitespace-nowrap"
-                  title="Normalmente no hace falta: se arma solo apenas se completa el último partido de grupos."
-                >
-                  Generar ahora
-                </button>
-              </form>
-            ) : (
-              <form action={restartTournamentAction}>
-                <ConfirmSubmitButton
-                  confirmMessage="Esto borra TODOS los partidos y resultados de este torneo (grupos y cuadro) y vuelve a 'Armando'. Los equipos y grupos no se tocan. ¿Reiniciar?"
-                  className="text-xs rounded-md panel-button-danger px-3 py-1.5 whitespace-nowrap"
-                >
-                  🔄 Reiniciar torneo
-                </ConfirmSubmitButton>
-              </form>
-            )}
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <h2 className="font-medium pt-1.5">Cuadro de eliminatoria simple</h2>
+            <div className="flex flex-wrap items-start justify-end gap-2">
+              {finishGroupsOnlyButton}
+              {plainMatches.length === 0 ? (
+                <form action={generateBracketAction}>
+                  <button
+                    type="submit"
+                    className="text-xs rounded-md panel-button-accent px-3 py-1.5 font-medium whitespace-nowrap"
+                    title="Normalmente no hace falta: se arma solo apenas se completa el último partido de grupos."
+                  >
+                    Generar ahora
+                  </button>
+                </form>
+              ) : (
+                <form action={restartTournamentAction}>
+                  <ConfirmSubmitButton
+                    confirmMessage="Esto borra TODOS los partidos y resultados de este torneo (grupos y cuadro) y vuelve a 'Armando'. Los equipos y grupos no se tocan. ¿Reiniciar?"
+                    className="text-xs rounded-md panel-button-danger px-3 py-1.5 whitespace-nowrap"
+                  >
+                    🔄 Reiniciar torneo
+                  </ConfirmSubmitButton>
+                </form>
+              )}
+            </div>
           </div>
           {plainMatches.length === 0 ? (
             <p className="text-sm panel-label">
@@ -791,7 +824,7 @@ export default async function CompetitionPage({
               falta.
             </p>
           ) : (
-            <BracketView competitionId={competitionId} matches={plainMatches} />
+            <BracketView competitionId={competitionId} matches={plainMatches} {...bracketViewProps} />
           )}
         </section>
       ),
@@ -835,7 +868,7 @@ export default async function CompetitionPage({
               grupo).
             </p>
           ) : (
-            <BracketView competitionId={competitionId} matches={plainMatches} />
+            <BracketView competitionId={competitionId} matches={plainMatches} {...bracketViewProps} />
           )}
         </section>
       ),
@@ -849,28 +882,31 @@ export default async function CompetitionPage({
       badge: goldMatches.length + silverMatches.length || undefined,
       content: (
         <section className="panel-card rounded-xl p-4 space-y-6">
-          <div className="flex items-center justify-between gap-3">
-            <h2 className="font-medium">Copa Oro / Copa Plata</h2>
-            {goldMatches.length === 0 ? (
-              <form action={generateBracketAction}>
-                <button
-                  type="submit"
-                  className="text-xs rounded-md panel-button-accent px-3 py-1.5 font-medium whitespace-nowrap"
-                  title="Normalmente no hace falta: se arman solos apenas se completa el último partido de grupos."
-                >
-                  Generar ahora
-                </button>
-              </form>
-            ) : (
-              <form action={restartTournamentAction}>
-                <ConfirmSubmitButton
-                  confirmMessage="Esto borra TODOS los partidos y resultados de este torneo (grupos y cuadro) y vuelve a 'Armando'. Los equipos y grupos no se tocan. ¿Reiniciar?"
-                  className="text-xs rounded-md panel-button-danger px-3 py-1.5 whitespace-nowrap"
-                >
-                  🔄 Reiniciar torneo
-                </ConfirmSubmitButton>
-              </form>
-            )}
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <h2 className="font-medium pt-1.5">Copa Oro / Copa Plata</h2>
+            <div className="flex flex-wrap items-start justify-end gap-2">
+              {finishGroupsOnlyButton}
+              {goldMatches.length === 0 ? (
+                <form action={generateBracketAction}>
+                  <button
+                    type="submit"
+                    className="text-xs rounded-md panel-button-accent px-3 py-1.5 font-medium whitespace-nowrap"
+                    title="Normalmente no hace falta: se arman solos apenas se completa el último partido de grupos."
+                  >
+                    Generar ahora
+                  </button>
+                </form>
+              ) : (
+                <form action={restartTournamentAction}>
+                  <ConfirmSubmitButton
+                    confirmMessage="Esto borra TODOS los partidos y resultados de este torneo (grupos y cuadro) y vuelve a 'Armando'. Los equipos y grupos no se tocan. ¿Reiniciar?"
+                    className="text-xs rounded-md panel-button-danger px-3 py-1.5 whitespace-nowrap"
+                  >
+                    🔄 Reiniciar torneo
+                  </ConfirmSubmitButton>
+                </form>
+              )}
+            </div>
           </div>
           {goldMatches.length === 0 ? (
             <p className="text-sm panel-label">
@@ -881,13 +917,13 @@ export default async function CompetitionPage({
           ) : (
             <div className="space-y-3">
               <h3 className="text-sm font-semibold text-brand-orange">🥇 Copa Oro</h3>
-              <BracketView competitionId={competitionId} matches={goldMatches} />
+              <BracketView competitionId={competitionId} matches={goldMatches} {...bracketViewProps} />
             </div>
           )}
           {silverMatches.length > 0 && (
             <div className="space-y-3 pt-4 border-t border-neutral-200">
               <h3 className="text-sm font-semibold text-neutral-500">🥈 Copa Plata</h3>
-              <BracketView competitionId={competitionId} matches={silverMatches} />
+              <BracketView competitionId={competitionId} matches={silverMatches} {...bracketViewProps} />
             </div>
           )}
         </section>
@@ -931,7 +967,7 @@ export default async function CompetitionPage({
                 : "Ordená la semilla de cada equipo en la pestaña Equipos (opcional — si no la tocás, se usa el orden en que los cargaste) y generá el cuadro cuando estén todos."}
             </p>
           ) : (
-            <BracketView competitionId={competitionId} matches={plainMatches} />
+            <BracketView competitionId={competitionId} matches={plainMatches} {...bracketViewProps} />
           )}
         </section>
       ),

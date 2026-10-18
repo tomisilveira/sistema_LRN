@@ -117,7 +117,6 @@ function bracketBoard(
 export function buildPodium({
   competition,
   teams,
-  groups,
   standingsByGroup,
   bracketMatches,
 }: BuildPodiumInput): PodiumBoard[] {
@@ -148,26 +147,25 @@ export function buildPodium({
   // Hay podio si el torneo tiene UN solo grupo (decisión explícita — con
   // varios grupos y sin fase final no hay ranking único).
   if (competition.format_type === "single_elimination" && competition.status !== "finished") {
-    return [{ label: "Podio", entries: [], note: "El cuadro todavía no se generó — termina la fase de grupos primero." }];
+    return [{ label: "Podio", entries: [], note: "El cuadro todavía no se generó — termina la fase de grupos primero (o, si no querés llaves, usá \"Terminar sin fase final\" en la pestaña Fase Final)." }];
   }
 
-  if (groups.length === 1 && standingsByGroup.length === 1) {
-    const rows = standingsByGroup[0].rows.slice(0, 3);
-    const entries: PodiumEntry[] = rows
-      .map((r, i) => {
-        const team = teamsById.get(r.team_id);
-        return team ? toEntry((i + 1) as 1 | 2 | 3, team) : null;
-      })
-      .filter((e): e is PodiumEntry => e !== null);
-    return [{ label: "Podio", entries }];
-  }
+  // Solo fase de grupos: el podio sale de la tabla de cada grupo — con un
+  // grupo, un único podio; con varios, un podio por grupo (oct 2026, antes
+  // con más de un grupo no se mostraba nada: "no hay podio único").
+  const boards = standingsByGroup
+    .filter(({ rows }) => rows.length > 0)
+    .map(({ group, rows }) => {
+      const entries: PodiumEntry[] = rows
+        .slice(0, 3)
+        .map((r, i) => {
+          const team = teamsById.get(r.team_id);
+          return team ? toEntry((i + 1) as 1 | 2 | 3, team) : null;
+        })
+        .filter((e): e is PodiumEntry => e !== null);
+      return { label: standingsByGroup.length === 1 ? "Podio" : `Podio — ${group.name}`, entries };
+    });
+  if (boards.length > 0) return boards;
 
-  return [
-    {
-      label: "Podio",
-      entries: [],
-      note:
-        "Este torneo es sólo fase de grupos y tiene más de un grupo, así que no hay un podio único. Mirá las posiciones de cada grupo en la pestaña Posiciones (o generá una fase final).",
-    },
-  ];
+  return [{ label: "Podio", entries: [], note: "Todavía no hay posiciones cargadas en los grupos." }];
 }
