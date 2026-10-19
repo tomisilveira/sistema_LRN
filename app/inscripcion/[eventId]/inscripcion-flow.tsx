@@ -12,6 +12,8 @@ export type OpenCompetition = {
   disciplineSortOrder: number;
   categorySlug: string;
   categoryName: string;
+  /** "De 7 a 12 años", "13 años o más" — null si la categoría no tiene edades. */
+  categoryAges: string | null;
 };
 
 function CheckIcon({ className }: { className?: string }) {
@@ -114,6 +116,9 @@ export function InscripcionFlow({ competitions }: { competitions: OpenCompetitio
           <span className={`w-2.5 h-2.5 rounded-full shrink-0 ${colors.dot}`} aria-hidden="true" />
           <span className="font-medium text-[15px] truncate">
             {selected.disciplineName} — {selected.categoryName}
+            {selected.categoryAges && (
+              <span className="panel-label font-normal"> ({selected.categoryAges.toLowerCase()})</span>
+            )}
           </span>
           <span className="ml-auto text-[13px] text-brand-teal-dark dark:text-brand-teal font-medium shrink-0">
             Cambiar
@@ -229,6 +234,9 @@ export function InscripcionFlow({ competitions }: { competitions: OpenCompetitio
                       <span className="block font-display font-semibold text-[15px] leading-tight">
                         {c.categoryName}
                       </span>
+                      {c.categoryAges && (
+                        <span className="block text-[13px] panel-label mt-0.5">{c.categoryAges}</span>
+                      )}
                     </button>
                   );
                 })}

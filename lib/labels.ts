@@ -23,3 +23,12 @@ export const competitionStatusChipClass: Record<Competition["status"], string> =
   bracket_in_progress: "panel-chip-warning",
   finished: "panel-chip-success",
 };
+
+/** Rango de edades de una categoría para mostrar ("De 7 a 12 años",
+ * "13 años o más"). null si la categoría no tiene edades cargadas. */
+export function categoryAgeLabel(minAge: number | null, maxAge: number | null): string | null {
+  if (minAge != null && maxAge != null) return `De ${minAge} a ${maxAge} años`;
+  if (minAge != null) return `${minAge} años o más`;
+  if (maxAge != null) return `Hasta ${maxAge} años`;
+  return null;
+}

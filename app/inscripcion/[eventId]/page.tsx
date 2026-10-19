@@ -2,6 +2,7 @@ import { notFound, redirect } from "next/navigation";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { KioskShell } from "@/app/components/kiosk-shell";
 import { disciplineDisplayName } from "@/lib/discipline-display";
+import { categoryAgeLabel } from "@/lib/labels";
 import { InscripcionFlow, type OpenCompetition } from "./inscripcion-flow";
 
 export const revalidate = 0;
@@ -10,7 +11,7 @@ type CompetitionRow = {
   id: string;
   status: string;
   disciplines: { slug: string; name: string; sort_order: number } | null;
-  categories: { slug: string; name: string; sort_order: number } | null;
+  categories: { slug: string; name: string; sort_order: number; min_age: number | null; max_age: number | null } | null;
 };
 
 /** Un solo link de inscripción por evento. El equipo elige la disciplina en
@@ -50,7 +51,7 @@ export default async function InscripcionPage({ params }: { params: Promise<{ ev
   // mano); solo un torneo ya terminado queda afuera.
   const { data: competitions } = await supabase
     .from("competitions")
-    .select("id, status, disciplines(slug, name, sort_order), categories(slug, name, sort_order)")
+    .select("id, status, disciplines(slug, name, sort_order), categories(slug, name, sort_order, min_age, max_age)")
     .eq("event_id", event.id)
     .eq("registration_open", true)
     .neq("status", "finished")
@@ -65,6 +66,7 @@ export default async function InscripcionPage({ params }: { params: Promise<{ ev
       disciplineSortOrder: c.disciplines!.sort_order,
       categorySlug: c.categories!.slug,
       categoryName: c.categories!.name,
+      categoryAges: categoryAgeLabel(c.categories!.min_age, c.categories!.max_age),
     }))
     .sort(
       (a, b) =>
