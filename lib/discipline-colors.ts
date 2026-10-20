@@ -47,6 +47,12 @@ const PALETTE: DisciplineColorSet[] = [
     text: "text-brand-violet",
     dot: "bg-brand-violet",
   },
+  {
+    bg: "bg-brand-blue/12",
+    border: "border-brand-blue",
+    text: "text-brand-blue",
+    dot: "bg-brand-blue",
+  },
 ];
 
 const UNASSIGNED: DisciplineColorSet = {

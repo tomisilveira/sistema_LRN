@@ -34,7 +34,7 @@ import { Breadcrumbs } from "@/app/components/breadcrumbs";
 import { TabbedLayout, type TabItem } from "@/app/components/tabbed-layout";
 import { ModalFormButton } from "@/app/components/modal-form";
 import { ConfirmSubmitButton } from "@/app/components/confirm-submit-button";
-import { formatLabel, competitionStatusLabel, competitionStatusChipClass } from "@/lib/labels";
+import { formatLabel, competitionStatusText, competitionStatusChipClass } from "@/lib/labels";
 import { disciplineColor } from "@/lib/discipline-colors";
 import { courtDisplayName } from "@/lib/court-display";
 import { disciplineDisplayName, disciplineCategoryLabel } from "@/lib/discipline-display";
@@ -285,6 +285,9 @@ export default async function EventPage({
                   <option value="gold_silver">Grupos + oro/plata</option>
                   <option value="bracket_only">Solo cuadro de eliminación (sin grupos)</option>
                 </select>
+                <p className="text-xs panel-label mt-1">
+                  Seguidor de línea es contrarreloj: ignora este formato y los puntos.
+                </p>
               </div>
               <div className="grid grid-cols-4 gap-3">
                 <div>
@@ -365,7 +368,7 @@ export default async function EventPage({
                         <span
                           className={`text-xs rounded-full px-2 py-0.5 font-medium ${competitionStatusChipClass[c.status]}`}
                         >
-                          {competitionStatusLabel[c.status]}
+                          {competitionStatusText(c.status, c.format_type)}
                         </span>
                         <span
                           className="panel-label text-lg leading-none transition-transform group-hover:translate-x-0.5"

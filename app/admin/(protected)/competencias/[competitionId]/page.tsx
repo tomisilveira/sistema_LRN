@@ -12,6 +12,7 @@ import type {
   Match,
   MatchCard,
   GroupStandingRow,
+  TimeTrialRun,
 } from "@/lib/database.types";
 import {
   addTeam,
@@ -29,6 +30,8 @@ import {
   deleteCompetition,
 } from "./actions";
 import { FinishGroupsOnlyButton } from "./finish-groups-only-button";
+import { TimeTrialAdmin, type AdminTimeTrialRow } from "./time-trial-admin";
+import { buildTimeTrialRanking } from "@/lib/time-trial";
 import { GroupAssignSelect } from "./group-assign-select";
 import { StandingsTable } from "./standings-table";
 import { MatchRow, type CourtOption } from "./match-row";
@@ -43,7 +46,7 @@ import { Breadcrumbs } from "@/app/components/breadcrumbs";
 import { TabbedLayout, type TabItem } from "@/app/components/tabbed-layout";
 import { ConfirmSubmitButton } from "@/app/components/confirm-submit-button";
 import { ModalFormButton } from "@/app/components/modal-form";
-import { competitionStatusLabel, competitionStatusChipClass } from "@/lib/labels";
+import { competitionStatusText, competitionStatusChipClass } from "@/lib/labels";
 import { disciplineColor } from "@/lib/discipline-colors";
 import { disciplineCategoryLabel, disciplineDisplayName } from "@/lib/discipline-display";
 import { FormatAdvisory } from "./format-advisory";
@@ -77,6 +80,7 @@ export default async function CompetitionPage({
     { data: groupMatches },
     { data: bracketMatches },
     { data: allDisciplines },
+    { data: timeTrialRunsRaw },
   ] = await Promise.all([
     supabase
       .from("competitions")
@@ -107,6 +111,8 @@ export default async function CompetitionPage({
       .eq("phase", "bracket")
       .order("bracket_slot"),
     supabase.from("disciplines").select("id, name"),
+    // Contrarreloj (seguidor de línea). En los demás formatos viene vacío.
+    supabase.from("time_trial_runs").select("*").eq("competition_id", competitionId),
   ]);
   if (!competitionRow || !allowed) notFound();
   const { disciplines: discipline, categories: category, events: event, ...competitionFields } = competitionRow;
@@ -309,6 +315,21 @@ export default async function CompetitionPage({
   const peopleCount = (t: Team) => t.participants_present ?? t.member_count ?? 0;
   const grandTotalPeople = (teams ?? []).reduce((sum, t) => sum + peopleCount(t), 0);
 
+  const isTimeTrial = competition.format_type === "time_trial";
+  const timeTrialRuns = (timeTrialRunsRaw ?? []) as TimeTrialRun[];
+  const timeTrialRows: AdminTimeTrialRow[] = isTimeTrial
+    ? buildTimeTrialRanking((teams ?? []) as Team[], timeTrialRuns).map((r) => ({
+        teamId: r.team.id,
+        name: r.team.name,
+        memberNames: r.team.member_names,
+        position: r.position,
+        bestMs: r.bestMs,
+        runs: Object.fromEntries(
+          r.runs.map((run) => [run.attempt, { id: run.id, timeMs: run.time_ms, finished: run.finished }])
+        ),
+      }))
+    : [];
+
   const tabs: TabItem[] = [
     {
       id: "formato",
@@ -317,8 +338,10 @@ export default async function CompetitionPage({
         <div className="space-y-4">
           <section className={`panel-card rounded-xl p-4 space-y-4 border-l-4 ${colors.border}`}>
             <h2 className="font-medium">Formato del torneo</h2>
-            <FormatAdvisory teamCount={(teams ?? []).length} courtCount={(courts ?? []).length} />
-            {competition.status === "setup" ? (
+            {!isTimeTrial && (
+              <FormatAdvisory teamCount={(teams ?? []).length} courtCount={(courts ?? []).length} />
+            )}
+            {competition.status === "setup" || isTimeTrial ? (
               <EditFormatForm competitionId={competitionId} competition={competition} />
             ) : (
               <p className="text-xs panel-label">
@@ -425,7 +448,24 @@ export default async function CompetitionPage({
   // El formato "solo cuadro" no tiene fase de grupos — sin Grupos,
   // Posiciones ni Participantes (que dependen de grupos), directo a Equipos
   // + Cuadro (ver más abajo).
-  if (competition.format_type !== "bracket_only") {
+  if (isTimeTrial) {
+    tabs.push({
+      id: "tiempos",
+      label: "⏱ Tiempos",
+      badge: timeTrialRuns.length || undefined,
+      content: (
+        <TimeTrialAdmin
+          competitionId={competitionId}
+          status={competition.status}
+          attempts={competition.periods_count}
+          maxSeconds={competition.period_seconds}
+          rows={timeTrialRows}
+        />
+      ),
+    });
+  }
+
+  if (competition.format_type !== "bracket_only" && !isTimeTrial) {
     tabs.push(
     {
       id: "grupos",
@@ -686,7 +726,7 @@ export default async function CompetitionPage({
     });
   }
 
-  if (competition.format_type !== "bracket_only") {
+  if (competition.format_type !== "bracket_only" && !isTimeTrial) {
     tabs.push({
     id: "partidos",
     label: "Partidos",
@@ -980,6 +1020,7 @@ export default async function CompetitionPage({
     groups: groupsList,
     standingsByGroup: standingsByGroup as { group: Group; rows: GroupStandingRow[] }[],
     bracketMatches: (bracketMatches ?? []) as Match[],
+    timeTrialRuns,
   });
 
   tabs.push({
@@ -1009,7 +1050,7 @@ export default async function CompetitionPage({
           <span
             className={`text-xs rounded-full px-2 py-0.5 font-medium ${competitionStatusChipClass[competition.status]}`}
           >
-            {competitionStatusLabel[competition.status]}
+            {competitionStatusText(competition.status, competition.format_type)}
           </span>
         </div>
 

@@ -56,9 +56,15 @@ export function TabbedLayout({
       },
       fallbackActive
     );
-    return () => clearSection();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sectionTitle, sectionHref, sectionColorDot, sectionEventId, itemsKey, fallbackActive]);
+
+  // Se limpia SOLO al salir de la página. Antes la limpieza iba en el efecto
+  // de arriba y corría también cada vez que cambiaba un badge (ej. "Tiempos
+  // 6" → "7" al guardar un intento): borraba la pestaña elegida y el panel
+  // saltaba a la primera. registerSection ya conserva la pestaña activa si
+  // sigue existiendo.
+  useEffect(() => () => clearSection(), [clearSection]);
 
   const active = activeId ?? fallbackActive;
 

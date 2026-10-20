@@ -2,13 +2,15 @@ import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { disciplineColor } from "./discipline-colors";
 import { disciplineCategoryLabel } from "./discipline-display";
-import { competitionStatusLabel, competitionStatusChipClass } from "./labels";
-import type { Competition, Court, Group, GroupStandingRow, Match, MatchCard } from "./database.types";
+import { competitionStatusText, competitionStatusChipClass } from "./labels";
+import type { Competition, Court, Group, GroupStandingRow, Match, MatchCard, Team, TimeTrialRun } from "./database.types";
 import type { DisciplineTabItem } from "@/app/home-discipline-menu";
 import { PublicStandingsTable } from "@/app/components/public-standings-table";
 import { PublicBracketView, type BracketDisplayMatch } from "@/app/components/public-bracket-view";
 import { PublicMatchList, type PublicMatchDisplay } from "@/app/components/public-match-list";
 import { matchStage } from "./match-stage";
+import { buildTimeTrialRanking } from "./time-trial";
+import { PublicTimeTrialTable } from "@/app/components/public-time-trial-table";
 
 export type CompetitionWithNames = Competition & {
   disciplines: { name: string; sort_order: number } | null;
@@ -44,7 +46,8 @@ async function buildTabItem(
   competition: CompetitionWithNames,
   courtNameById: Map<string, string>
 ): Promise<DisciplineTabItem> {
-  const [{ data: teams }, { data: groups }, { data: groupMatches }, { data: bracketMatches }] =
+  const isTimeTrial = competition.format_type === "time_trial";
+  const [{ data: teams }, { data: groups }, { data: groupMatches }, { data: bracketMatches }, { data: runs }] =
     await Promise.all([
       // Solo las columnas que se muestran acá (nombre + integrantes). Evita
       // arrastrar mentor_contact/notes al render público — y, con el grant
@@ -63,6 +66,10 @@ async function buildTabItem(
         .eq("competition_id", competition.id)
         .eq("phase", "bracket")
         .order("bracket_slot"),
+      // Contrarreloj (seguidor de línea): intentos en vez de partidos.
+      isTimeTrial
+        ? supabase.from("time_trial_runs").select("*").eq("competition_id", competition.id)
+        : Promise.resolve({ data: [] as TimeTrialRun[] }),
     ]);
 
   const teamsById = new Map((teams ?? []).map((t) => [t.id, t]));
@@ -123,6 +130,10 @@ async function buildTabItem(
   const goldMatches = bracketDisplayMatches.filter((m) => m.bracket_type === "gold");
   const silverMatches = bracketDisplayMatches.filter((m) => m.bracket_type === "silver");
 
+  const timeTrialRows = isTimeTrial
+    ? buildTimeTrialRanking((teams ?? []) as unknown as Team[], (runs ?? []) as TimeTrialRun[])
+    : [];
+
   const colors = disciplineColor(competition.disciplines);
   const isLive = LIVE_STATUSES.includes(competition.status);
   const disciplineCategory = disciplineCategoryLabel(competition.disciplines, competition.categories);
@@ -134,9 +145,16 @@ async function buildTabItem(
         <span
           className={`text-xs rounded-full px-2 py-0.5 font-medium ${competitionStatusChipClass[competition.status]}`}
         >
-          {competitionStatusLabel[competition.status]}
+          {competitionStatusText(competition.status, competition.format_type)}
         </span>
       </div>
+
+      {isTimeTrial &&
+        (timeTrialRows.length > 0 ? (
+          <PublicTimeTrialTable rows={timeTrialRows} attempts={competition.periods_count} />
+        ) : (
+          <p className="text-sm panel-label">Todavía no hay robots inscriptos.</p>
+        ))}
 
       {groupMatchDisplays.length > 0 && (
         <section className="space-y-3">
@@ -184,7 +202,7 @@ async function buildTabItem(
         )
       )}
 
-      {standingsByGroup.length === 0 && bracketDisplayMatches.length === 0 && groupMatchDisplays.length === 0 && (
+      {!isTimeTrial && standingsByGroup.length === 0 && bracketDisplayMatches.length === 0 && groupMatchDisplays.length === 0 && (
         <p className="text-sm panel-label">Todavía no hay grupos ni resultados cargados.</p>
       )}
     </div>

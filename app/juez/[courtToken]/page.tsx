@@ -1,5 +1,5 @@
 import { createAdminClient } from "@/lib/supabase/admin";
-import type { Competition, Match, MatchCard, Team } from "@/lib/database.types";
+import type { Competition, Match, MatchCard, Team, TimeTrialRun } from "@/lib/database.types";
 import { JudgeRealtime } from "./judge-realtime";
 import { StartMatchButton } from "./start-match-button";
 import { MatchTimerPanel } from "./match-timer-panel";
@@ -8,6 +8,8 @@ import { TeamLabel } from "@/app/components/team-label";
 import { courtDisplayName } from "@/lib/court-display";
 import { matchStage } from "@/lib/match-stage";
 import { MatchStageChip } from "@/app/components/match-stage-chip";
+import { TimeTrialPanel, type JudgeLastRun, type JudgeTimeTrialCompetition } from "./time-trial-panel";
+import type { SupabaseClient } from "@supabase/supabase-js";
 
 export const dynamic = "force-dynamic";
 
@@ -67,7 +69,7 @@ export default async function JudgePage({ params }: { params: Promise<{ courtTok
   // cancha puede tener partidos de más de un torneo en la cola.
   const groupIds = [...new Set(list.map((m) => m.group_id).filter((x): x is string => !!x))];
   const competitionIds = [...new Set(list.map((m) => m.competition_id))];
-  const [{ data: teams }, { data: groupsData }, { data: competitionsData }, { data: cardsData }] = await Promise.all([
+  const [{ data: teams }, { data: groupsData }, { data: competitionsData }, { data: cardsData }, timeTrial] = await Promise.all([
     teamIds.length
       ? supabase.from("teams").select("id, name, member_names").in("id", teamIds)
       : Promise.resolve({ data: [] as Pick<Team, "id" | "name" | "member_names">[] }),
@@ -82,6 +84,11 @@ export default async function JudgePage({ params }: { params: Promise<{ courtTok
     current
       ? supabase.from("match_cards").select("*").eq("match_id", current.id).order("created_at")
       : Promise.resolve({ data: [] as MatchCard[] }),
+    // Contrarreloj (seguidor de línea): no tiene partidos — la cancha muestra
+    // los torneos en curso de su disciplina.
+    court.discipline_id
+      ? loadTimeTrials(supabase, court.event_id, court.discipline_id, court.id)
+      : Promise.resolve(null),
   ]);
   const teamById = new Map((teams ?? []).map((t) => [t.id, t]));
   const teamName = new Map((teams ?? []).map((t) => [t.id, t.name]));
@@ -108,6 +115,10 @@ export default async function JudgePage({ params }: { params: Promise<{ courtTok
           </h1>
         </header>
         <div className="panel-brand-stripe" />
+
+        {timeTrial && !current && (
+          <TimeTrialPanel courtToken={courtToken} competitions={timeTrial.competitions} lastRun={timeTrial.lastRun} />
+        )}
 
         {current && competition ? (
           <MatchTimerPanel
@@ -163,10 +174,86 @@ export default async function JudgePage({ params }: { params: Promise<{ courtTok
                 ))}
               </div>
             </section>
-          ) : (
+          ) : timeTrial ? null : (
             <p className="text-sm panel-label">No hay partidos pendientes asignados a esta cancha.</p>
           ))}
       </div>
     </div>
   );
+}
+
+/** Torneos contrarreloj en curso de la disciplina de la cancha, con sus
+ * robots e intentos, más el último intento cargado desde esta cancha (para
+ * poder deshacerlo). null si no hay ninguno. */
+async function loadTimeTrials(
+  supabase: SupabaseClient,
+  eventId: string,
+  disciplineId: string,
+  courtId: string
+): Promise<{ competitions: JudgeTimeTrialCompetition[]; lastRun: JudgeLastRun | null } | null> {
+  const { data: comps } = await supabase
+    .from("competitions")
+    .select("id, periods_count, period_seconds, categories(name, sort_order)")
+    .eq("event_id", eventId)
+    .eq("discipline_id", disciplineId)
+    .eq("format_type", "time_trial")
+    .in("status", ["groups_in_progress", "groups_done", "bracket_in_progress"]);
+  const list = (comps ?? []) as unknown as {
+    id: string;
+    periods_count: number;
+    period_seconds: number | null;
+    categories: { name: string; sort_order: number } | null;
+  }[];
+  if (list.length === 0) return null;
+  const ids = list.map((c) => c.id);
+
+  const [{ data: teams }, { data: runs }] = await Promise.all([
+    supabase
+      .from("teams")
+      .select("id, competition_id, name, member_names, accredited, homologated")
+      .in("competition_id", ids)
+      .order("name"),
+    supabase.from("time_trial_runs").select("*").in("competition_id", ids).order("created_at"),
+  ]);
+  const runList = (runs ?? []) as TimeTrialRun[];
+  const teamList = (teams ?? []) as Pick<Team, "id" | "competition_id" | "name" | "member_names">[];
+
+  const competitions = list
+    .sort((a, b) => (a.categories?.sort_order ?? 0) - (b.categories?.sort_order ?? 0))
+    .map((c) => ({
+      id: c.id,
+      label: c.categories?.name ?? "Torneo",
+      attempts: c.periods_count,
+      maxSeconds: c.period_seconds,
+      robots: teamList
+        .filter((t) => t.competition_id === c.id)
+        .map((t) => ({
+          teamId: t.id,
+          name: t.name,
+          memberNames: t.member_names,
+          runs: runList
+            .filter((r) => r.team_id === t.id)
+            .sort((a, b) => a.attempt - b.attempt)
+            .map((r) => ({ attempt: r.attempt, timeMs: r.time_ms, finished: r.finished })),
+        })),
+    }));
+
+  // Solo el último intento del torneo se puede deshacer, y solo desde la
+  // cancha que lo cargó (ver app/api/time-trials/runs).
+  const lastRuns = ids
+    .map((id) => runList.filter((r) => r.competition_id === id).at(-1))
+    .filter((r): r is TimeTrialRun => !!r && r.court_id === courtId)
+    .sort((a, b) => b.created_at.localeCompare(a.created_at));
+  const last = lastRuns[0];
+  const lastRun = last
+    ? {
+        id: last.id,
+        competitionId: last.competition_id,
+        teamName: teamList.find((t) => t.id === last.team_id)?.name ?? "?",
+        attempt: last.attempt,
+        timeMs: last.time_ms,
+      }
+    : null;
+
+  return { competitions, lastRun };
 }

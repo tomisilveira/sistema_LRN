@@ -1,12 +1,12 @@
 import Link from "next/link";
 import type { SupabaseClient } from "@supabase/supabase-js";
-import type { Court, EventRow, Group, GroupStandingRow, Match, Team } from "@/lib/database.types";
+import type { Court, EventRow, Group, GroupStandingRow, Match, Team, TimeTrialRun } from "@/lib/database.types";
 import { buildPodium, type PodiumBoard } from "@/lib/podium";
 import type { CompetitionWithNames } from "@/lib/build-event-tab-items";
 import { buildCourtBoards } from "@/lib/build-court-boards";
 import { disciplineColor } from "@/lib/discipline-colors";
 import { disciplineCategoryLabel } from "@/lib/discipline-display";
-import { competitionStatusChipClass, competitionStatusLabel } from "@/lib/labels";
+import { competitionStatusChipClass, competitionStatusText } from "@/lib/labels";
 import { CourtBoards } from "@/app/components/court-boards";
 import {
   ActivityIcon,
@@ -260,7 +260,7 @@ export async function EventDashboard({
                             <span
                               className={`text-[11px] rounded-full px-2 py-px font-medium ${competitionStatusChipClass[p.competition.status]}`}
                             >
-                              {competitionStatusLabel[p.competition.status]}
+                              {competitionStatusText(p.competition.status, p.competition.format_type)}
                             </span>
                             {p.live && (
                               <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-red-600">
@@ -418,6 +418,23 @@ async function buildWinners(
 ): Promise<WinnersEntry[]> {
   const results = await Promise.all(
     competitions.map(async (competition): Promise<WinnersEntry | null> => {
+      const cTeams = teams.filter((t) => t.competition_id === competition.id);
+      // Contrarreloj: el podio recién con el torneo terminado (antes sería
+      // el mejor tiempo parcial, no el ganador).
+      if (competition.format_type === "time_trial") {
+        if (competition.status !== "finished") return null;
+        const { data: runs } = await supabase.from("time_trial_runs").select("*").eq("competition_id", competition.id);
+        const boards = buildPodium({
+          competition,
+          teams: cTeams,
+          groups: [],
+          standingsByGroup: [],
+          bracketMatches: [],
+          timeTrialRuns: (runs ?? []) as TimeTrialRun[],
+        }).filter((b) => b.entries.length > 0);
+        return boards.length > 0 ? { competition, boards } : null;
+      }
+
       const cGroups = groups.filter((g) => g.competition_id === competition.id);
       const groupsClosed = competition.status === "groups_done" || competition.status === "finished";
       if (competition.format_type === "groups_only" && !groupsClosed) return null;
@@ -437,7 +454,7 @@ async function buildWinners(
 
       const boards = buildPodium({
         competition,
-        teams: teams.filter((t) => t.competition_id === competition.id),
+        teams: cTeams,
         groups: cGroups,
         standingsByGroup,
         bracketMatches: matches.filter((m) => m.competition_id === competition.id && m.phase === "bracket"),

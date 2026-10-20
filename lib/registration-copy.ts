@@ -64,6 +64,17 @@ const MINISUMO_RC: DisciplineCopy = {
   need: ["Nombre del robot.", ...NEED_COMMON, "Llevar el robot a homologación técnica el día del evento."],
 };
 
+const SEGUIDOR_LINEA: DisciplineCopy = {
+  tagline: "Un robot autónomo recorre un circuito siguiendo una línea, contra reloj.",
+  how: "Cada robot corre solo en la pista, siguiendo la línea pintada sin ayuda. Se le toma el tiempo de cada vuelta: tiene 3 intentos de hasta 3 minutos y vale el mejor. Gana el robot más rápido. Medidas máximas y demás detalles según el reglamento técnico.",
+  teamIs: "un grupo de 1 a 4 personas que arma y programa 1 robot seguidor de línea.",
+  need: [
+    "Nombre del robot.",
+    ...NEED_COMMON,
+    "Llevar el robot a homologación técnica el día del evento (medidas, led de largada y test de adherencia).",
+  ],
+};
+
 const GENERIC: DisciplineCopy = {
   tagline: "Inscripción de un equipo a este torneo de la Liga.",
   how: "El formato (grupos, llave o ambos) lo define la organización según la cantidad de inscriptos.",
@@ -81,6 +92,7 @@ const BY_SLUG: Record<string, DisciplineCopy> = {
   sumo_rc: SUMO_RC,
   minisumo_autonomo: MINISUMO_AUTONOMO,
   minisumo_rc: MINISUMO_RC,
+  seguidor_linea: SEGUIDOR_LINEA,
 };
 
 export function disciplineCopy(disciplineSlug: string): DisciplineCopy {

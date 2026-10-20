@@ -6,6 +6,7 @@ export const formatLabel: Record<Competition["format_type"], string> = {
   single_elimination: "Grupos + eliminatoria simple",
   gold_silver: "Grupos + oro/plata",
   bracket_only: "Solo cuadro de eliminación (sin grupos)",
+  time_trial: "Contrarreloj (mejor tiempo)",
 };
 
 export const competitionStatusLabel: Record<Competition["status"], string> = {
@@ -15,6 +16,16 @@ export const competitionStatusLabel: Record<Competition["status"], string> = {
   bracket_in_progress: "Eliminatoria en curso",
   finished: "Terminado",
 };
+
+/** Estado para mostrar: la contrarreloj no tiene grupos ni llave, así que
+ * su "en curso" (se guarda como groups_in_progress) se muestra genérico. */
+export function competitionStatusText(
+  status: Competition["status"],
+  formatType: Competition["format_type"]
+): string {
+  if (formatType === "time_trial" && status !== "setup" && status !== "finished") return "En curso";
+  return competitionStatusLabel[status];
+}
 
 export const competitionStatusChipClass: Record<Competition["status"], string> = {
   setup: "panel-chip",

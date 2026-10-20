@@ -20,13 +20,24 @@ export interface RealtimeRefreshOptions {
    * se perdió algún evento (wifi que se corta, socket que se cae en
    * silencio). */
   fallbackPollMs: number;
+  /** Tablas a escuchar (mismo filtro en todas). Default: solo `matches`.
+   * La contrarreloj (seguidor de línea) carga en `time_trial_runs`. */
+  tables?: string[];
 }
 
 /** Suscribe la página a cambios en `matches` y hace `router.refresh()`.
  * Además refresca al reconectarse el canal (lo que pasó mientras estaba
  * caído no llega como evento) y al volver la pestaña a primer plano (TV o
  * tablet que se durmió). */
-export function useRealtimeRefresh({ channelName, filter, debounceMs, maxWaitMs, fallbackPollMs }: RealtimeRefreshOptions) {
+export function useRealtimeRefresh({
+  channelName,
+  filter,
+  debounceMs,
+  maxWaitMs,
+  fallbackPollMs,
+  tables = ["matches"],
+}: RealtimeRefreshOptions) {
+  const tablesKey = tables.join(",");
   const router = useRouter();
 
   useEffect(() => {
@@ -52,10 +63,11 @@ export function useRealtimeRefresh({ channelName, filter, debounceMs, maxWaitMs,
       debounceTimer = setTimeout(refreshNow, wait);
     };
 
-    const channel = supabase
-      .channel(channelName)
-      .on("postgres_changes", { event: "*", schema: "public", table: "matches", ...(filter ? { filter } : {}) }, scheduleRefresh)
-      .subscribe((status) => {
+    let channel = supabase.channel(channelName);
+    for (const table of tablesKey.split(",")) {
+      channel = channel.on("postgres_changes", { event: "*", schema: "public", table, ...(filter ? { filter } : {}) }, scheduleRefresh);
+    }
+    channel.subscribe((status) => {
         if (status === "SUBSCRIBED") {
           // La primera suscripción es la carga inicial (ya viene fresca del
           // server); las siguientes son reconexiones.
@@ -79,5 +91,5 @@ export function useRealtimeRefresh({ channelName, filter, debounceMs, maxWaitMs,
       document.removeEventListener("visibilitychange", onVisible);
       supabase.removeChannel(channel);
     };
-  }, [channelName, filter, debounceMs, maxWaitMs, fallbackPollMs, router]);
+  }, [channelName, filter, debounceMs, maxWaitMs, fallbackPollMs, tablesKey, router]);
 }

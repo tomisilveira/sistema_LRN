@@ -45,6 +45,9 @@ function PodiumCard({ entry }: { entry: PodiumEntry }) {
         {entry.team.institution && (
           <p className="text-sm panel-label mt-0.5">{entry.team.institution}</p>
         )}
+        {entry.detail && (
+          <p className="font-display font-bold text-lg tabular-nums mt-1">⏱ {entry.detail}</p>
+        )}
       </div>
 
       <div className="pt-2 border-t border-neutral-200/70">

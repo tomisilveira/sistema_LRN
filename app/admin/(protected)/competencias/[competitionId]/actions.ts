@@ -29,15 +29,41 @@ export async function updateCompetitionFormat(competitionId: string, formData: F
 
   const { data: competition } = await supabase
     .from("competitions")
-    .select("status")
+    .select("status, format_type")
     .eq("id", competitionId)
     .single<Competition>();
   if (!competition) throw new Error("Competencia no encontrada.");
+
+  // Contrarreloj: no hay fixture que se rompa, así que intentos y tiempo
+  // máximo se pueden ajustar en cualquier momento (ej. sumar un intento).
+  if (competition.format_type === "time_trial") {
+    const periodSeconds = Number(formData.get("period_seconds") ?? 0);
+    const attempts = Number(formData.get("periods_count") ?? 0);
+    if (!Number.isInteger(attempts) || attempts < 1 || attempts > 10) {
+      throw new Error("Los intentos por robot tienen que ser entre 1 y 10.");
+    }
+    const { error } = await supabase
+      .from("competitions")
+      .update({
+        timer_mode: "time_trial",
+        period_seconds: periodSeconds > 0 ? Math.round(periodSeconds) : null,
+        periods_count: attempts,
+        rounds_to_win: null,
+      })
+      .eq("id", competitionId);
+    if (error) throw new Error(error.message);
+    revalidateCompetition(competitionId);
+    return;
+  }
+
   if (competition.status !== "setup") {
     throw new Error("Ya se generaron los partidos de grupo; no se puede cambiar el formato ahora.");
   }
 
   const formatType = String(formData.get("format_type") ?? "groups_only");
+  if (formatType === "time_trial") {
+    throw new Error("La contrarreloj sale de la disciplina (seguidor de línea), no se elige acá.");
+  }
   const allowDraws = formData.get("allow_draws") === "on";
   const pointsWin = Number(formData.get("points_win") ?? 3);
   const pointsDraw = Number(formData.get("points_draw") ?? 1);

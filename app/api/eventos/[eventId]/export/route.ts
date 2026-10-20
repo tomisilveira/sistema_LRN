@@ -5,6 +5,7 @@ import { canManageEvent } from "@/lib/admin-auth";
 import { formatTeamWithMembers } from "@/lib/team-display";
 import { disciplineCategoryLabel } from "@/lib/discipline-display";
 import { cardsByTeam, formatCardSummary } from "@/lib/match-cards";
+import { buildTimeTrialRanking, formatRunTime } from "@/lib/time-trial";
 import type {
   Category,
   Court,
@@ -15,6 +16,7 @@ import type {
   Match,
   MatchCard,
   Team,
+  TimeTrialRun,
 } from "@/lib/database.types";
 
 export const dynamic = "force-dynamic";
@@ -25,12 +27,15 @@ type CompetitionRow = {
   category_id: string;
   format_type: string;
   status: string;
+  periods_count: number;
 };
 
 const formatLabel: Record<string, string> = {
   groups_only: "Solo fase de grupos",
   single_elimination: "Grupos + eliminatoria simple",
   gold_silver: "Grupos + oro/plata",
+  bracket_only: "Solo cuadro de eliminación",
+  time_trial: "Contrarreloj (mejor tiempo)",
 };
 
 const statusLabel: Record<string, string> = {
@@ -145,12 +150,37 @@ export async function GET(_req: Request, context: { params: Promise<{ eventId: s
   ];
   posiciones.getRow(1).font = { bold: true };
 
+  // Contrarreloj (seguidor de línea): una fila por robot con cada intento.
+  const maxAttempts = Math.max(
+    0,
+    ...competitionList.filter((c) => c.format_type === "time_trial").map((c) => c.periods_count)
+  );
+  const tiempos =
+    maxAttempts > 0
+      ? (() => {
+          const ws = workbook.addWorksheet("Tiempos");
+          ws.columns = [
+            { header: "Torneo", key: "torneo", width: 32 },
+            { header: "#", key: "pos", width: 6 },
+            { header: "Robot", key: "robot", width: 30 },
+            ...Array.from({ length: maxAttempts }, (_, i) => ({
+              header: `Intento ${i + 1}`,
+              key: `int${i + 1}`,
+              width: 11,
+            })),
+            { header: "Mejor", key: "mejor", width: 11 },
+          ];
+          ws.getRow(1).font = { bold: true };
+          return ws;
+        })()
+      : null;
+
   // Todos los torneos se cargan en paralelo (2 tandas por torneo, todas a
   // la vez) y recién después se escriben las filas, en orden. Antes iba
   // torneo por torneo y grupo por grupo: con 10 torneos eran ~40 viajes
   // seguidos a la base.
   const loadCompetition = async (competition: CompetitionRow) => {
-    const [{ data: teams }, { data: groups }, { data: groupTeams }, { data: matches }] = await Promise.all([
+    const [{ data: teams }, { data: groups }, { data: groupTeams }, { data: matches }, { data: runs }] = await Promise.all([
       supabase.from("teams").select("*").eq("competition_id", competition.id).order("name"),
       supabase.from("groups").select("*").eq("competition_id", competition.id).order("sort_order"),
       supabase
@@ -158,6 +188,9 @@ export async function GET(_req: Request, context: { params: Promise<{ eventId: s
         .select("*, groups!inner(competition_id)")
         .eq("groups.competition_id", competition.id),
       supabase.from("matches").select("*").eq("competition_id", competition.id).order("turno"),
+      competition.format_type === "time_trial"
+        ? supabase.from("time_trial_runs").select("*").eq("competition_id", competition.id)
+        : Promise.resolve({ data: [] as TimeTrialRun[] }),
     ]);
     const matchIds = ((matches ?? []) as Match[]).map((m) => m.id);
     const [{ data: cardsData }, standings] = await Promise.all([
@@ -175,11 +208,11 @@ export async function GET(_req: Request, context: { params: Promise<{ eventId: s
         })
       ),
     ]);
-    return { competition, teams, groups, groupTeams, matches, cardsData, standings };
+    return { competition, teams, groups, groupTeams, matches, cardsData, standings, runs };
   };
   const loaded = await Promise.all(competitionList.map(loadCompetition));
 
-  for (const { competition, teams, groups, groupTeams, matches, cardsData, standings } of loaded) {
+  for (const { competition, teams, groups, groupTeams, matches, cardsData, standings, runs } of loaded) {
     const label = competitionLabel(competition);
 
     const cardsByMatchId = new Map<string, MatchCard[]>();
@@ -247,6 +280,21 @@ export async function GET(_req: Request, context: { params: Promise<{ eventId: s
         estado: statusLabel[m.status] ?? m.status,
         tarjetas: cardParts.join(" · "),
       });
+    }
+
+    if (tiempos && competition.format_type === "time_trial") {
+      for (const r of buildTimeTrialRanking(teamsList, (runs ?? []) as TimeTrialRun[])) {
+        const row: Record<string, string | number> = {
+          torneo: label,
+          pos: r.position ?? "",
+          robot: formatTeamWithMembers(r.team.name, r.team.member_names),
+          mejor: r.bestMs === null ? "" : formatRunTime(r.bestMs),
+        };
+        for (const run of r.runs) {
+          row[`int${run.attempt}`] = run.finished ? formatRunTime(run.time_ms) : "No terminó";
+        }
+        tiempos.addRow(row);
+      }
     }
 
     for (const { group: g, rows } of standings) {

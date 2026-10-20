@@ -19,6 +19,7 @@ export function PublicRealtime({ competitionId }: { competitionId?: string }) {
     debounceMs: 1200,
     maxWaitMs: 3000,
     fallbackPollMs: 30000,
+    tables: ["matches", "time_trial_runs"],
   });
   return null;
 }

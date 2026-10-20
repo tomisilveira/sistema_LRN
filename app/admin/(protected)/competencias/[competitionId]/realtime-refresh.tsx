@@ -17,6 +17,7 @@ export function RealtimeRefresh({ competitionId }: { competitionId: string }) {
     debounceMs: 1200,
     maxWaitMs: 3000,
     fallbackPollMs: 60000,
+    tables: ["matches", "time_trial_runs"],
   });
   return null;
 }

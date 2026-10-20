@@ -138,11 +138,15 @@ export async function createCompetition(eventId: string, formData: FormData) {
     .eq("id", disciplineId)
     .maybeSingle();
 
+  // Disciplina contrarreloj (seguidor de línea): no hay grupos ni llave,
+  // el formato sale de la disciplina sin importar lo elegido en el form.
+  const isTimeTrial = discipline?.timer_mode_default === "time_trial";
+
   const { error } = await supabase.from("competitions").insert({
     event_id: eventId,
     discipline_id: disciplineId,
     category_id: categoryId,
-    format_type: formatType,
+    format_type: isTimeTrial ? "time_trial" : formatType,
     allow_draws: allowDraws,
     points_win: pointsWin,
     points_draw: pointsDraw,

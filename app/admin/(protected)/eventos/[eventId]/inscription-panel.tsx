@@ -3,7 +3,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import type { CompetitionWithNames } from "@/lib/build-event-tab-items";
 import { disciplineColor } from "@/lib/discipline-colors";
 import { disciplineCategoryLabel } from "@/lib/discipline-display";
-import { competitionStatusChipClass, competitionStatusLabel } from "@/lib/labels";
+import { competitionStatusChipClass, competitionStatusText } from "@/lib/labels";
 import { InscriptionLinkCard } from "./inscription-link-card";
 import { RegistrationSwitch } from "./registration-switch";
 import { setAllRegistrations } from "./actions";
@@ -107,7 +107,7 @@ export async function InscriptionPanel({
                     </Link>
                     <span className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs panel-label">
                       <span className={`rounded-full px-2 py-px font-medium ${competitionStatusChipClass[c.status]}`}>
-                        {competitionStatusLabel[c.status]}
+                        {competitionStatusText(c.status, c.format_type)}
                       </span>
                       <span className="tabular-nums">
                         {count} {count === 1 ? "equipo" : "equipos"}

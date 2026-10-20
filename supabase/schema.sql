@@ -37,9 +37,10 @@ create table disciplines (
   -- Config de cronómetro por defecto: se copia a la competencia al crear el
   -- torneo. 'periods' = N tiempos de duración fija con marcador acumulado
   -- (fútbol); 'rounds' = hasta N asaltos, se define al llegar a
-  -- rounds_to_win (sumo / mini sumo, mejor de 3).
+  -- rounds_to_win (sumo / mini sumo, mejor de 3); 'time_trial' =
+  -- contrarreloj de un robot solo (seguidor de línea, ver time_trial_runs).
   timer_mode_default text not null default 'periods'
-    check (timer_mode_default in ('periods', 'rounds')),
+    check (timer_mode_default in ('periods', 'rounds', 'time_trial')),
   period_seconds_default int,
   periods_count_default int not null default 1,
   rounds_to_win_default int
@@ -102,7 +103,7 @@ create table competitions (
   discipline_id uuid not null references disciplines (id),
   category_id uuid not null references categories (id),
   format_type text not null default 'groups_only'
-    check (format_type in ('groups_only', 'single_elimination', 'gold_silver', 'bracket_only')),
+    check (format_type in ('groups_only', 'single_elimination', 'gold_silver', 'bracket_only', 'time_trial')),
   allow_draws boolean not null default true,
   points_win int not null default 3,
   points_draw int not null default 1,
@@ -115,7 +116,7 @@ create table competitions (
   registration_open boolean not null default false,
   -- Config de cronómetro de este torneo puntual (copiada del discipline al
   -- crearlo, editable en "Formato del torneo" mientras status = 'setup').
-  timer_mode text not null default 'periods' check (timer_mode in ('periods', 'rounds')),
+  timer_mode text not null default 'periods' check (timer_mode in ('periods', 'rounds', 'time_trial')),
   period_seconds int,
   periods_count int not null default 1,
   rounds_to_win int,
@@ -249,6 +250,25 @@ create table match_cards (
   created_at timestamptz not null default now()
 );
 
+-- Contrarreloj (format_type = 'time_trial', ej. seguidor de línea): un
+-- intento por fila. Se reusan competitions.periods_count = intentos por
+-- robot y period_seconds = tiempo máximo por intento. Ranking por mejor
+-- tiempo (lib/time-trial.ts).
+create table time_trial_runs (
+  id uuid primary key default gen_random_uuid(),
+  competition_id uuid not null references competitions (id) on delete cascade,
+  team_id uuid not null references teams (id) on delete cascade,
+  attempt int not null check (attempt >= 1),
+  -- Tiempo del recorrido en milisegundos. NULL cuando no terminó.
+  time_ms int check (time_ms is null or time_ms > 0),
+  -- false = "no terminó": el intento cuenta como usado pero sin tiempo.
+  finished boolean not null default true,
+  court_id uuid references courts (id) on delete set null,
+  created_at timestamptz not null default now(),
+  unique (team_id, attempt),
+  check (finished = (time_ms is not null))
+);
+
 -- ==========================================================================
 -- ÍNDICES
 -- ==========================================================================
@@ -256,6 +276,7 @@ create table match_cards (
 create index idx_matches_competition on matches (competition_id);
 create index idx_matches_court_turno on matches (court_id, turno);
 create index idx_matches_group on matches (group_id);
+create index idx_time_trial_runs_competition on time_trial_runs (competition_id);
 create index idx_teams_competition on teams (competition_id);
 create index idx_groups_competition on groups (competition_id);
 create index idx_courts_event on courts (event_id);
@@ -426,6 +447,7 @@ alter table group_teams   enable row level security;
 alter table courts        enable row level security;
 alter table matches       enable row level security;
 alter table match_cards   enable row level security;
+alter table time_trial_runs enable row level security;
 alter table admins        enable row level security;
 
 alter table event_admins  enable row level security;
@@ -472,6 +494,9 @@ create policy "public read match_cards" on match_cards
     )
   );
 
+create policy "public read time_trial_runs" on time_trial_runs
+  for select using (competition_is_public(competition_id) or can_manage_competition(competition_id));
+
 -- Cualquier admin lee la lista de admins (para compartir). Alta/baja/rol:
 -- solo desde el servidor con service_role (app/admin/(protected)/usuarios).
 create policy "admin read admins" on admins for select using (is_admin());
@@ -505,6 +530,9 @@ create policy "admin all match_cards" on match_cards
   using (exists (select 1 from matches m where m.id = match_cards.match_id and can_manage_competition(m.competition_id)))
   with check (exists (select 1 from matches m where m.id = match_cards.match_id and can_manage_competition(m.competition_id)));
 
+create policy "admin all time_trial_runs" on time_trial_runs
+  for all using (can_manage_competition(competition_id)) with check (can_manage_competition(competition_id));
+
 -- Compartir evento: lo gestiona quien administra ese evento.
 create policy "manage event_admins" on event_admins
   for all using (can_manage_event(event_id)) with check (can_manage_event(event_id));
@@ -536,7 +564,8 @@ grant execute on function can_manage_event(uuid)        to anon, authenticated;
 grant execute on function can_manage_competition(uuid)  to anon, authenticated;
 
 -- catálogos y tablas sin datos sensibles: select completo
-grant select on disciplines, categories, competitions, groups, group_teams, matches, match_cards
+grant select on disciplines, categories, competitions, groups, group_teams, matches, match_cards,
+  time_trial_runs
   to anon, authenticated;
 
 -- events: anon solo columnas públicas (nunca accreditation_token)
@@ -558,7 +587,8 @@ grant select on admins to authenticated;
 -- escritura a nivel tabla para `authenticated`; la RLS (is_admin()) es la
 -- que realmente restringe a los usuarios de `admins`
 grant insert, update, delete on
-  disciplines, categories, events, competitions, teams, groups, group_teams, courts, matches, match_cards
+  disciplines, categories, events, competitions, teams, groups, group_teams, courts, matches, match_cards,
+  time_trial_runs
   to authenticated;
 
 -- Desde el 30/10/2026 Supabase deja de otorgar privilegios por defecto a
@@ -573,7 +603,7 @@ grant select on events, teams, courts to authenticated;
 -- scripts) — acceso completo; se saltea la RLS
 grant select, insert, update, delete on
   disciplines, categories, events, admins, competitions, teams, groups,
-  group_teams, courts, matches, match_cards
+  group_teams, courts, matches, match_cards, time_trial_runs
   to service_role;
 grant select on courts_public to service_role;
 
@@ -601,6 +631,12 @@ begin
   ) then
     alter publication supabase_realtime add table match_cards;
   end if;
+  if not exists (
+    select 1 from pg_publication_tables
+    where pubname = 'supabase_realtime' and schemaname = 'public' and tablename = 'time_trial_runs'
+  ) then
+    alter publication supabase_realtime add table time_trial_runs;
+  end if;
 end $$;
 
 -- ==========================================================================
@@ -617,7 +653,8 @@ values
   ('sumo_autonomo',     'Sumo Autónomo',      false, 2, 'rounds',  120, 3, 2),
   ('sumo_rc',           'Sumo RC',            false, 3, 'rounds',  120, 3, 2),
   ('minisumo_autonomo', 'Mini Sumo Autónomo', false, 4, 'rounds',  120, 3, 2),
-  ('minisumo_rc',       'Mini Sumo RC',       false, 5, 'rounds',  120, 3, 2);
+  ('minisumo_rc',       'Mini Sumo RC',       false, 5, 'rounds',  120, 3, 2),
+  ('seguidor_linea',    'Seguidor de Línea',  false, 6, 'time_trial', 180, 3, null);
 
 insert into categories (slug, name, min_age, max_age, sort_order) values
   ('infantil',        'Infantil',        7,  12,   1),

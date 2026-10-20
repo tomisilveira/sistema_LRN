@@ -4,7 +4,9 @@
 // Editor y no hay un proyecto Supabase de referencia commiteado. Si tocás el
 // schema, actualizá también este archivo.
 
-export type FormatType = "groups_only" | "single_elimination" | "gold_silver" | "bracket_only";
+// 'time_trial' (0019): contrarreloj de un robot solo, sin partidos — ver
+// time_trial_runs y lib/time-trial.ts.
+export type FormatType = "groups_only" | "single_elimination" | "gold_silver" | "bracket_only" | "time_trial";
 export type CompetitionStatus =
   | "setup"
   | "groups_in_progress"
@@ -15,7 +17,7 @@ export type MatchPhase = "group" | "bracket";
 export type BracketType = "gold" | "silver";
 export type MatchStatus = "pending_teams" | "scheduled" | "in_progress" | "completed";
 export type EventStatus = "draft" | "active" | "finished";
-export type TimerMode = "periods" | "rounds";
+export type TimerMode = "periods" | "rounds" | "time_trial";
 export type AdminRole = "superadmin" | "event_admin";
 
 export interface Discipline {
@@ -204,6 +206,19 @@ export interface MatchCard {
   team_id: string;
   card_type: CardType;
   reason: string | null;
+  created_at: string;
+}
+
+// Un intento de contrarreloj (0019_time_trial.sql). time_ms null ⇔
+// finished = false ("no terminó").
+export interface TimeTrialRun {
+  id: string;
+  competition_id: string;
+  team_id: string;
+  attempt: number;
+  time_ms: number | null;
+  finished: boolean;
+  court_id: string | null;
   created_at: string;
 }
 

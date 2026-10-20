@@ -5,8 +5,62 @@ import type { Competition } from "@/lib/database.types";
 import { updateCompetitionFormat } from "./actions";
 
 export function EditFormatForm({ competitionId, competition }: { competitionId: string; competition: Competition }) {
+  if (competition.format_type === "time_trial") {
+    return <TimeTrialFormatForm competitionId={competitionId} competition={competition} />;
+  }
+  return <MatchFormatForm competitionId={competitionId} competition={competition} />;
+}
+
+/** Contrarreloj (seguidor de línea): solo intentos por robot y tiempo
+ * máximo — se puede cambiar aunque el torneo ya haya empezado. */
+function TimeTrialFormatForm({ competitionId, competition }: { competitionId: string; competition: Competition }) {
   const action = updateCompetitionFormat.bind(null, competitionId);
-  const [timerMode, setTimerMode] = useState<"periods" | "rounds">(competition.timer_mode);
+  return (
+    <form action={action} className="space-y-3">
+      <p className="text-sm panel-label">
+        Contrarreloj: cada robot corre solo y se le toma el tiempo. Vale su mejor intento; si dos
+        empatan, desempata el segundo mejor.
+      </p>
+      <div className="grid grid-cols-2 gap-3 max-w-md">
+        <div>
+          <label className="block text-xs panel-label mb-1">Intentos por robot</label>
+          <input
+            name="periods_count"
+            type="number"
+            min={1}
+            max={10}
+            defaultValue={competition.periods_count}
+            className="w-full rounded-md panel-input px-2 py-2 text-sm"
+          />
+        </div>
+        <div>
+          <label className="block text-xs panel-label mb-1">Tiempo máximo por intento (segundos)</label>
+          <input
+            name="period_seconds"
+            type="number"
+            min={1}
+            defaultValue={competition.period_seconds ?? ""}
+            placeholder="180"
+            className="w-full rounded-md panel-input px-2 py-2 text-sm"
+          />
+        </div>
+      </div>
+      <p className="text-xs panel-label">
+        Si un robot pasa el tiempo máximo, el intento cuenta como &ldquo;no terminó&rdquo;. Dejalo vacío para no
+        poner límite. Esto se puede cambiar aunque el torneo ya haya empezado.
+      </p>
+      <button type="submit" className="rounded-md panel-button-primary font-medium px-4 py-2 text-sm">
+        Guardar formato
+      </button>
+    </form>
+  );
+}
+
+function MatchFormatForm({ competitionId, competition }: { competitionId: string; competition: Competition }) {
+  const action = updateCompetitionFormat.bind(null, competitionId);
+  const [timerMode, setTimerMode] = useState<"periods" | "rounds">(
+    competition.timer_mode === "rounds" ? "rounds" : "periods"
+  );
 
   return (
     <form action={action} className="space-y-3">

@@ -4,13 +4,16 @@
 // el render.
 
 import { parseMemberNames } from "./team-display";
-import type { Competition, Group, GroupStandingRow, Match, Team } from "./database.types";
+import { buildTimeTrialRanking, formatRunTime } from "./time-trial";
+import type { Competition, Group, GroupStandingRow, Match, Team, TimeTrialRun } from "./database.types";
 
 export interface PodiumEntry {
   position: 1 | 2 | 3;
   team: Team;
   participantNames: string[];
   participantCount: number;
+  /** Contrarreloj: el mejor tiempo, ya formateado ("12.34"). */
+  detail?: string;
 }
 
 export interface PodiumBoard {
@@ -27,6 +30,8 @@ export interface BuildPodiumInput {
   groups: Group[];
   standingsByGroup: { group: Group; rows: GroupStandingRow[] }[];
   bracketMatches: Match[];
+  /** Solo contrarreloj (format_type 'time_trial'). */
+  timeTrialRuns?: TimeTrialRun[];
 }
 
 function cleanName(raw: string): string {
@@ -119,8 +124,23 @@ export function buildPodium({
   teams,
   standingsByGroup,
   bracketMatches,
+  timeTrialRuns,
 }: BuildPodiumInput): PodiumBoard[] {
   const teamsById = new Map(teams.map((t) => [t.id, t]));
+
+  // Contrarreloj: los 3 mejores tiempos (empates exactos comparten puesto).
+  if (competition.format_type === "time_trial") {
+    const entries: PodiumEntry[] = buildTimeTrialRanking(teams, timeTrialRuns ?? [])
+      .filter((r): r is typeof r & { position: 1 | 2 | 3 } => r.position !== null && r.position <= 3)
+      .map((r) => ({ ...toEntry(r.position, r.team), detail: formatRunTime(r.bestMs) }));
+    return [
+      {
+        label: "Podio",
+        entries,
+        note: entries.length === 0 ? "Todavía no hay tiempos cargados." : undefined,
+      },
+    ];
+  }
   const nullBracket = bracketMatches.filter((m) => m.bracket_type === null);
 
   if (competition.format_type === "gold_silver") {
