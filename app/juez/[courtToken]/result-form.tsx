@@ -35,12 +35,18 @@ export function ResultForm({
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const summary =
+  const a = Number(scoreA || 0);
+  const b = Number(scoreB || 0);
+  const winnerName =
     mode === "winner"
-      ? `Ganó ${winnerId === teamAId ? teamAName : teamBName}`
-      : `${teamAName} ${scoreA || 0} — ${scoreB || 0} ${teamBName}${
-          scoreA === scoreB && scoreA !== "" ? " (empate)" : ""
-        }`;
+      ? winnerId === teamAId
+        ? teamAName
+        : teamBName
+      : a === b
+        ? null
+        : a > b
+          ? teamAName
+          : teamBName;
 
   async function handleConfirm() {
     setSubmitting(true);
@@ -76,24 +82,37 @@ export function ResultForm({
 
   if (confirming) {
     return (
-      <div className="space-y-3 rounded-lg panel-card p-3 panel-enter">
-        <p className="text-sm panel-label">Confirmar resultado:</p>
-        <p className="text-lg font-semibold">{summary}</p>
-        {error && <p className="text-sm text-red-500 dark:text-red-400 panel-enter">{error}</p>}
+      // Mismo cartel que el cierre de sumo (MatchCloseConfirm en
+      // match-timer-panel.tsx): marcador grande y quién gana, antes de cerrar.
+      <div className="space-y-3 rounded-xl border-2 border-brand-orange/60 bg-brand-orange/8 p-4 panel-enter">
+        <p className="text-xs uppercase tracking-wide font-display font-semibold text-brand-orange">
+          Fin del partido — revisá antes de cerrar
+        </p>
+        <div className="rounded-lg bg-white/70 px-3 py-2 text-center">
+          {mode === "score" && (
+            <p className="text-base">
+              {teamAName} <span className="font-display font-bold text-xl">{a}</span>
+              <span className="panel-label"> – </span>
+              <span className="font-display font-bold text-xl">{b}</span> {teamBName}
+            </p>
+          )}
+          <p className="text-lg font-display font-semibold">{winnerName ? `Gana ${winnerName}` : "Empate"}</p>
+        </div>
+        {error && <p className="text-sm text-red-500 panel-enter">{error}</p>}
         <div className="flex gap-2">
-          <button
-            onClick={() => setConfirming(false)}
-            disabled={submitting}
-            className="flex-1 rounded-md border border-neutral-300 dark:border-neutral-700 py-2.5 text-sm transition active:scale-[0.97]"
-          >
-            Volver
-          </button>
           <button
             onClick={handleConfirm}
             disabled={submitting}
-            className="flex-1 rounded-md panel-button-primary font-medium py-2.5 text-sm disabled:opacity-50"
+            className="flex-1 rounded-lg panel-button-primary font-display font-semibold py-3 text-sm disabled:opacity-50"
           >
-            {submitting ? "Enviando..." : "Confirmar"}
+            {submitting ? "Enviando..." : "Sí, cerrar partido"}
+          </button>
+          <button
+            onClick={() => setConfirming(false)}
+            disabled={submitting}
+            className="flex-1 rounded-lg panel-button-secondary font-display font-semibold py-3 text-sm disabled:opacity-50"
+          >
+            Volver
           </button>
         </div>
       </div>

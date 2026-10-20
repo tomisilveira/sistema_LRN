@@ -751,9 +751,9 @@ export default async function CompetitionPage({
             a apretar &ldquo;Armar partidos que falten&rdquo;.
           </p>
         )}
-        <div className="space-y-2 panel-enter-stagger">
+        <div className="grid gap-3 lg:grid-cols-2 items-start panel-enter-stagger">
           {(groupMatches ?? []).length === 0 && (
-            <p className="text-sm panel-label">
+            <p className="text-sm panel-label lg:col-span-2">
               {startBlockedReason
                 ? startBlockedReason
                 : <>&ldquo;Iniciar torneo&rdquo; arma el todos-contra-todos de cada grupo y le asigna cancha y turno a cada partido automáticamente.</>}

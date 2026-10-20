@@ -2,9 +2,8 @@ import type { Court, Match, MatchCard } from "@/lib/database.types";
 import { TeamLabel } from "@/app/components/team-label";
 import { TeamCardBadges } from "@/app/components/team-card-badges";
 import { cardsByTeam } from "@/lib/match-cards";
-import { MatchResultForm } from "./match-result-form";
-import { MatchScheduleForm } from "./match-schedule-form";
-import { MatchAdminControls } from "./match-admin-controls";
+import { roundWinCounts } from "@/lib/match-timer";
+import { MatchRowActions } from "./match-row-actions";
 import type { MatchActionResult } from "./actions";
 
 // Esta página nunca necesita el `access_token` de las canchas (el link del
@@ -12,8 +11,12 @@ import type { MatchActionResult } from "./actions";
 // client component — así el token no viaja al browser.
 export type CourtOption = Pick<Court, "id" | "name" | "discipline_id" | "sort_order">;
 
-/** Fila de un partido de la fase de grupos (pestaña Partidos): equipos,
- * estado, cancha/turno con override manual y carga de resultado. */
+/** Tarjeta de un partido de la fase de grupos (pestaña Partidos), tipo
+ * marcador: arriba turno/cancha y estado; al medio los dos equipos con su
+ * puntaje a la derecha y el ganador resaltado; abajo los botones para
+ * cargar/corregir resultado, cambiar cancha/turno y reiniciar — cada uno
+ * abre su formulario solo cuando hace falta (oct 2026, antes los campos
+ * estaban siempre a la vista y la fila se leía amontonada). */
 export function MatchRow({
   match,
   teamAName,
@@ -45,120 +48,123 @@ export function MatchRow({
 }) {
   const courtName = match.court_id ? courts.find((c) => c.id === match.court_id)?.name : null;
   const teamCards = cardsByTeam(cards, match.team_a_id, match.team_b_id);
+  const played = match.status === "completed";
+  const live = match.status === "in_progress";
+  // En vivo: fútbol guarda el marcador parcial en score_a/score_b; sumo
+  // solo los ganadores de cada round (round_winner_ids).
+  const liveRounds = live && (match.round_winner_ids ?? []).length > 0
+    ? roundWinCounts(match.round_winner_ids, match.team_a_id, match.team_b_id)
+    : null;
+  const scoreA = liveRounds ? liveRounds.a : played || live ? match.score_a : null;
+  const scoreB = liveRounds ? liveRounds.b : played || live ? match.score_b : null;
 
   return (
     <div
-      className={`rounded-lg px-3 py-2.5 space-y-2.5 text-[15px] transition-colors ${
-        match.status === "in_progress"
-          ? "bg-brand-orange/5 border border-brand-orange/40"
-          : "panel-surface hover:border-brand-teal/30"
+      className={`rounded-xl border bg-white overflow-hidden transition-colors ${
+        live ? "border-brand-orange/60 shadow-sm" : played ? "border-neutral-200" : "border-neutral-200 hover:border-brand-teal/40"
       }`}
     >
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <div className="min-w-[180px]">
-          <TeamLabel
-            name={teamAName}
-            memberNames={teamAMemberNames}
-            className={match.winner_id === match.team_a_id ? "font-semibold" : ""}
-          />{" "}
-          <TeamCardBadges summary={teamCards.a} />
-          {" vs "}
-          <TeamLabel
-            name={teamBName}
-            memberNames={teamBMemberNames}
-            className={match.winner_id === match.team_b_id ? "font-semibold" : ""}
-          />{" "}
-          <TeamCardBadges summary={teamCards.b} />
-          {match.status === "completed" && match.score_a !== null && match.score_b !== null && (
-            <span className="panel-label"> · {match.score_a}-{match.score_b}</span>
+      <div
+        className={`flex flex-wrap items-center justify-between gap-2 px-3 py-1.5 text-xs border-b ${
+          live ? "bg-brand-orange/8 border-brand-orange/30" : "bg-neutral-50 border-neutral-200"
+        }`}
+      >
+        <span className="flex flex-wrap items-center gap-1.5">
+          {match.turno !== null && <span className="font-semibold text-neutral-700">Turno {match.turno}</span>}
+          {courtName ? (
+            <span className="panel-label">· {courtName}</span>
+          ) : (
+            !played && <span className="panel-chip-warning rounded-full px-2 py-0.5">Sin cancha</span>
           )}
-          {match.status === "in_progress" && (
-            <span className="text-brand-orange font-medium inline-flex items-center gap-1">
-              {" · "}
-              <span className="panel-live-dot" aria-hidden="true" />
-              en curso
-            </span>
-          )}
-        </div>
-        {match.status === "completed" ? (
-          <span className="panel-chip-success text-xs rounded-full px-2 py-0.5 font-medium shrink-0">
-            ✅ Jugado
-          </span>
-        ) : courtName ? (
-          <span className="panel-chip text-xs rounded-full px-2 py-0.5 shrink-0">
-            🏟 {courtName}
-            {match.turno !== null ? ` · Turno ${match.turno}` : ""}
+        </span>
+        {played ? (
+          <span className="panel-chip-success rounded-full px-2 py-0.5 font-medium">✓ Jugado</span>
+        ) : live ? (
+          <span className="inline-flex items-center gap-1.5 font-semibold text-brand-orange">
+            <span className="panel-live-dot" aria-hidden="true" />
+            En curso
           </span>
         ) : (
-          <span className="panel-chip-warning text-xs rounded-full px-2 py-0.5 shrink-0">
-            Sin cancha asignada
-          </span>
+          <span className="panel-label">Por jugar</span>
         )}
       </div>
 
-      {match.status === "completed" && (
-        <div className="pt-2 border-t border-neutral-200">
-          <MatchAdminControls
-            played
-            correctAction={onResult}
-            resetAction={onReset}
-            teamAId={match.team_a_id}
-            teamBId={match.team_b_id}
-            teamAName={teamAName}
-            teamBName={teamBName}
-            allowDraws={allowDraws}
-            scoreA={match.score_a}
-            scoreB={match.score_b}
-          />
-        </div>
-      )}
+      <div className="px-3 py-2 divide-y divide-neutral-100">
+        <TeamScoreLine
+          name={teamAName}
+          memberNames={teamAMemberNames}
+          cardSummary={teamCards.a}
+          score={scoreA}
+          won={played && match.winner_id !== null && match.winner_id === match.team_a_id}
+          lost={played && match.winner_id !== null && match.winner_id !== match.team_a_id}
+        />
+        <TeamScoreLine
+          name={teamBName}
+          memberNames={teamBMemberNames}
+          cardSummary={teamCards.b}
+          score={scoreB}
+          won={played && match.winner_id !== null && match.winner_id === match.team_b_id}
+          lost={played && match.winner_id !== null && match.winner_id !== match.team_b_id}
+        />
+      </div>
 
-      {match.status !== "completed" && (
-        <div className="flex flex-wrap items-start gap-x-5 gap-y-2 pt-2 border-t border-neutral-200">
-          {/* Cancha y turno se asignan solos al iniciar el torneo — esto es
-              solo para pisar esa asignación a mano si hace falta (ej. una
-              cancha se rompe a mitad de la jornada). */}
-          <div className="flex items-center gap-2">
-            <span className="text-[11px] uppercase tracking-wide panel-label shrink-0">Cancha/turno</span>
-            <MatchScheduleForm
-              matchId={match.id}
-              courtId={match.court_id}
-              turno={match.turno}
-              courts={courts}
-              competitionDisciplineId={competitionDisciplineId}
-              disciplineNameById={disciplineNameById}
-              onSchedule={onSchedule}
-            />
-          </div>
+      <div className="px-3 py-2 border-t border-neutral-100 bg-neutral-50/60">
+        <MatchRowActions
+          status={match.status}
+          matchId={match.id}
+          teamAId={match.team_a_id}
+          teamBId={match.team_b_id}
+          teamAName={teamAName}
+          teamBName={teamBName}
+          scoreA={match.score_a}
+          scoreB={match.score_b}
+          allowDraws={allowDraws}
+          courtId={match.court_id}
+          turno={match.turno}
+          courts={courts}
+          competitionDisciplineId={competitionDisciplineId}
+          disciplineNameById={disciplineNameById}
+          onSchedule={onSchedule}
+          onResult={onResult}
+          onReset={onReset}
+        />
+      </div>
+    </div>
+  );
+}
 
-          <div className="flex items-center gap-2">
-            <span className="text-[11px] uppercase tracking-wide panel-label shrink-0">Resultado</span>
-            <MatchResultForm
-              action={onResult}
-              teamAId={match.team_a_id}
-              teamBId={match.team_b_id}
-              teamAName={teamAName}
-              teamBName={teamBName}
-              allowDraws={allowDraws}
-            />
-          </div>
-
-          {match.status === "in_progress" && (
-            <MatchAdminControls
-              played={false}
-              correctAction={onResult}
-              resetAction={onReset}
-              teamAId={match.team_a_id}
-              teamBId={match.team_b_id}
-              teamAName={teamAName}
-              teamBName={teamBName}
-              allowDraws={allowDraws}
-              scoreA={match.score_a}
-              scoreB={match.score_b}
-            />
-          )}
-        </div>
-      )}
+function TeamScoreLine({
+  name,
+  memberNames,
+  cardSummary,
+  score,
+  won,
+  lost,
+}: {
+  name: string;
+  memberNames: string | null;
+  cardSummary: ReturnType<typeof cardsByTeam>["a"];
+  score: number | null;
+  won: boolean;
+  lost: boolean;
+}) {
+  return (
+    <div className="flex items-center justify-between gap-3 py-1.5">
+      <div className={`min-w-0 text-[15px] ${won ? "font-semibold text-brand-green" : lost ? "text-neutral-500" : ""}`}>
+        {won && <span aria-label="Ganador">🏆 </span>}
+        <TeamLabel name={name} memberNames={memberNames} /> <TeamCardBadges summary={cardSummary} />
+      </div>
+      <span
+        className={`shrink-0 w-9 text-center font-display font-bold text-xl tabular-nums rounded-md py-0.5 ${
+          score === null
+            ? "text-neutral-300"
+            : won
+              ? "bg-brand-green/12 text-brand-green"
+              : "text-neutral-700"
+        }`}
+      >
+        {score ?? "–"}
+      </span>
     </div>
   );
 }
