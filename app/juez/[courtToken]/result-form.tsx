@@ -11,6 +11,7 @@ export function ResultForm({
   teamAName,
   teamBName,
   allowDraws,
+  knockout = false,
   initialScoreA = "",
   initialScoreB = "",
 }: {
@@ -21,6 +22,9 @@ export function ResultForm({
   teamAName: string;
   teamBName: string;
   allowDraws: boolean;
+  /** Partido de la fase final: un empate en el marcador se define por
+   * penales — el juez tiene que elegir quién ganó. */
+  knockout?: boolean;
   /** Marcador ya cargado en vivo (modo 'periods') a precargar en el
    * formulario de cierre, para no tener que retipearlo. */
   initialScoreA?: string;
@@ -30,6 +34,7 @@ export function ResultForm({
   const [scoreA, setScoreA] = useState(initialScoreA);
   const [scoreB, setScoreB] = useState(initialScoreB);
   const [winnerId, setWinnerId] = useState("");
+  const [penaltyWinnerId, setPenaltyWinnerId] = useState("");
   const [mode, setMode] = useState<"score" | "winner">("score");
   const [confirming, setConfirming] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -37,16 +42,22 @@ export function ResultForm({
 
   const a = Number(scoreA || 0);
   const b = Number(scoreB || 0);
+  const scoreTied = mode === "score" && scoreA !== "" && scoreB !== "" && a === b;
+  // Fase final con empate: gana quien ganó por penales.
+  const byPenalties = knockout && scoreTied;
+  const nameOf = (id: string) => (id === teamAId ? teamAName : teamBName);
   const winnerName =
     mode === "winner"
-      ? winnerId === teamAId
-        ? teamAName
-        : teamBName
-      : a === b
-        ? null
-        : a > b
-          ? teamAName
-          : teamBName;
+      ? nameOf(winnerId)
+      : byPenalties
+        ? penaltyWinnerId
+          ? nameOf(penaltyWinnerId)
+          : null
+        : a === b
+          ? null
+          : a > b
+            ? teamAName
+            : teamBName;
 
   async function handleConfirm() {
     setSubmitting(true);
@@ -59,7 +70,7 @@ export function ResultForm({
           courtToken,
           scoreA: mode === "score" && scoreA !== "" ? Number(scoreA) : null,
           scoreB: mode === "score" && scoreB !== "" ? Number(scoreB) : null,
-          winnerId: mode === "winner" ? winnerId : null,
+          winnerId: mode === "winner" ? winnerId : byPenalties ? penaltyWinnerId : null,
         }),
       });
       const json = await res.json();
@@ -73,6 +84,7 @@ export function ResultForm({
       setScoreA("");
       setScoreB("");
       setWinnerId("");
+      setPenaltyWinnerId("");
       router.refresh();
     } catch {
       setError("No se pudo conectar. Revisá el wifi e intentá de nuevo.");
@@ -96,7 +108,9 @@ export function ResultForm({
               <span className="font-display font-bold text-xl">{b}</span> {teamBName}
             </p>
           )}
-          <p className="text-lg font-display font-semibold">{winnerName ? `Gana ${winnerName}` : "Empate"}</p>
+          <p className="text-lg font-display font-semibold">
+            {winnerName ? `Gana ${winnerName}${byPenalties ? " por penales" : ""}` : "Empate"}
+          </p>
         </div>
         {error && <p className="text-sm text-red-500 panel-enter">{error}</p>}
         <div className="flex gap-2">
@@ -119,7 +133,9 @@ export function ResultForm({
     );
   }
 
-  const canSubmit = mode === "score" ? scoreA !== "" && scoreB !== "" : winnerId !== "";
+  const canSubmit =
+    mode === "score" ? scoreA !== "" && scoreB !== "" && (!byPenalties || penaltyWinnerId !== "") : winnerId !== "";
+  const blockedTie = scoreTied && !allowDraws && !knockout;
 
   return (
     <div className="space-y-3">
@@ -189,15 +205,37 @@ export function ResultForm({
         </div>
       )}
 
-      {mode === "score" && !allowDraws && scoreA !== "" && scoreB !== "" && scoreA === scoreB && (
+      {byPenalties && (
+        <div className="rounded-lg border border-brand-orange/50 bg-brand-orange/8 p-3 space-y-2 panel-enter">
+          <p className="text-sm font-medium">Empate en la fase final: ¿quién ganó por penales?</p>
+          <div className="grid grid-cols-2 gap-2">
+            {[
+              { id: teamAId, name: teamAName },
+              { id: teamBId, name: teamBName },
+            ].map((t) => (
+              <button
+                key={t.id}
+                onClick={() => setPenaltyWinnerId(t.id)}
+                className={`rounded-lg py-3 text-sm font-medium border transition active:scale-[0.97] ${
+                  penaltyWinnerId === t.id
+                    ? "bg-brand-teal text-white border-brand-teal"
+                    : "border-neutral-300 bg-white"
+                }`}
+              >
+                {t.name}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {blockedTie && (
         <p className="text-xs text-amber-400">Esta disciplina no admite empates: corregí el marcador.</p>
       )}
 
       <button
         onClick={() => setConfirming(true)}
-        disabled={
-          !canSubmit || (mode === "score" && !allowDraws && scoreA !== "" && scoreB !== "" && scoreA === scoreB)
-        }
+        disabled={!canSubmit || blockedTie}
         className="w-full rounded-md panel-button-primary font-medium py-3 disabled:opacity-40"
       >
         Cargar resultado

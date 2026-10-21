@@ -49,6 +49,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ mat
       scoreA: typeof scoreA === "number" ? scoreA : null,
       scoreB: typeof scoreB === "number" ? scoreB : null,
       winnerIdIfNoScore: winnerId ?? null,
+      knockout: match.phase === "bracket",
     });
   } catch (e) {
     return NextResponse.json({ error: (e as Error).message }, { status: 400 });

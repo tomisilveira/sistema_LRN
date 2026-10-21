@@ -121,6 +121,7 @@ export function BracketView({
                         teamAName={m.team_a_name ?? "A"}
                         teamBName={m.team_b_name ?? "B"}
                         allowDraws={allowDraws}
+                        knockout
                         scoreA={m.score_a}
                         scoreB={m.score_b}
                       />
@@ -142,6 +143,7 @@ export function BracketView({
                         teamAName={m.team_a_name ?? "A"}
                         teamBName={m.team_b_name ?? "B"}
                         allowDraws={allowDraws}
+                        knockout
                         submitLabel="Guardar resultado"
                       />
                       {m.status === "in_progress" && (
@@ -154,6 +156,7 @@ export function BracketView({
                           teamAName={m.team_a_name ?? "A"}
                           teamBName={m.team_b_name ?? "B"}
                           allowDraws={allowDraws}
+                          knockout
                           scoreA={m.score_a}
                           scoreB={m.score_b}
                         />

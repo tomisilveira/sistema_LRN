@@ -16,6 +16,7 @@ export function MatchAdminControls({
   teamAName,
   teamBName,
   allowDraws,
+  knockout = false,
   scoreA,
   scoreB,
   layout = "inline",
@@ -29,6 +30,8 @@ export function MatchAdminControls({
   teamAName: string;
   teamBName: string;
   allowDraws: boolean;
+  /** Partido de la fase final (ver MatchResultForm). */
+  knockout?: boolean;
   scoreA: number | null;
   scoreB: number | null;
   layout?: "inline" | "stacked";
@@ -56,6 +59,7 @@ export function MatchAdminControls({
           teamAName={teamAName}
           teamBName={teamBName}
           allowDraws={allowDraws}
+          knockout={knockout}
           defaultScoreA={scoreA}
           defaultScoreB={scoreB}
           submitLabel="Guardar corrección"

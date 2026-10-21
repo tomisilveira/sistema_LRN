@@ -680,6 +680,7 @@ export async function submitResult(competitionId: string, matchId: string, formD
     scoreA,
     scoreB,
     winnerIdIfNoScore,
+    knockout: match.phase === "bracket",
   });
 
   // Corrección de un partido ya jugado: en el cuadro, si cambia el ganador,

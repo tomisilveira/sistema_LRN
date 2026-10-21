@@ -49,7 +49,11 @@ export async function POST(request: Request, { params }: { params: Promise<{ mat
   const roundWinnerIds = [...(match.round_winner_ids ?? []), roundWinnerId];
   const counts = roundWinCounts(roundWinnerIds, match.team_a_id, match.team_b_id);
   const decided = counts.a >= competition.rounds_to_win || counts.b >= competition.rounds_to_win;
-  const outOfRounds = roundWinnerIds.length >= competition.periods_count;
+  // Fase final: si se acabaron los rounds con el combate empatado (cantidad
+  // par de rounds), no se cierra sin ganador — se juega un round extra de
+  // desempate (antes quedaba winner_id null y el cuadro se trababa).
+  const outOfRounds =
+    roundWinnerIds.length >= competition.periods_count && !(match.phase === "bracket" && counts.a === counts.b);
 
   let update;
   if (decided || outOfRounds) {

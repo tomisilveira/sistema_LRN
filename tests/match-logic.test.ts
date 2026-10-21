@@ -23,3 +23,15 @@ test("marcador incompleto o negativo: error", () => {
   assert.throws(() => computeMatchOutcome({ ...base, scoreA: 1 }), /Falta/);
   assert.throws(() => computeMatchOutcome({ ...base, scoreA: -1, scoreB: 0 }), /negativo/);
 });
+
+test("fase final: un empate necesita ganador por penales", () => {
+  const ko = { ...base, allowDraws: true, knockout: true, scoreA: 1, scoreB: 1 };
+  assert.throws(() => computeMatchOutcome(ko), /penales/);
+  const pen = computeMatchOutcome({ ...ko, winnerIdIfNoScore: "b" });
+  assert.equal(pen.winner_id, "b");
+});
+
+test("el ganador elegido tiene que coincidir con el marcador", () => {
+  assert.throws(() => computeMatchOutcome({ ...base, scoreA: 2, scoreB: 0, winnerIdIfNoScore: "b" }), /no coincide/);
+  assert.equal(computeMatchOutcome({ ...base, scoreA: 2, scoreB: 0, winnerIdIfNoScore: "a" }).winner_id, "a");
+});

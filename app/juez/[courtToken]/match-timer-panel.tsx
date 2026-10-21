@@ -105,7 +105,10 @@ export function MatchTimerPanel({
     const next = [...(shown.round_winner_ids ?? []), winnerId];
     const counts = roundWinCounts(next, match.team_a_id, match.team_b_id);
     const toWin = competition.rounds_to_win;
-    return (toWin != null && (counts.a >= toWin || counts.b >= toWin)) || next.length >= competition.periods_count;
+    if (toWin != null && (counts.a >= toWin || counts.b >= toWin)) return true;
+    // Fase final empatada al acabarse los rounds: sigue con un round extra.
+    if (match.phase === "bracket" && counts.a === counts.b) return false;
+    return next.length >= competition.periods_count;
   }
 
   function handleRoundButton(teamId: string, teamName: string) {
@@ -213,6 +216,7 @@ export function MatchTimerPanel({
         teamAName={teamAName}
         teamBName={teamBName}
         allowDraws={competition.allow_draws}
+        knockout={match.phase === "bracket"}
       />
     );
   }
@@ -230,6 +234,7 @@ export function MatchTimerPanel({
           teamAName={teamAName}
           teamBName={teamBName}
           allowDraws={competition.allow_draws}
+          knockout={match.phase === "bracket"}
           initialScoreA={liveScoreA}
           initialScoreB={liveScoreB}
         />

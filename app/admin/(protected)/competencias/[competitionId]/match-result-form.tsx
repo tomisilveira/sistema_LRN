@@ -16,6 +16,7 @@ export function MatchResultForm({
   teamAName,
   teamBName,
   allowDraws,
+  knockout = false,
   defaultScoreA,
   defaultScoreB,
   submitLabel = "Cargar resultado",
@@ -28,6 +29,9 @@ export function MatchResultForm({
   teamAName: string;
   teamBName: string;
   allowDraws: boolean;
+  /** Partido de la fase final: un empate se define por penales (elegir el
+   * ganador en el desplegable además del marcador). */
+  knockout?: boolean;
   /** Marcador ya cargado, para corregir sin retipear todo. */
   defaultScoreA?: number | null;
   defaultScoreB?: number | null;
@@ -47,43 +51,66 @@ export function MatchResultForm({
     return id === teamAId ? teamAName : teamBName;
   }
 
+  const hasScores = scoreA.trim() !== "" && scoreB.trim() !== "";
+
   function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setError(null);
 
-    if (winnerId) {
+    if (!hasScores) {
+      if (scoreA.trim() !== "" || scoreB.trim() !== "") {
+        setError("Completá el marcador de los dos equipos (o dejalo vacío y elegí un ganador directo).");
+        return;
+      }
+      if (!winnerId) {
+        setError("Cargá el marcador de ambos equipos o elegí un ganador directo.");
+        return;
+      }
       setConfirming(`Gana ${nameOf(winnerId)}`);
       return;
     }
-    if (scoreA.trim() === "" || scoreB.trim() === "") {
-      setError("Cargá el marcador de ambos equipos o elegí un ganador directo.");
-      return;
-    }
+
     const a = Number(scoreA);
     const b = Number(scoreB);
     if (Number.isNaN(a) || Number.isNaN(b) || a < 0 || b < 0) {
       setError("El marcador tiene que ser un número mayor o igual a 0.");
       return;
     }
-    if (a === b && !allowDraws) {
+    const score = `${teamAName} ${a} – ${b} ${teamBName}`;
+
+    if (a !== b) {
+      const byScore = a > b ? (teamAId ?? "") : (teamBId ?? "");
+      if (winnerId && winnerId !== byScore) {
+        setError("El ganador elegido no coincide con el marcador.");
+        return;
+      }
+      setConfirming(`${score} · gana ${nameOf(byScore)}`);
+      return;
+    }
+
+    // Empate en el marcador: con ganador elegido, ganó por penales.
+    if (winnerId) {
+      setConfirming(`${score} · gana ${nameOf(winnerId)} por penales`);
+      return;
+    }
+    if (knockout) {
+      setError("Empate en la fase final: elegí en el desplegable quién ganó por penales.");
+      return;
+    }
+    if (!allowDraws) {
       setError("Esta disciplina no admite empates: elegí un ganador.");
       return;
     }
-    setConfirming(
-      a === b
-        ? `${teamAName} ${a} – ${b} ${teamBName} · empate`
-        : `${teamAName} ${a} – ${b} ${teamBName} · gana ${a > b ? teamAName : teamBName}`
-    );
+    setConfirming(`${score} · empate`);
   }
 
   function handleConfirm() {
     const formData = new FormData();
-    if (winnerId) {
-      formData.set("winner_id", winnerId);
-    } else {
+    if (hasScores) {
       formData.set("score_a", scoreA.trim());
       formData.set("score_b", scoreB.trim());
     }
+    if (winnerId) formData.set("winner_id", winnerId);
     startTransition(async () => {
       try {
         const res = await action(formData);
@@ -163,7 +190,7 @@ export function MatchResultForm({
         disabled={pending}
         className={`${stacked ? "w-full" : ""} rounded panel-input px-1.5 py-1 text-xs disabled:opacity-50`}
       >
-        <option value="">(o ganador directo)</option>
+        <option value="">{knockout ? "(ganador directo o por penales)" : "(o ganador directo)"}</option>
         <option value={teamAId ?? ""}>{teamAName}</option>
         <option value={teamBId ?? ""}>{teamBName}</option>
       </select>
