@@ -4,9 +4,9 @@ import { assertMatchBelongsToCourt, JudgeAuthError } from "@/lib/judge-auth";
 import { applyForfeit, ForfeitError } from "@/lib/forfeit";
 import type { ForfeitSide } from "@/lib/database.types";
 
-// "Un equipo no se presentó" desde la pantalla del juez (W.O.) — antes de
-// arrancar el partido. Misma credencial que el resto: el token de la
-// cancha. Reglas del W.O. en lib/forfeit-rules.ts.
+// "No se presentó" desde la pantalla del juez (W.O.), con el partido ya
+// abierto (o todavía sin abrir). Misma credencial que el resto: el token
+// de la cancha. Reglas del W.O. en lib/forfeit-rules.ts.
 export async function POST(request: Request, { params }: { params: Promise<{ matchId: string }> }) {
   const { matchId } = await params;
   const body = (await request.json().catch(() => null)) as { courtToken?: string; side?: ForfeitSide } | null;
@@ -23,11 +23,8 @@ export async function POST(request: Request, { params }: { params: Promise<{ mat
     if (e instanceof JudgeAuthError) return NextResponse.json({ error: e.message }, { status: e.status });
     throw e;
   }
-  if (match.status !== "scheduled") {
-    return NextResponse.json(
-      { error: "Solo se puede cargar un W.O. antes de arrancar el partido. Si ya empezó, cerralo con el resultado." },
-      { status: 400 }
-    );
+  if (match.status !== "scheduled" && match.status !== "in_progress") {
+    return NextResponse.json({ error: "Este partido ya tiene resultado." }, { status: 400 });
   }
 
   try {

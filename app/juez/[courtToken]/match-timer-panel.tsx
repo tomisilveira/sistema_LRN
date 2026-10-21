@@ -12,6 +12,8 @@ import { serverNow } from "@/lib/use-server-now";
 import type { MatchStage } from "@/lib/match-stage";
 import { MatchStageChip } from "@/app/components/match-stage-chip";
 import { ResultForm } from "./result-form";
+import { JudgeForfeitPanel } from "./judge-forfeit-panel";
+import { forfeitWinningScore } from "@/lib/forfeit-rules";
 
 /** Panel activo del partido en curso — el reloj (MatchClock) como hero,
  * más los controles según el modo de la disciplina: pausa/reanuda siempre;
@@ -51,6 +53,7 @@ export function MatchTimerPanel({
   // riesgo acá). null/false = sin armar; el valor identifica QUÉ se está
   // por confirmar (para la tarjeta roja, de qué equipo).
   const [confirmingCancel, setConfirmingCancel] = useState(false);
+  const [forfeitOpen, setForfeitOpen] = useState(false);
   const [confirmingRoundTie, setConfirmingRoundTie] = useState(false);
   const [confirmingRedCard, setConfirmingRedCard] = useState<{ teamId: string; teamName: string } | null>(null);
   // Sumo/mini sumo: los rounds se anotan directo, pero el round que CIERRA
@@ -504,34 +507,62 @@ export function MatchTimerPanel({
         )}
       </div>
 
-      {confirmingCancel ? (
-        <div className="rounded-lg border border-red-500/30 bg-red-500/8 p-2.5 space-y-2 max-w-xs mx-auto panel-enter">
-          <p className="text-sm panel-label text-center">
-            ¿Abriste este partido por error? Se pierde el progreso del reloj y de los rounds.
-          </p>
-          <div className="flex gap-2">
+      {/* Pie: las dos salidas "de emergencia" del partido, como botones
+          parejos (antes "Abrí mal, volver" era un link chiquito y "No se
+          presentó" estaba en la lista de partidos, fuera del partido). */}
+      <div className="border-t border-neutral-200 pt-4 space-y-3">
+        {!confirmingCancel && !forfeitOpen && (
+          <div className="grid grid-cols-2 gap-2">
             <button
-              onClick={confirmedCancel}
-              className="flex-1 rounded-lg panel-button-danger font-display font-semibold py-2 text-sm"
+              onClick={() => setConfirmingCancel(true)}
+              className="rounded-lg border border-neutral-300 bg-white py-2.5 text-sm font-display font-semibold text-neutral-700 hover:bg-neutral-100 transition active:scale-[0.97]"
             >
-              Sí, volver
+              ↩ Abrí mal, volver
             </button>
             <button
-              onClick={() => setConfirmingCancel(false)}
-              className="flex-1 rounded-lg panel-button-secondary font-display font-semibold py-2 text-sm"
+              onClick={() => setForfeitOpen(true)}
+              className="rounded-lg border border-brand-orange/50 bg-brand-orange/10 py-2.5 text-sm font-display font-semibold text-neutral-800 hover:bg-brand-orange/20 transition active:scale-[0.97]"
             >
-              Seguir acá
+              🚫 No se presentó
             </button>
           </div>
-        </div>
-      ) : (
-        <button
-          onClick={() => setConfirmingCancel(true)}
-          className="text-xs panel-label hover:opacity-80 transition-opacity underline block mx-auto"
-        >
-          Abrí mal, volver
-        </button>
-      )}
+        )}
+
+        {confirmingCancel && (
+          <div className="rounded-lg border border-red-500/30 bg-red-500/8 p-3 space-y-2.5 panel-enter">
+            <p className="text-sm panel-label">
+              ¿Abriste este partido por error? Vuelve a la lista sin resultado y se pierde el progreso del reloj y
+              de los rounds.
+            </p>
+            <div className="flex gap-2">
+              <button
+                onClick={confirmedCancel}
+                className="flex-1 rounded-lg panel-button-danger font-display font-semibold py-2.5 text-sm"
+              >
+                Sí, volver
+              </button>
+              <button
+                onClick={() => setConfirmingCancel(false)}
+                className="flex-1 rounded-lg panel-button-secondary font-display font-semibold py-2.5 text-sm"
+              >
+                Seguir acá
+              </button>
+            </div>
+          </div>
+        )}
+
+        {forfeitOpen && (
+          <JudgeForfeitPanel
+            courtToken={courtToken}
+            matchId={match.id}
+            teamAName={teamAName}
+            teamBName={teamBName}
+            woScore={forfeitWinningScore(competition)}
+            knockout={match.phase === "bracket"}
+            onCancel={() => setForfeitOpen(false)}
+          />
+        )}
+      </div>
     </section>
   );
 }

@@ -4,16 +4,17 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import type { ForfeitSide } from "@/lib/database.types";
 
-/** "Un equipo no se presentó" en la pantalla del juez, antes de arrancar el
- * partido (W.O.). Elegir quién faltó → cartel que dice qué queda → guardar.
- * Reglas en lib/forfeit-rules.ts. */
-export function JudgeForfeitButton({
+/** "No se presentó" en la pantalla del juez, dentro del partido abierto
+ * (W.O.). Elegir quién faltó → cartel que dice qué queda → guardar. Reglas
+ * en lib/forfeit-rules.ts. */
+export function JudgeForfeitPanel({
   courtToken,
   matchId,
   teamAName,
   teamBName,
   woScore,
   knockout,
+  onCancel,
 }: {
   courtToken: string;
   matchId: string;
@@ -21,9 +22,9 @@ export function JudgeForfeitButton({
   teamBName: string;
   woScore: number;
   knockout: boolean;
+  onCancel: () => void;
 }) {
   const router = useRouter();
-  const [open, setOpen] = useState(false);
   const [side, setSide] = useState<ForfeitSide | null>(null);
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -49,14 +50,6 @@ export function JudgeForfeitButton({
       setError("No se pudo conectar. Revisá el wifi e intentá de nuevo.");
       setSending(false);
     }
-  }
-
-  if (!open) {
-    return (
-      <button onClick={() => setOpen(true)} className="w-full text-sm panel-label underline py-1">
-        Un equipo no se presentó
-      </button>
-    );
   }
 
   const effect =
@@ -104,10 +97,7 @@ export function JudgeForfeitButton({
           {sending ? "Guardando…" : "Sí, cargar W.O."}
         </button>
         <button
-          onClick={() => {
-            setOpen(false);
-            setSide(null);
-          }}
+          onClick={onCancel}
           disabled={sending}
           className="flex-1 rounded-lg panel-button-secondary font-display font-semibold py-2.5 text-sm"
         >
