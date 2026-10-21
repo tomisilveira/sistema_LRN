@@ -167,6 +167,10 @@ create table teams (
   -- Orden de siembra manual — solo relevante en format_type = 'bracket_only'
   -- (cuadro sin fase de grupos). NULL = se usa el orden de created_at.
   seed_order int,
+  -- Baja (robot roto, no compite más): sus partidos pendientes se resuelven
+  -- por W.O. y no entra al cuadro (ver lib/forfeit.ts).
+  withdrawn_at timestamptz,
+  withdrawn_reason text,
   created_at timestamptz not null default now()
 );
 
@@ -234,6 +238,10 @@ create table matches (
   timer_elapsed_seconds int not null default 0,
   current_period int not null default 1,
   round_winner_ids uuid[] not null default '{}',
+  -- W.O.: quién no se presentó ('a', 'b' o 'both'). forfeit_auto = lo puso
+  -- el sistema al dar de baja un equipo (ver lib/forfeit.ts).
+  forfeit text check (forfeit in ('a', 'b', 'both')),
+  forfeit_auto boolean not null default false,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
@@ -317,7 +325,8 @@ returns table (
   score_for int,
   score_against int,
   score_diff int,
-  manual_rank_override int
+  manual_rank_override int,
+  withdrawn boolean
 ) as $$
 declare
   v_competition_id uuid;
@@ -337,8 +346,9 @@ begin
       case when m.team_a_id = gt.team_id then m.score_a else m.score_b end as gf,
       case when m.team_a_id = gt.team_id then m.score_b else m.score_a end as ga,
       case when m.winner_id = gt.team_id then 1 else 0 end as is_win,
-      case when m.winner_id is null then 1 else 0 end as is_draw,
-      case when m.winner_id is not null and m.winner_id <> gt.team_id then 1 else 0 end as is_loss
+      -- Doble W.O. (no se presentó ninguno): no es empate.
+      case when m.winner_id is null and m.forfeit is distinct from 'both' then 1 else 0 end as is_draw,
+      case when (m.winner_id is not null and m.winner_id <> gt.team_id) or m.forfeit = 'both' then 1 else 0 end as is_loss
     from group_teams gt
     left join matches m
       on m.group_id = p_group_id
@@ -360,11 +370,12 @@ begin
     coalesce(sum(tm.gf), 0)::int as score_for,
     coalesce(sum(tm.ga), 0)::int as score_against,
     (coalesce(sum(tm.gf), 0) - coalesce(sum(tm.ga), 0))::int as score_diff,
-    gt2.manual_rank_override
+    gt2.manual_rank_override,
+    (t.withdrawn_at is not null) as withdrawn
   from teams t
   join group_teams gt2 on gt2.team_id = t.id and gt2.group_id = p_group_id
   left join team_matches tm on tm.tm_team_id = t.id
-  group by t.id, t.name, t.member_names, gt2.manual_rank_override
+  group by t.id, t.name, t.member_names, t.withdrawn_at, gt2.manual_rank_override
   order by
     case when gt2.manual_rank_override is not null then 0 else 1 end,
     gt2.manual_rank_override asc nulls last,
@@ -574,7 +585,7 @@ grant select (id, name, event_date, status, created_at, is_public) on events to 
 
 -- teams: anon solo lo que muestran la sección pública / los kioscos
 revoke select on teams from anon;
-grant select (id, competition_id, name, institution, member_names, robot_names, seed_order, created_at)
+grant select (id, competition_id, name, institution, member_names, robot_names, seed_order, created_at, withdrawn_at)
   on teams to anon;
 
 -- courts: anon solo columnas seguras (nunca access_token); usa courts_public

@@ -12,6 +12,7 @@ import { GroupAssignSelect } from "./group-assign-select";
 import { MoveTeamSelect } from "./move-team-select";
 import { TeamSeedInput } from "./team-seed-input";
 import { updateTeam, removeTeam } from "./actions";
+import { WithdrawTeamControl } from "./withdraw-team-control";
 
 /** Una ficha de equipo en la pestaña Equipos — rediseñada 2026-08-27, con
  * una segunda pasada de estilo el mismo día ("dale más estilo... que se vea
@@ -32,6 +33,8 @@ export function TeamCard({
   currentGroupId,
   moveTargets,
   colors,
+  started = false,
+  pendingMatches = 0,
 }: {
   competitionId: string;
   team: Team;
@@ -41,7 +44,12 @@ export function TeamCard({
   currentGroupId: string | null;
   moveTargets: { id: string; label: string; crossDiscipline: boolean }[];
   colors: DisciplineColorSet;
+  /** El torneo ya arrancó: se puede dar de baja (antes, alcanza con Quitar). */
+  started?: boolean;
+  /** Partidos que le quedan sin jugar. */
+  pendingMatches?: number;
 }) {
+  const withdrawn = !!team.withdrawn_at;
   const ready = team.accredited && team.homologated;
 
   const location = formatLocation(team.locality, team.province);
@@ -57,7 +65,7 @@ export function TeamCard({
   return (
     <div
       className={`panel-card rounded-xl border-l-4 p-3.5 flex flex-col gap-3 transition-shadow duration-200 hover:shadow-md ${
-        ready ? "border-l-brand-green" : "border-l-brand-orange"
+        withdrawn ? "border-l-neutral-400 opacity-80" : ready ? "border-l-brand-green" : "border-l-brand-orange"
       }`}
     >
       <div className="flex items-start gap-2.5">
@@ -119,6 +127,17 @@ export function TeamCard({
       )}
 
       <TeamAccreditationControls competitionId={competitionId} team={team} />
+
+      {(started || withdrawn) && (
+        <WithdrawTeamControl
+          competitionId={competitionId}
+          teamId={team.id}
+          teamName={team.name}
+          withdrawn={withdrawn}
+          reason={team.withdrawn_reason}
+          pendingMatches={pendingMatches}
+        />
+      )}
 
       <div className="flex flex-wrap items-center gap-2 pt-2.5 mt-auto border-t border-neutral-100">
         {isBracketOnly && <TeamSeedInput competitionId={competitionId} teamId={team.id} defaultValue={team.seed_order} />}

@@ -64,6 +64,14 @@ export function StandingsTable({
                 </td>
                 <td className="py-1.5 pr-2 font-medium text-[15px]">
                   <TeamLabel name={r.team_name} memberNames={r.member_names} />
+                  {r.withdrawn && (
+                    <span
+                      className="ml-1 align-middle text-[10px] font-bold uppercase rounded px-1.5 py-0.5 bg-neutral-200 text-neutral-600"
+                      title="Dado de baja: no compite más"
+                    >
+                      Baja
+                    </span>
+                  )}
                   {r.manual_rank_override !== null && (
                     <span
                       className="ml-1 text-brand-orange"

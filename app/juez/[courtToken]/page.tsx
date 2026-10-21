@@ -2,6 +2,8 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import type { Competition, Match, MatchCard, Team, TimeTrialRun } from "@/lib/database.types";
 import { JudgeRealtime } from "./judge-realtime";
 import { StartMatchButton } from "./start-match-button";
+import { JudgeForfeitButton } from "./judge-forfeit-button";
+import { forfeitWinningScore } from "@/lib/forfeit-rules";
 import { MatchTimerPanel } from "./match-timer-panel";
 import { KioskInvalidLink } from "@/app/components/kiosk-shell";
 import { TeamLabel } from "@/app/components/team-label";
@@ -168,7 +170,19 @@ export default async function JudgePage({ params }: { params: Promise<{ courtTok
                     {!m.team_a_id || !m.team_b_id ? (
                       <p className="text-sm panel-label">Todavía no están definidos los dos equipos.</p>
                     ) : (
-                      <StartMatchButton courtToken={courtToken} matchId={m.id} />
+                      <>
+                        <StartMatchButton courtToken={courtToken} matchId={m.id} />
+                        {competitionById.get(m.competition_id) && (
+                          <JudgeForfeitButton
+                            courtToken={courtToken}
+                            matchId={m.id}
+                            teamAName={teamName.get(m.team_a_id) ?? "Equipo A"}
+                            teamBName={teamName.get(m.team_b_id) ?? "Equipo B"}
+                            woScore={forfeitWinningScore(competitionById.get(m.competition_id)!)}
+                            knockout={m.phase === "bracket"}
+                          />
+                        )}
+                      </>
                     )}
                   </div>
                 ))}
@@ -212,6 +226,8 @@ async function loadTimeTrials(
       .from("teams")
       .select("id, competition_id, name, member_names, accredited, homologated")
       .in("competition_id", ids)
+      // Dados de baja (robot roto): no corren más.
+      .is("withdrawn_at", null)
       .order("name"),
     supabase.from("time_trial_runs").select("*").in("competition_id", ids).order("created_at"),
   ]);

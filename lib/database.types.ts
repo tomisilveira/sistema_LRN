@@ -19,6 +19,7 @@ export type MatchStatus = "pending_teams" | "scheduled" | "in_progress" | "compl
 export type EventStatus = "draft" | "active" | "finished";
 export type TimerMode = "periods" | "rounds" | "time_trial";
 export type AdminRole = "superadmin" | "event_admin";
+export type ForfeitSide = "a" | "b" | "both";
 
 export interface Discipline {
   id: string;
@@ -123,6 +124,10 @@ export interface Team {
   // Orden de siembra manual, solo relevante en format_type = 'bracket_only'
   // (ver 0007_bracket_formats.sql) — null = se usa el orden de created_at.
   seed_order: number | null;
+  // Baja (0020): robot roto, no compite más. Sus partidos pendientes se
+  // resuelven por W.O. y no entra al cuadro (ver lib/forfeit.ts).
+  withdrawn_at: string | null;
+  withdrawn_reason: string | null;
   created_at: string;
 }
 
@@ -192,6 +197,10 @@ export interface Match {
   timer_elapsed_seconds: number;
   current_period: number;
   round_winner_ids: string[];
+  // W.O. (0020): quién no se presentó. forfeit_auto = lo puso el sistema al
+  // dar de baja un equipo (Reincorporar sólo deshace esos).
+  forfeit: ForfeitSide | null;
+  forfeit_auto: boolean;
 }
 
 export type CardType = "yellow" | "red";
@@ -235,6 +244,8 @@ export interface GroupStandingRow {
   score_against: number;
   score_diff: number;
   manual_rank_override: number | null;
+  /** El equipo está dado de baja (0020). */
+  withdrawn: boolean;
 }
 
 export interface AdminRow {

@@ -1,4 +1,5 @@
 import type { Match, MatchCard } from "@/lib/database.types";
+import { forfeitLabel } from "@/lib/forfeit-rules";
 import { LiveMatchElapsed } from "./live-match-elapsed";
 import { TeamLabel } from "./team-label";
 import { TeamCardBadges } from "./team-card-badges";
@@ -65,6 +66,10 @@ export function PublicMatchList({ matches }: { matches: PublicMatchDisplay[] }) 
                     <LiveMatchElapsed startedAt={m.started_at} />
                   </>
                 )}
+              </span>
+            ) : m.status === "completed" && m.forfeit ? (
+              <span className="panel-chip-warning rounded-full px-2 py-0.5 font-medium">
+                W.O. · {forfeitLabel(m.forfeit, m.team_a_name, m.team_b_name)}
               </span>
             ) : m.status === "completed" ? (
               <span className="panel-chip-success rounded-full px-2 py-0.5 font-medium">✅ Jugado</span>

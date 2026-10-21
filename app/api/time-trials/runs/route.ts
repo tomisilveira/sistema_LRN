@@ -60,11 +60,14 @@ export async function POST(request: Request) {
   }
 
   const [{ data: team }, { data: previous }] = await Promise.all([
-    supabase.from("teams").select("id, competition_id").eq("id", teamId).maybeSingle(),
+    supabase.from("teams").select("id, competition_id, withdrawn_at").eq("id", teamId).maybeSingle(),
     supabase.from("time_trial_runs").select("attempt").eq("team_id", teamId).order("attempt", { ascending: false }),
   ]);
   if (!team || team.competition_id !== competition.id) {
     return NextResponse.json({ error: "El robot no es de este torneo." }, { status: 400 });
+  }
+  if (team.withdrawn_at) {
+    return NextResponse.json({ error: "Este robot está dado de baja: no corre más." }, { status: 400 });
   }
   const used = previous?.length ?? 0;
   if (used >= competition.periods_count) {

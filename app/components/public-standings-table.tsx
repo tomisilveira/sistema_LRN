@@ -37,6 +37,11 @@ export function PublicStandingsTable({ groupName, rows }: { groupName: string; r
                 </td>
                 <td className="py-2 pr-2 font-semibold text-[15px] max-w-[14rem]">
                   <TeamLabel name={r.team_name} memberNames={r.member_names} className="block" />
+                  {r.withdrawn && (
+                    <span className="text-[10px] font-bold uppercase rounded px-1.5 py-0.5 bg-neutral-200 text-neutral-600 dark:bg-neutral-800 dark:text-neutral-300">
+                      Baja
+                    </span>
+                  )}
                 </td>
                 <td className="text-center py-2 px-1.5 tabular-nums">{r.played}</td>
                 <td className="text-center py-2 px-1.5 tabular-nums">{r.won}</td>

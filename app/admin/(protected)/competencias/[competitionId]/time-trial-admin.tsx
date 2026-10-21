@@ -10,6 +10,7 @@ export interface AdminTimeTrialRow {
   teamId: string;
   name: string;
   memberNames: string | null;
+  withdrawn?: boolean;
   position: number | null;
   bestMs: number | null;
   runs: Record<number, { id: string; timeMs: number | null; finished: boolean }>;
@@ -145,6 +146,11 @@ export function TimeTrialAdmin({
                   </td>
                   <td className="py-2 pr-2 text-[15px]">
                     <TeamLabel name={r.name} memberNames={r.memberNames} />
+                    {r.withdrawn && (
+                      <span className="ml-1 text-[10px] font-bold uppercase rounded px-1.5 py-0.5 bg-neutral-200 text-neutral-600">
+                        Baja
+                      </span>
+                    )}
                   </td>
                   {attemptNumbers.map((n) => {
                     const run = r.runs[n];

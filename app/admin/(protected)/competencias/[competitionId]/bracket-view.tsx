@@ -1,5 +1,8 @@
 import type { Match, MatchCard } from "@/lib/database.types";
-import { assignSchedule, resetMatch, submitResultChecked } from "./actions";
+import { assignSchedule, forfeitMatch, resetMatch, submitResultChecked } from "./actions";
+import { ForfeitToggle } from "./forfeit-panel";
+import { WithdrawnBadge } from "./match-row";
+import { forfeitLabel } from "@/lib/forfeit-rules";
 import type { CourtOption } from "./match-row";
 import { MatchResultForm } from "./match-result-form";
 import { MatchAdminControls } from "./match-admin-controls";
@@ -26,6 +29,8 @@ export function BracketView({
   competitionDisciplineId,
   disciplineNameById,
   allowDraws,
+  woScore,
+  withdrawnTeamIds = [],
 }: {
   competitionId: string;
   matches: BracketDisplayMatch[];
@@ -33,7 +38,12 @@ export function BracketView({
   competitionDisciplineId: string;
   disciplineNameById: Map<string, string>;
   allowDraws: boolean;
+  /** Goles/rounds del W.O. (fútbol 3, sumo 2). */
+  woScore: number;
+  /** Equipos dados de baja (robot roto), para la etiqueta BAJA. */
+  withdrawnTeamIds?: string[];
 }) {
+  const withdrawn = new Set(withdrawnTeamIds);
   const byRound = new Map<string, BracketDisplayMatch[]>();
   for (const m of matches) {
     const key = m.round ?? "?";
@@ -93,6 +103,7 @@ export function BracketView({
                     emptyLabel={decided ? "Sin rival" : "Por definir"}
                     score={m.score_a}
                     cardSummary={m.team_a_id ? cardsByTeam(m.cards, m.team_a_id, m.team_b_id).a : null}
+                    withdrawn={!!m.team_a_id && withdrawn.has(m.team_a_id)}
                   />
                   <TeamLine
                     name={m.team_b_name}
@@ -101,8 +112,32 @@ export function BracketView({
                     emptyLabel={decided ? "Sin rival" : "Por definir"}
                     score={m.score_b}
                     cardSummary={m.team_b_id ? cardsByTeam(m.cards, m.team_a_id, m.team_b_id).b : null}
+                    withdrawn={!!m.team_b_id && withdrawn.has(m.team_b_id)}
                   />
-                  {noRival ? (
+                  {decided && m.forfeit ? (
+                    <>
+                      <p className="text-[10px] font-semibold text-brand-orange">
+                        W.O. · {forfeitLabel(m.forfeit, m.team_a_name ?? "?", m.team_b_name ?? "?")}
+                        {!m.winner_id && " — nadie avanza"}
+                      </p>
+                      {bothTeams && (
+                        <MatchAdminControls
+                          played
+                          layout="stacked"
+                          correctAction={submitResultChecked.bind(null, competitionId, m.id)}
+                          resetAction={resetMatch.bind(null, competitionId, m.id)}
+                          teamAId={m.team_a_id}
+                          teamBId={m.team_b_id}
+                          teamAName={m.team_a_name ?? "A"}
+                          teamBName={m.team_b_name ?? "B"}
+                          allowDraws={allowDraws}
+                          knockout
+                          scoreA={m.score_a}
+                          scoreB={m.score_b}
+                        />
+                      )}
+                    </>
+                  ) : noRival ? (
                     <p className="text-[10px] panel-label">
                       {m.round === "3P"
                         ? "3º directo: la otra semifinal fue un pase directo, no hubo rival"
@@ -145,6 +180,13 @@ export function BracketView({
                         allowDraws={allowDraws}
                         knockout
                         submitLabel="Guardar resultado"
+                      />
+                      <ForfeitToggle
+                        teamAName={m.team_a_name ?? "A"}
+                        teamBName={m.team_b_name ?? "B"}
+                        woScore={woScore}
+                        knockout
+                        onForfeit={forfeitMatch.bind(null, competitionId, m.id)}
                       />
                       {m.status === "in_progress" && (
                         <MatchAdminControls
@@ -201,6 +243,7 @@ function TeamLine({
   emptyLabel = "Por definir",
   score,
   cardSummary,
+  withdrawn = false,
 }: {
   name: string | null;
   memberNames: string | null;
@@ -208,6 +251,7 @@ function TeamLine({
   emptyLabel?: string;
   score: number | null;
   cardSummary?: ReturnType<typeof cardsByTeam>["a"];
+  withdrawn?: boolean;
 }) {
   return (
     <div className={`flex items-start justify-between gap-2 text-base ${won ? "font-semibold text-brand-green" : "panel-label"}`}>
@@ -215,6 +259,7 @@ function TeamLine({
         {won && "🏆 "}
         {name ? <TeamLabel name={name} memberNames={memberNames} /> : <span className="italic opacity-70">{emptyLabel}</span>}{" "}
         <TeamCardBadges summary={cardSummary} />
+        {withdrawn && <WithdrawnBadge />}
       </span>
       {score !== null && <span className="shrink-0 ml-2">{score}</span>}
     </div>

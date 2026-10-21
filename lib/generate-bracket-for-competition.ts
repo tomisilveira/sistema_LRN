@@ -41,7 +41,9 @@ async function collectGroupSeeds(supabase: SupabaseClient, competitionId: string
     groups.map(async (g) => {
       const { data: standings, error } = await supabase.rpc("get_group_standings", { p_group_id: g.id });
       if (error) throw new Error(error.message);
-      const rows = select((standings ?? []) as GroupStandingRow[]);
+      // Los dados de baja (robot roto) no entran: el siguiente de su grupo
+      // ocupa su lugar (ver lib/forfeit.ts).
+      const rows = select(((standings ?? []) as GroupStandingRow[]).filter((r) => !r.withdrawn));
       return {
         groupName: g.name,
         teams: rows.map((r, i) => ({ teamId: r.team_id, teamName: r.team_name, rank: i + 1 })),
@@ -81,6 +83,7 @@ async function generateBracketOnlyBracket(supabase: SupabaseClient, competitionI
     .from("teams")
     .select("*")
     .eq("competition_id", competitionId)
+    .is("withdrawn_at", null)
     .order("seed_order", { ascending: true, nullsFirst: false })
     .order("created_at", { ascending: true });
   const teamList = (teams ?? []) as Team[];

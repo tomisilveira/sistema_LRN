@@ -25,6 +25,7 @@ import {
   assignSchedule,
   submitResultChecked,
   resetMatch,
+  forfeitMatch,
   finishWithGroupsOnly,
   generateBracket,
   deleteCompetition,
@@ -32,6 +33,7 @@ import {
 import { FinishGroupsOnlyButton } from "./finish-groups-only-button";
 import { TimeTrialAdmin, type AdminTimeTrialRow } from "./time-trial-admin";
 import { buildTimeTrialRanking } from "@/lib/time-trial";
+import { forfeitWinningScore } from "@/lib/forfeit-rules";
 import { GroupAssignSelect } from "./group-assign-select";
 import { StandingsTable } from "./standings-table";
 import { MatchRow, type CourtOption } from "./match-row";
@@ -254,6 +256,8 @@ export default async function CompetitionPage({
   const assignScheduleAction = assignSchedule.bind(null, competitionId);
   const submitResultAction = submitResultChecked.bind(null, competitionId);
   const resetMatchAction = resetMatch.bind(null, competitionId);
+  const forfeitMatchAction = forfeitMatch.bind(null, competitionId);
+  const woScore = forfeitWinningScore(competition);
   const finishWithGroupsOnlyAction = finishWithGroupsOnly.bind(null, competitionId);
   const generateBracketAction = generateBracket.bind(null, competitionId);
 
@@ -275,6 +279,8 @@ export default async function CompetitionPage({
     competitionDisciplineId: competition.discipline_id,
     disciplineNameById,
     allowDraws: competition.allow_draws,
+    woScore: forfeitWinningScore(competition),
+    withdrawnTeamIds: ((teams ?? []) as Team[]).filter((t) => t.withdrawn_at).map((t) => t.id),
   };
 
   // "Terminar sin fase final" (single_elimination / gold_silver): mientras
@@ -322,6 +328,7 @@ export default async function CompetitionPage({
         teamId: r.team.id,
         name: r.team.name,
         memberNames: r.team.member_names,
+        withdrawn: !!r.team.withdrawn_at,
         position: r.position,
         bestMs: r.bestMs,
         runs: Object.fromEntries(
@@ -437,6 +444,13 @@ export default async function CompetitionPage({
                 currentGroupId={groupIdByTeamId.get(t.id) ?? null}
                 moveTargets={competition.status === "setup" ? moveTargets : []}
                 colors={colors}
+                started={competition.status !== "setup"}
+                pendingMatches={
+                  [...(groupMatches ?? []), ...(bracketMatches ?? [])].filter(
+                    (m: Match) =>
+                      m.status !== "completed" && (m.team_a_id === t.id || m.team_b_id === t.id)
+                  ).length
+                }
               />
             ))}
           </div>
@@ -815,6 +829,10 @@ export default async function CompetitionPage({
               onSchedule={assignScheduleAction}
               onResult={submitResultAction.bind(null, m.id)}
               onReset={resetMatchAction.bind(null, m.id)}
+              onForfeit={forfeitMatchAction.bind(null, m.id)}
+              woScore={woScore}
+              teamAWithdrawn={!!(m.team_a_id && teamsById.get(m.team_a_id)?.withdrawn_at)}
+              teamBWithdrawn={!!(m.team_b_id && teamsById.get(m.team_b_id)?.withdrawn_at)}
             />
           ))}
         </div>

@@ -5,6 +5,8 @@ import { cardsByTeam } from "@/lib/match-cards";
 import { roundWinCounts } from "@/lib/match-timer";
 import { MatchRowActions } from "./match-row-actions";
 import type { MatchActionResult } from "./actions";
+import type { ForfeitSide } from "@/lib/database.types";
+import { forfeitLabel } from "@/lib/forfeit-rules";
 
 // Esta página nunca necesita el `access_token` de las canchas (el link del
 // juez se copia desde la página del evento) y además pasa la lista a un
@@ -31,6 +33,10 @@ export function MatchRow({
   onSchedule,
   onResult,
   onReset,
+  onForfeit,
+  woScore,
+  teamAWithdrawn = false,
+  teamBWithdrawn = false,
 }: {
   match: Match;
   teamAName: string;
@@ -45,6 +51,10 @@ export function MatchRow({
   onSchedule: (matchId: string, formData: FormData) => Promise<void>;
   onResult: (formData: FormData) => Promise<MatchActionResult>;
   onReset: () => Promise<MatchActionResult>;
+  onForfeit: (side: ForfeitSide) => Promise<MatchActionResult>;
+  woScore: number;
+  teamAWithdrawn?: boolean;
+  teamBWithdrawn?: boolean;
 }) {
   const courtName = match.court_id ? courts.find((c) => c.id === match.court_id)?.name : null;
   const teamCards = cardsByTeam(cards, match.team_a_id, match.team_b_id);
@@ -77,7 +87,11 @@ export function MatchRow({
             !played && <span className="panel-chip-warning rounded-full px-2 py-0.5">Sin cancha</span>
           )}
         </span>
-        {played ? (
+        {played && match.forfeit ? (
+          <span className="panel-chip-warning rounded-full px-2 py-0.5 font-medium" title={forfeitLabel(match.forfeit, teamAName, teamBName) ?? ""}>
+            W.O. · {forfeitLabel(match.forfeit, teamAName, teamBName)}
+          </span>
+        ) : played ? (
           <span className="panel-chip-success rounded-full px-2 py-0.5 font-medium">✓ Jugado</span>
         ) : live ? (
           <span className="inline-flex items-center gap-1.5 font-semibold text-brand-orange">
@@ -97,6 +111,7 @@ export function MatchRow({
           score={scoreA}
           won={played && match.winner_id !== null && match.winner_id === match.team_a_id}
           lost={played && match.winner_id !== null && match.winner_id !== match.team_a_id}
+          withdrawn={teamAWithdrawn}
         />
         <TeamScoreLine
           name={teamBName}
@@ -105,6 +120,7 @@ export function MatchRow({
           score={scoreB}
           won={played && match.winner_id !== null && match.winner_id === match.team_b_id}
           lost={played && match.winner_id !== null && match.winner_id !== match.team_b_id}
+          withdrawn={teamBWithdrawn}
         />
       </div>
 
@@ -127,6 +143,8 @@ export function MatchRow({
           onSchedule={onSchedule}
           onResult={onResult}
           onReset={onReset}
+          onForfeit={onForfeit}
+          woScore={woScore}
         />
       </div>
     </div>
@@ -140,6 +158,7 @@ function TeamScoreLine({
   score,
   won,
   lost,
+  withdrawn,
 }: {
   name: string;
   memberNames: string | null;
@@ -147,12 +166,14 @@ function TeamScoreLine({
   score: number | null;
   won: boolean;
   lost: boolean;
+  withdrawn: boolean;
 }) {
   return (
     <div className="flex items-center justify-between gap-3 py-1.5">
       <div className={`min-w-0 text-[15px] ${won ? "font-semibold text-brand-green" : lost ? "text-neutral-500" : ""}`}>
         {won && <span aria-label="Ganador">🏆 </span>}
         <TeamLabel name={name} memberNames={memberNames} /> <TeamCardBadges summary={cardSummary} />
+        {withdrawn && <WithdrawnBadge />}
       </div>
       <span
         className={`shrink-0 w-9 text-center font-display font-bold text-xl tabular-nums rounded-md py-0.5 ${
@@ -166,5 +187,17 @@ function TeamScoreLine({
         {score ?? "–"}
       </span>
     </div>
+  );
+}
+
+/** Etiqueta de equipo dado de baja (robot roto, no compite más). */
+export function WithdrawnBadge() {
+  return (
+    <span
+      className="ml-1 align-middle text-[10px] font-bold uppercase tracking-wide rounded px-1.5 py-0.5 bg-neutral-200 text-neutral-600"
+      title="Dado de baja: no compite más"
+    >
+      Baja
+    </span>
   );
 }

@@ -5,8 +5,10 @@ import type { MatchActionResult } from "./actions";
 import type { CourtOption } from "./match-row";
 import { MatchResultForm } from "./match-result-form";
 import { MatchScheduleForm } from "./match-schedule-form";
+import { ForfeitPanel } from "./forfeit-panel";
+import type { ForfeitSide } from "@/lib/database.types";
 
-type Panel = "result" | "schedule" | "reset" | null;
+type Panel = "result" | "schedule" | "reset" | "forfeit" | null;
 
 /** Barra de acciones de la tarjeta de un partido de grupo: cada botón abre
  * su formulario debajo (uno a la vez) en vez de tener todos los campos
@@ -30,6 +32,8 @@ export function MatchRowActions({
   onSchedule,
   onResult,
   onReset,
+  onForfeit,
+  woScore,
 }: {
   status: "pending_teams" | "scheduled" | "in_progress" | "completed";
   matchId: string;
@@ -48,6 +52,9 @@ export function MatchRowActions({
   onSchedule: (matchId: string, formData: FormData) => Promise<void>;
   onResult: (formData: FormData) => Promise<MatchActionResult>;
   onReset: () => Promise<MatchActionResult>;
+  onForfeit: (side: ForfeitSide) => Promise<MatchActionResult>;
+  /** Goles/rounds del W.O. (fútbol 3, sumo 2). */
+  woScore: number;
 }) {
   const [panel, setPanel] = useState<Panel>(null);
   const [error, setError] = useState<string | null>(null);
@@ -83,6 +90,11 @@ export function MatchRowActions({
         {!played && (
           <button type="button" onClick={() => toggle("schedule")} className={tab("schedule")}>
             🏟 Cancha/turno
+          </button>
+        )}
+        {!played && (
+          <button type="button" onClick={() => toggle("forfeit")} className={tab("forfeit")}>
+            🚫 No se presentó
           </button>
         )}
         {canReset && (
@@ -121,6 +133,17 @@ export function MatchRowActions({
             onSchedule={onSchedule}
           />
         </div>
+      )}
+
+      {panel === "forfeit" && (
+        <ForfeitPanel
+          teamAName={teamAName}
+          teamBName={teamBName}
+          woScore={woScore}
+          knockout={false}
+          onForfeit={onForfeit}
+          onDone={() => setPanel(null)}
+        />
       )}
 
       {panel === "reset" && (

@@ -17,7 +17,8 @@ import {
 import { parseTeamInput, parseMentorInput, isFutbolCompetition } from "@/lib/team-input";
 import { autoScheduleAndPersist } from "@/lib/apply-auto-schedule";
 import type { SchedulableMatch } from "@/lib/auto-schedule";
-import type { Competition, Match } from "@/lib/database.types";
+import type { Competition, ForfeitSide, Match } from "@/lib/database.types";
+import { applyForfeit, reinstateTeam, withdrawTeam } from "@/lib/forfeit";
 
 function revalidateCompetition(competitionId: string) {
   revalidatePath(`/admin/competencias/${competitionId}`);
@@ -570,6 +571,25 @@ export async function syncGroupFixture(competitionId: string) {
       competition.discipline_id,
       (inserted ?? []) as SchedulableMatch[]
     );
+
+    // Partidos nuevos de un equipo dado de baja: W.O. automático, igual que
+    // los que tenía pendientes al darlo de baja (ver lib/forfeit.ts).
+    const { data: out } = await supabase
+      .from("teams")
+      .select("id")
+      .eq("competition_id", competitionId)
+      .not("withdrawn_at", "is", null);
+    const outIds = new Set((out ?? []).map((t) => t.id));
+    for (const m of inserted ?? []) {
+      const aOut = outIds.has(m.team_a_id);
+      const bOut = outIds.has(m.team_b_id);
+      if (aOut || bOut) {
+        await applyForfeit(supabase, m.id, aOut && bOut ? "both" : aOut ? "a" : "b", {
+          auto: true,
+          skipPhaseCheck: true,
+        });
+      }
+    }
   }
 
   revalidateCompetition(competitionId);
@@ -705,6 +725,9 @@ export async function submitResult(competitionId: string, matchId: string, formD
       winner_id: outcome.winner_id,
       status: outcome.status,
       timer_running_since: null,
+      // Un resultado cargado a mano reemplaza un W.O. anterior.
+      forfeit: null,
+      forfeit_auto: false,
       ...(competition.timer_mode === "rounds"
         ? {
             round_winner_ids: syntheticRoundWinners(
@@ -760,6 +783,65 @@ export async function submitResultChecked(
   formData: FormData
 ): Promise<MatchActionResult> {
   return asResult(() => submitResult(competitionId, matchId, formData), "No se pudo guardar el resultado.");
+}
+
+/** "No se presentó A / B / ninguno" (W.O.) — ver lib/forfeit.ts. */
+export async function forfeitMatch(
+  competitionId: string,
+  matchId: string,
+  side: ForfeitSide
+): Promise<MatchActionResult> {
+  return asResult(async () => {
+    if (side !== "a" && side !== "b" && side !== "both") throw new Error("Opción inválida.");
+    const supabase = await createServerSupabaseClient();
+    const { data: match } = await supabase.from("matches").select("competition_id").eq("id", matchId).maybeSingle();
+    if (!match || match.competition_id !== competitionId) throw new Error("Partido no encontrado.");
+    await applyForfeit(supabase, matchId, side, { auto: false });
+    revalidateCompetition(competitionId);
+  }, "No se pudo cargar el W.O.");
+}
+
+export interface WithdrawActionResult extends MatchActionResult {
+  message?: string;
+}
+
+/** Baja de un equipo (robot roto): sus partidos pendientes se resuelven por
+ * W.O. y, en la llave, entra el siguiente de su grupo si se puede. */
+export async function withdrawTeamAction(
+  competitionId: string,
+  teamId: string,
+  formData: FormData
+): Promise<WithdrawActionResult> {
+  try {
+    const supabase = await createServerSupabaseClient();
+    const reason = String(formData.get("reason") ?? "").trim() || null;
+    const summary = await withdrawTeam(supabase, competitionId, teamId, reason);
+    revalidateCompetition(competitionId);
+    const parts = [
+      summary.forfeits > 0 ? `${summary.forfeits} partido${summary.forfeits === 1 ? "" : "s"} por W.O.` : null,
+      summary.replacedBy.length > 0 ? `en la llave entra ${summary.replacedBy.join(", ")}` : null,
+    ].filter(Boolean);
+    return { ok: true, message: parts.length ? `Dado de baja: ${parts.join(" · ")}.` : "Dado de baja." };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error && e.message ? e.message : "No se pudo dar de baja." };
+  }
+}
+
+export async function reinstateTeamAction(competitionId: string, teamId: string): Promise<WithdrawActionResult> {
+  try {
+    const supabase = await createServerSupabaseClient();
+    const summary = await reinstateTeam(supabase, competitionId, teamId);
+    revalidateCompetition(competitionId);
+    return {
+      ok: true,
+      message:
+        summary.notUndone > 0
+          ? `Reincorporado. Se reabrieron ${summary.reopened} partido(s); ${summary.notUndone} W.O. de la llave no se pueden deshacer porque el partido siguiente ya se jugó.`
+          : `Reincorporado. Se reabrieron ${summary.reopened} partido(s).`,
+    };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error && e.message ? e.message : "No se pudo reincorporar." };
+  }
 }
 
 export async function resetMatch(competitionId: string, matchId: string): Promise<MatchActionResult> {
@@ -821,6 +903,8 @@ async function resetMatchOrThrow(competitionId: string, matchId: string) {
         timer_elapsed_seconds: 0,
         current_period: 1,
         round_winner_ids: [],
+        forfeit: null,
+        forfeit_auto: false,
       })
       .eq("id", matchId),
     supabase.from("match_cards").delete().eq("match_id", matchId),

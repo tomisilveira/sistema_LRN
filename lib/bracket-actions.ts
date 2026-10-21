@@ -2,6 +2,7 @@ import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { BracketRound } from "./bracket";
 import type { BracketType, Match, MatchStatus } from "./database.types";
+import { settleBracketMatch } from "./forfeit";
 
 /**
  * Persiste un cuadro de eliminación directa completo (todas las rondas) en
@@ -171,13 +172,19 @@ async function pushTeamInto(
   if (!target) return;
 
   if (target.status === "pending_teams" && target.team_a_id && target.team_b_id) {
-    if (await finalMustWaitForThirdPlace(supabase, target)) return; // sigue 'pending_teams'
-    const { error: statusError } = await supabase
-      .from("matches")
-      .update({ status: "scheduled" })
-      .eq("id", target.id);
-    if (statusError) throw statusError;
+    if (!(await finalMustWaitForThirdPlace(supabase, target))) {
+      const { error: statusError } = await supabase
+        .from("matches")
+        .update({ status: "scheduled" })
+        .eq("id", target.id);
+      if (statusError) throw statusError;
+    }
   }
+
+  // Robots rotos (lib/forfeit.ts): si el rival está dado de baja → W.O.; si
+  // el otro lugar quedó vacío para siempre (su cruce fue doble W.O.) → pase
+  // directo. No hace nada en el caso normal.
+  await settleBracketMatch(supabase, target.id);
 }
 
 /** Al completarse el partido por el 3er puesto, habilita la final del mismo

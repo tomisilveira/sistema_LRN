@@ -1,4 +1,5 @@
 import type { Match, MatchCard } from "@/lib/database.types";
+import { forfeitLabel } from "@/lib/forfeit-rules";
 import { TeamLabel } from "./team-label";
 import { TeamCardBadges } from "./team-card-badges";
 import { cardsByTeam } from "@/lib/match-cards";
@@ -74,7 +75,12 @@ export function PublicBracketView({ matches }: { matches: BracketDisplayMatch[] 
                     score={m.score_b}
                     cardSummary={cardsByTeam(m.cards, m.team_a_id, m.team_b_id).b}
                   />
-                  {decided && m.round === "3P" && (!m.team_a_name || !m.team_b_name) && (
+                  {decided && m.forfeit && (
+                    <p className="text-[11px] font-semibold text-brand-orange">
+                      W.O. · {forfeitLabel(m.forfeit, m.team_a_name ?? "?", m.team_b_name ?? "?")}
+                    </p>
+                  )}
+                  {decided && !m.forfeit && m.round === "3P" && (!m.team_a_name || !m.team_b_name) && (
                     <p className="text-[11px] panel-label">3º directo: no hubo rival para este partido</p>
                   )}
                   {m.round === "F" && m.status === "pending_teams" && m.team_a_name && m.team_b_name && (
