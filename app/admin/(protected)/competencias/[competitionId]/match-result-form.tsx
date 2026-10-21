@@ -157,51 +157,53 @@ export function MatchResultForm({
 
   const stacked = layout === "stacked";
 
+  // Un casillero por equipo, con su nombre al lado (antes decía "A" y "B" y
+  // había que adivinar cuál era cuál).
+  const scoreRow = (name: string, value: string, onChange: (v: string) => void, field: string) => (
+    <label className="flex items-center justify-between gap-2 min-w-0">
+      <span className="text-[13px] truncate" title={name}>
+        {name}
+      </span>
+      <input
+        name={field}
+        type="number"
+        inputMode="numeric"
+        min={0}
+        placeholder="0"
+        aria-label={`Marcador de ${name}`}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        disabled={pending}
+        className="w-14 shrink-0 text-center rounded panel-input px-1.5 py-1 text-sm tabular-nums disabled:opacity-50"
+      />
+    </label>
+  );
+
   return (
-    <form onSubmit={handleSubmit} className={stacked ? "flex flex-col gap-1.5 pt-1" : "flex flex-wrap items-center gap-1"}>
-      <div className={stacked ? "flex gap-1" : "contents"}>
-        <input
-          name="score_a"
-          type="number"
-          min={0}
-          placeholder="A"
-          title={teamAName}
-          value={scoreA}
-          onChange={(e) => setScoreA(e.target.value)}
+    <form onSubmit={handleSubmit} className={`flex flex-col gap-1.5 ${stacked ? "pt-1" : "max-w-sm"}`}>
+      {scoreRow(teamAName, scoreA, setScoreA, "score_a")}
+      {scoreRow(teamBName, scoreB, setScoreB, "score_b")}
+      <div className={stacked ? "flex flex-col gap-1.5" : "flex flex-wrap items-center gap-1.5"}>
+        <select
+          name="winner_id"
+          value={winnerId}
+          onChange={(e) => setWinnerId(e.target.value)}
           disabled={pending}
-          className={`${stacked ? "w-full" : "w-12"} rounded panel-input px-1.5 py-1 text-xs disabled:opacity-50`}
-        />
-        <input
-          name="score_b"
-          type="number"
-          min={0}
-          placeholder="B"
-          title={teamBName}
-          value={scoreB}
-          onChange={(e) => setScoreB(e.target.value)}
+          className={`${stacked ? "w-full" : "flex-1 min-w-0"} rounded panel-input px-1.5 py-1 text-xs disabled:opacity-50`}
+        >
+          <option value="">{knockout ? "(ganador directo o por penales)" : "(o ganador directo)"}</option>
+          <option value={teamAId ?? ""}>{teamAName}</option>
+          <option value={teamBId ?? ""}>{teamBName}</option>
+        </select>
+        <button
+          type="submit"
           disabled={pending}
-          className={`${stacked ? "w-full" : "w-12"} rounded panel-input px-1.5 py-1 text-xs disabled:opacity-50`}
-        />
+          className="text-xs rounded panel-button-primary px-3 py-1.5 font-medium disabled:opacity-50"
+        >
+          {submitLabel}
+        </button>
       </div>
-      <select
-        name="winner_id"
-        value={winnerId}
-        onChange={(e) => setWinnerId(e.target.value)}
-        disabled={pending}
-        className={`${stacked ? "w-full" : ""} rounded panel-input px-1.5 py-1 text-xs disabled:opacity-50`}
-      >
-        <option value="">{knockout ? "(ganador directo o por penales)" : "(o ganador directo)"}</option>
-        <option value={teamAId ?? ""}>{teamAName}</option>
-        <option value={teamBId ?? ""}>{teamBName}</option>
-      </select>
-      <button
-        type="submit"
-        disabled={pending}
-        className="text-xs rounded panel-button-primary px-2 py-1 font-medium disabled:opacity-50"
-      >
-        {submitLabel}
-      </button>
-      {error && <span className="text-xs text-red-500 basis-full panel-enter">{error}</span>}
+      {error && <span className="text-xs text-red-500 panel-enter">{error}</span>}
     </form>
   );
 }
