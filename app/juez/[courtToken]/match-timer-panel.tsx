@@ -436,6 +436,9 @@ export function MatchTimerPanel({
         </div>
       )}
 
+      {/* Tarjetas solo para fútbol: en sumo y mini sumo (por rounds) las
+          faltas son advertencias que se convierten en rounds para el rival. */}
+      {competition.timer_mode !== "rounds" && (
       <div className="border-t border-neutral-200 dark:border-neutral-800 pt-4 space-y-2">
         <p className="text-xs uppercase tracking-wide panel-label font-display font-semibold">
           Tarjetas — en caso de problemas
@@ -506,6 +509,7 @@ export function MatchTimerPanel({
           </div>
         )}
       </div>
+      )}
 
       {/* Pie: las dos salidas "de emergencia" del partido, como botones
           parejos (antes "Abrí mal, volver" era un link chiquito y "No se
