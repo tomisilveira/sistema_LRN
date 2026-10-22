@@ -453,6 +453,32 @@ export default async function EventPage({
                   <ExternalIcon className="w-3.5 h-3.5 opacity-60" />
                 </a>
               )}
+              {event.is_public && (
+                <a
+                  href={`/evento/${eventId}/proximos`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="panel-action"
+                  title="Vista para TV — próximos partidos de cada cancha, todas las disciplinas (se abre en otra pestaña)"
+                >
+                  <MonitorIcon />
+                  Próximos partidos
+                  <ExternalIcon className="w-3.5 h-3.5 opacity-60" />
+                </a>
+              )}
+              {event.is_public && (
+                <a
+                  href={`/evento/${eventId}/locutor`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="panel-action"
+                  title="Para el locutor — números del evento, partidos en juego, últimos resultados y campeones (se abre en otra pestaña)"
+                >
+                  <MonitorIcon />
+                  Locutor
+                  <ExternalIcon className="w-3.5 h-3.5 opacity-60" />
+                </a>
+              )}
               <a href={`/api/eventos/${eventId}/export`} className="panel-action">
                 <DownloadIcon />
                 Exportar a Excel
