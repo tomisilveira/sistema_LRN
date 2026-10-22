@@ -83,3 +83,18 @@ test("partidos: byes fuera, W.O. aparte y goles solo en torneos por tiempo", () 
   const futbol = stats.byDiscipline.find((d) => d.disciplineId === "d-futbol")!;
   assert.deepEqual([futbol.played, futbol.total], [1, 4]);
 });
+
+test("desglose por localidad", async () => {
+  const { computeLocationBreakdown } = await import("../lib/location-stats");
+  const { rows, missing } = computeLocationBreakdown([
+    { ...team({ id: "1", locality: "Plaza Huincul", province: "Neuquén", member_count: 3 }), name: "A" },
+    { ...team({ id: "2", locality: " plaza huincul ", province: "Neuquén", member_count: 2 }), name: "B" },
+    { ...team({ id: "3", locality: "Cipolletti", province: "Río Negro", member_count: 4 }), name: "C" },
+    { ...team({ id: "4", province: "Neuquén", member_count: 2 }), name: "D" },
+  ]);
+  assert.deepEqual(rows, [
+    { locality: "Plaza Huincul", province: "Neuquén", teams: 2, participants: 5 },
+    { locality: "Cipolletti", province: "Río Negro", teams: 1, participants: 4 },
+  ]);
+  assert.deepEqual(missing.map((t) => t.name), ["D"]);
+});

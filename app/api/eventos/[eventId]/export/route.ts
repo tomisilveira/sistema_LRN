@@ -6,6 +6,7 @@ import { formatTeamWithMembers } from "@/lib/team-display";
 import { disciplineCategoryLabel } from "@/lib/discipline-display";
 import { cardsByTeam, formatCardSummary } from "@/lib/match-cards";
 import { buildTimeTrialRanking, formatRunTime } from "@/lib/time-trial";
+import { computeLocationBreakdown } from "@/lib/location-stats";
 import type {
   Category,
   Court,
@@ -313,6 +314,25 @@ export async function GET(_req: Request, context: { params: Promise<{ eventId: s
           });
       });
     }
+  }
+
+  // ---- Localidades: de dónde vienen los participantes ----
+  const { rows: locationRows, missing } = computeLocationBreakdown(
+    loaded.flatMap(({ teams }) => (teams ?? []) as Team[])
+  );
+  const localidades = workbook.addWorksheet("Localidades");
+  localidades.columns = [
+    { header: "Localidad", key: "localidad", width: 26 },
+    { header: "Provincia", key: "provincia", width: 18 },
+    { header: "Equipos", key: "equipos", width: 10 },
+    { header: "Participantes", key: "participantes", width: 14 },
+  ];
+  localidades.getRow(1).font = { bold: true };
+  for (const r of locationRows) {
+    localidades.addRow({ localidad: r.locality, provincia: r.province ?? "", equipos: r.teams, participantes: r.participants });
+  }
+  if (missing.length > 0) {
+    localidades.addRow({ localidad: "(sin cargar)", equipos: missing.length }).font = { italic: true };
   }
 
   const buffer = await workbook.xlsx.writeBuffer();

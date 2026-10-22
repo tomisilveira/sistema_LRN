@@ -7,6 +7,7 @@ import { buildCourtBoards } from "@/lib/build-court-boards";
 import { disciplineColor } from "@/lib/discipline-colors";
 import { disciplineCategoryLabel } from "@/lib/discipline-display";
 import { competitionStatusChipClass, competitionStatusText } from "@/lib/labels";
+import { computeLocationBreakdown } from "@/lib/location-stats";
 import { CourtBoards } from "@/app/components/court-boards";
 import {
   ActivityIcon,
@@ -91,6 +92,8 @@ export async function EventDashboard({
 
   const winners = await buildWinners(supabase, perCompetition.map((p) => p.competition), teams, matches, groups);
 
+  const locations = computeLocationBreakdown(teams);
+
   const pending: Pending[] = [];
   if (competitions.length === 0)
     pending.push({ tone: "warning", text: "Todavía no hay torneos creados.", action: { tabId: "torneos", label: "Crear torneo" } });
@@ -123,6 +126,11 @@ export async function EventDashboard({
       tone: "info",
       text: `Inscripción abierta en ${openRegistration} ${openRegistration === 1 ? "torneo" : "torneos"}.`,
       action: { tabId: "inscripcion", label: "Ver inscripción" },
+    });
+  if (teams.length > 0 && locations.missing.length > 0)
+    pending.push({
+      tone: "info",
+      text: `${locations.missing.length} ${locations.missing.length === 1 ? "equipo sin" : "equipos sin"} localidad cargada (ver "¿De dónde vienen?").`,
     });
   if (!event.is_public)
     pending.push({ tone: "info", text: "El evento es privado: no aparece en el sitio público." });
@@ -321,7 +329,98 @@ export async function EventDashboard({
           )}
         </section>
       </div>
+
+      {teams.length > 0 && (
+        <LocationsSection
+          breakdown={locations}
+          competitionLabel={(id) => {
+            const c = competitions.find((x) => x.id === id);
+            return c ? disciplineCategoryLabel(c.disciplines, c.categories) : "";
+          }}
+        />
+      )}
     </div>
+  );
+}
+
+/** "¿De dónde vienen?": participantes y equipos por localidad, más la lista
+ * de equipos sin localidad (inscriptos antes de que se pidiera) con atajo
+ * al torneo para completarla desde "Editar" en la tarjeta del equipo. */
+function LocationsSection({
+  breakdown,
+  competitionLabel,
+}: {
+  breakdown: ReturnType<typeof computeLocationBreakdown>;
+  competitionLabel: (competitionId: string) => string;
+}) {
+  const { rows, missing } = breakdown;
+  const max = Math.max(1, ...rows.map((r) => r.participants));
+  const provinces = new Set(rows.map((r) => r.province).filter(Boolean)).size;
+  return (
+    <section className="panel-card rounded-xl p-4 space-y-3">
+      <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
+        <h2 className="font-display font-semibold">¿De dónde vienen?</h2>
+        {rows.length > 0 && (
+          <span className="text-xs panel-label">
+            {rows.length} {rows.length === 1 ? "localidad" : "localidades"} · {provinces}{" "}
+            {provinces === 1 ? "provincia" : "provincias"}
+          </span>
+        )}
+      </div>
+      {rows.length === 0 ? (
+        <p className="text-sm panel-label">Ningún equipo tiene la localidad cargada todavía.</p>
+      ) : (
+        <ul className="space-y-2">
+          {rows.map((r) => (
+            <li key={`${r.province}|${r.locality}`} className="grid grid-cols-[minmax(0,1fr)_auto] gap-x-3 gap-y-1 items-center sm:grid-cols-[14rem_minmax(0,1fr)_auto]">
+              <span className="text-sm leading-snug min-w-0">
+                <span className="font-medium">{r.locality}</span>
+                {r.province && <span className="panel-label">, {r.province}</span>}
+              </span>
+              <span className="order-last col-span-2 sm:order-none sm:col-span-1 relative h-2 rounded-full bg-neutral-100 overflow-hidden" aria-hidden="true">
+                <span
+                  className="absolute inset-y-0 left-0 rounded-full bg-brand-teal"
+                  style={{ width: `${Math.round((r.participants / max) * 100)}%` }}
+                />
+              </span>
+              <span className="text-xs panel-label tabular-nums whitespace-nowrap text-right">
+                <span className="font-semibold text-neutral-800">{r.participants}</span>{" "}
+                {r.participants === 1 ? "participante" : "participantes"} · {r.teams}{" "}
+                {r.teams === 1 ? "equipo" : "equipos"}
+              </span>
+            </li>
+          ))}
+        </ul>
+      )}
+      {missing.length > 0 && (
+        <details className="rounded-lg border border-brand-orange/30 bg-brand-orange/8 p-2.5 text-sm">
+          <summary className="cursor-pointer font-medium">
+            {missing.length} {missing.length === 1 ? "equipo" : "equipos"} sin localidad cargada
+          </summary>
+          <p className="mt-1.5 text-xs panel-label">
+            Se completa desde &quot;Editar&quot; en la tarjeta del equipo (o en la mesa de acreditación).
+          </p>
+          <ul className="mt-2 divide-y divide-brand-orange/15">
+            {missing.map((t) => (
+              <li key={t.id}>
+                <Link
+                  href={`/admin/competencias/${t.competition_id}`}
+                  className="flex items-center gap-2 py-1.5 hover:text-brand-teal focus-visible:outline-2 focus-visible:outline-brand-teal"
+                >
+                  <span className="flex-1 min-w-0">
+                    <span className="font-medium">{t.name}</span>
+                    <span className="block text-[11px] panel-label leading-snug">
+                      {[competitionLabel(t.competition_id), t.institution].filter(Boolean).join(" · ")}
+                    </span>
+                  </span>
+                  <ChevronRightIcon className="w-4 h-4 text-neutral-400" />
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </details>
+      )}
+    </section>
   );
 }
 
