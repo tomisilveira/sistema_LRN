@@ -34,11 +34,14 @@ export interface CourtBoard {
  * partido en curso de cada cancha (con su reloj) + los próximos, agrupando
  * por `court_id` en vez de por torneo/disciplina — reusa las mismas
  * competitions ya cargadas para el switcher de disciplinas
- * (buildEventTabItems), así no se duplica esa consulta. */
+ * (buildEventTabItems), así no se duplica esa consulta.
+ * `upcomingLimit`: cuántos próximos partidos por cancha (3 en la pantalla;
+ * la pantalla de "Próximos partidos" muestra más). */
 export async function buildCourtBoards(
   supabase: SupabaseClient,
   eventId: string,
-  competitions: CompetitionWithNames[]
+  competitions: CompetitionWithNames[],
+  { upcomingLimit = 3 }: { upcomingLimit?: number } = {}
 ): Promise<CourtBoard[]> {
   const competitionIds = competitions.map((c) => c.id);
   const competitionById = new Map(competitions.map((c) => [c.id, c]));
@@ -118,7 +121,7 @@ export async function buildCourtBoards(
     .map((court) => {
       const courtMatches = byCourt.get(court.id) ?? [];
       const liveMatch = courtMatches.find((m) => m.status === "in_progress");
-      const upcoming = courtMatches.filter((m) => m.status === "scheduled").slice(0, 3);
+      const upcoming = courtMatches.filter((m) => m.status === "scheduled").slice(0, upcomingLimit);
       const discipline = court.discipline_id
         ? (competitions.find((c) => c.discipline_id === court.discipline_id)?.disciplines ?? null)
         : null;

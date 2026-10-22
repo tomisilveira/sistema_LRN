@@ -1,0 +1,301 @@
+import { notFound } from "next/navigation";
+import { createServerSupabaseClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
+import type { EventRow, Match, TimeTrialRun } from "@/lib/database.types";
+import type { CompetitionWithNames } from "@/lib/build-event-tab-items";
+import { buildCourtBoards } from "@/lib/build-court-boards";
+import { computeEventStats, type StatsTeam } from "@/lib/event-stats";
+import { disciplineColor } from "@/lib/discipline-colors";
+import { disciplineCategoryLabel, disciplineDisplayName } from "@/lib/discipline-display";
+import { matchStage } from "@/lib/match-stage";
+import { forfeitLabel } from "@/lib/forfeit-rules";
+import { PublicRealtime } from "@/app/components/public-realtime";
+import { BrandIcon } from "@/app/components/brand-mark";
+import { MatchClock } from "@/app/components/match-clock";
+import { MatchStageChip } from "@/app/components/match-stage-chip";
+
+export const revalidate = 0;
+
+// Mismo criterio de columnas públicas que /evento/[eventId]/pantalla.
+const EVENT_PUBLIC_COLUMNS = "id, name, event_date, status, is_public, created_at";
+
+const RECENT_RESULTS = 8;
+
+type LocutorTeam = StatsTeam & { name: string };
+
+/** Pantalla del locutor: lo que necesita para animar el evento sin andar
+ * preguntando — números generales (robots, participantes, instituciones,
+ * partidos jugados, goles), qué se juega ahora en cada cancha y qué sigue,
+ * los últimos resultados y los campeones. Mismo acceso que /pantalla (404
+ * si el evento no es público) y se refresca sola con cada partido.
+ *
+ * Los equipos se leen con la service-role key: `anon` no puede ver
+ * cantidad de integrantes, acreditación ni localidad (ver
+ * 0011_teams_anon_column_grants.sql). Acá solo se muestran conteos y
+ * nombres de equipo, que ya son públicos. */
+export default async function LocutorPage({ params }: { params: Promise<{ eventId: string }> }) {
+  const { eventId } = await params;
+  const supabase = await createServerSupabaseClient();
+
+  const [{ data: event }, { data: competitions }] = await Promise.all([
+    supabase.from("events").select(EVENT_PUBLIC_COLUMNS).eq("id", eventId).maybeSingle<EventRow>(),
+    supabase
+      .from("competitions")
+      .select("*, disciplines(name, sort_order), categories(name)")
+      .eq("event_id", eventId)
+      .order("created_at"),
+  ]);
+  if (!event || !event.is_public) notFound();
+  const competitionList = (competitions ?? []) as CompetitionWithNames[];
+  const competitionIds = competitionList.map((c) => c.id);
+  const competitionById = new Map(competitionList.map((c) => [c.id, c]));
+
+  const [boards, { data: teams }, { data: matches }, { data: runs }] = await Promise.all([
+    buildCourtBoards(supabase, eventId, competitionList, { upcomingLimit: 1 }),
+    competitionIds.length
+      ? createAdminClient()
+          .from("teams")
+          .select(
+            "id, name, competition_id, institution, province, locality, member_count, member_names, robot_names, participants_present, accredited, withdrawn_at"
+          )
+          .in("competition_id", competitionIds)
+      : Promise.resolve({ data: [] as LocutorTeam[] }),
+    competitionIds.length
+      ? supabase.from("matches").select("*").in("competition_id", competitionIds)
+      : Promise.resolve({ data: [] as Match[] }),
+    competitionIds.length
+      ? supabase.from("time_trial_runs").select("competition_id").in("competition_id", competitionIds)
+      : Promise.resolve({ data: [] as Pick<TimeTrialRun, "competition_id">[] }),
+  ]);
+  const teamList = (teams ?? []) as LocutorTeam[];
+  const matchList = (matches ?? []) as Match[];
+  const stats = computeEventStats({
+    competitions: competitionList,
+    teams: teamList,
+    matches: matchList,
+    runs: (runs ?? []) as Pick<TimeTrialRun, "competition_id">[],
+  });
+
+  const teamName = (id: string | null) => teamList.find((t) => t.id === id)?.name ?? "?";
+  const liveBoards = boards.filter((b) => b.live);
+
+  const recent = matchList
+    .filter((m) => m.status === "completed" && m.team_a_id && m.team_b_id)
+    .sort((a, b) => b.updated_at.localeCompare(a.updated_at))
+    .slice(0, RECENT_RESULTS);
+
+  // Campeones: finales ya jugadas (cuadro de oro y de plata por separado).
+  const champions = matchList
+    .filter((m) => m.status === "completed" && m.round === "F" && m.winner_id)
+    .map((m) => {
+      const c = competitionById.get(m.competition_id)!;
+      const cup = c.format_type === "gold_silver" ? (m.bracket_type === "silver" ? " · Copa Plata" : " · Copa Oro") : "";
+      return {
+        id: m.id,
+        label: disciplineCategoryLabel(c.disciplines, c.categories) + cup,
+        winner: teamName(m.winner_id),
+        colors: disciplineColor(c.disciplines),
+      };
+    });
+
+  const disciplineRows = stats.byDiscipline
+    .map((d) => {
+      const discipline = competitionList.find((c) => c.discipline_id === d.disciplineId)?.disciplines ?? null;
+      return { ...d, name: discipline ? disciplineDisplayName(discipline.name) : "?", colors: disciplineColor(discipline), sortOrder: discipline?.sort_order ?? 0 };
+    })
+    .sort((a, b) => a.sortOrder - b.sortOrder);
+
+  const tiles: { label: string; value: number; detail?: string }[] = [
+    { label: "Robots", value: stats.robots },
+    { label: "Participantes", value: stats.participants },
+    { label: "Equipos", value: stats.teams, detail: stats.accredited ? `${stats.accredited} acreditados` : undefined },
+    { label: "Instituciones", value: stats.institutions },
+    {
+      label: "Localidades",
+      value: stats.localities,
+      detail: stats.provinces ? `${stats.provinces} ${stats.provinces === 1 ? "provincia" : "provincias"}` : undefined,
+    },
+    { label: "Partidos jugados", value: stats.played, detail: `de ${stats.total} · faltan ${stats.remaining}` },
+    { label: "En juego ahora", value: stats.live },
+  ];
+  if (stats.goals > 0) tiles.push({ label: "Goles", value: stats.goals });
+  if (stats.runs > 0) tiles.push({ label: "Intentos contrarreloj", value: stats.runs });
+
+  return (
+    <div className="panel-page min-h-screen">
+      <PublicRealtime />
+      <div className="p-4 sm:p-6 space-y-5">
+        <header className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 pb-3 border-b-2 border-neutral-200 dark:border-neutral-800 panel-enter">
+          <div className="flex items-center gap-2.5 min-w-0">
+            <BrandIcon className="h-9 w-9" priority />
+            <div className="min-w-0">
+              <h1 className="text-2xl sm:text-3xl font-display font-bold truncate">Locutor</h1>
+              <p className="text-sm panel-label truncate">{event.name}</p>
+            </div>
+          </div>
+          <p className="text-sm font-display font-semibold panel-label shrink-0">{event.event_date}</p>
+        </header>
+
+        <section className="grid gap-3 grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 xl:grid-cols-9 panel-enter-stagger">
+          {tiles.map((t) => (
+            <div key={t.label} className="panel-card rounded-xl px-4 py-3">
+              <p className="text-xs uppercase tracking-wide font-display font-semibold panel-label">{t.label}</p>
+              <p className="text-4xl font-display font-bold tabular-nums leading-tight">{t.value}</p>
+              {t.detail && <p className="text-xs panel-label">{t.detail}</p>}
+            </div>
+          ))}
+        </section>
+
+        <div className="grid gap-5 lg:grid-cols-[3fr_2fr]">
+          <div className="space-y-5 min-w-0">
+            <section className="panel-card rounded-xl overflow-hidden">
+              <SectionTitle>En juego ahora</SectionTitle>
+              {liveBoards.length === 0 ? (
+                <p className="p-4 panel-label">No hay ningún partido en juego en este momento.</p>
+              ) : (
+                <div className="p-3 grid gap-3 sm:grid-cols-2">
+                  {liveBoards.map((board) => {
+                    const live = board.live!;
+                    const next = board.upcoming[0];
+                    return (
+                      <div key={board.courtId} className={`rounded-lg border-l-4 panel-surface ${board.colorBorder} ${board.colorBg} p-3 space-y-2`}>
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="text-xs uppercase tracking-wide font-display font-semibold panel-label truncate">
+                            {board.courtName}
+                          </span>
+                          <MatchStageChip stage={live.stage} size="xs" className="shrink-0" />
+                        </div>
+                        <p className={`text-sm font-display font-bold ${board.colorText}`}>{live.disciplineCategory}</p>
+                        <p className="text-lg font-display font-semibold text-center leading-tight">
+                          {live.teamAName} <span className="panel-label font-normal">vs</span> {live.teamBName}
+                        </p>
+                        <MatchClock match={live.match} competition={live.competition} size="compact" />
+                        {live.competition.timer_mode === "periods" && (
+                          <p className="text-2xl font-mono font-bold text-center tabular-nums">
+                            {live.match.score_a ?? 0} – {live.match.score_b ?? 0}
+                          </p>
+                        )}
+                        {next && (
+                          <p className="text-xs panel-label truncate border-t border-neutral-200 dark:border-neutral-800 pt-1.5">
+                            Sigue: {next.teamAName} vs {next.teamBName}
+                          </p>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </section>
+
+            <section className="panel-card rounded-xl overflow-hidden">
+              <SectionTitle>Últimos resultados</SectionTitle>
+              {recent.length === 0 ? (
+                <p className="p-4 panel-label">Todavía no terminó ningún partido.</p>
+              ) : (
+                <ul className="divide-y divide-neutral-100 dark:divide-neutral-800/60">
+                  {recent.map((m) => {
+                    const c = competitionById.get(m.competition_id)!;
+                    const a = teamName(m.team_a_id);
+                    const b = teamName(m.team_b_id);
+                    return (
+                      <li key={m.id} className="px-4 py-2.5 flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
+                        <div className="min-w-0">
+                          <p className="text-[15px]">
+                            <span className={m.winner_id === m.team_a_id ? "font-bold" : ""}>{a}</span>
+                            {m.forfeit || m.score_a === null || m.score_b === null ? (
+                              <span className="panel-label"> vs </span>
+                            ) : (
+                              <span className="font-mono font-bold tabular-nums"> {m.score_a} – {m.score_b} </span>
+                            )}
+                            <span className={m.winner_id === m.team_b_id ? "font-bold" : ""}>{b}</span>
+                          </p>
+                          <p className={`text-xs ${disciplineColor(c.disciplines).text}`}>
+                            {disciplineCategoryLabel(c.disciplines, c.categories)}
+                          </p>
+                        </div>
+                        <div className="flex items-center gap-2 shrink-0">
+                          {m.forfeit && (
+                            <span className="panel-chip-warning rounded-full px-2 py-0.5 text-xs font-medium">
+                              W.O. · {forfeitLabel(m.forfeit, a, b)}
+                            </span>
+                          )}
+                          <MatchStageChip stage={matchStage(m, { goldSilver: c.format_type === "gold_silver" })} size="xs" />
+                        </div>
+                      </li>
+                    );
+                  })}
+                </ul>
+              )}
+            </section>
+          </div>
+
+          <div className="space-y-5 min-w-0">
+            {champions.length > 0 && (
+              <section className="panel-card rounded-xl overflow-hidden">
+                <SectionTitle>🏆 Campeones</SectionTitle>
+                <ul className="p-3 space-y-2">
+                  {champions.map((ch) => (
+                    <li key={ch.id} className={`rounded-lg border-l-4 px-3 py-2 ${ch.colors.border} ${ch.colors.bg}`}>
+                      <p className="text-lg font-display font-bold">{ch.winner}</p>
+                      <p className={`text-xs ${ch.colors.text}`}>{ch.label}</p>
+                    </li>
+                  ))}
+                </ul>
+              </section>
+            )}
+
+            <section className="panel-card rounded-xl overflow-hidden">
+              <SectionTitle>Por disciplina</SectionTitle>
+              {disciplineRows.length === 0 ? (
+                <p className="p-4 panel-label">Todavía no hay torneos cargados.</p>
+              ) : (
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="text-xs uppercase tracking-wide panel-label text-right">
+                      <th className="text-left font-semibold px-4 py-2">Disciplina</th>
+                      <th className="font-semibold px-2 py-2">Robots</th>
+                      <th className="font-semibold px-2 py-2">Personas</th>
+                      <th className="font-semibold px-4 py-2">Jugados</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-neutral-100 dark:divide-neutral-800/60">
+                    {disciplineRows.map((d) => (
+                      <tr key={d.disciplineId} className="text-right tabular-nums">
+                        <td className="text-left px-4 py-2">
+                          <span className="inline-flex items-center gap-2 font-display font-semibold">
+                            <span className={`w-2.5 h-2.5 rounded-full shrink-0 ${d.colors.dot}`} aria-hidden="true" />
+                            {d.name}
+                          </span>
+                        </td>
+                        <td className="px-2 py-2">{d.robots}</td>
+                        <td className="px-2 py-2">{d.participants}</td>
+                        <td className="px-4 py-2">
+                          {d.total > 0 ? `${d.played} / ${d.total}` : d.runs > 0 ? `${d.runs} intentos` : "—"}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+            </section>
+
+            {stats.withdrawn + stats.forfeits > 0 && (
+              <p className="text-xs panel-label px-1">
+                {stats.withdrawn > 0 && `${stats.withdrawn} ${stats.withdrawn === 1 ? "equipo dado de baja" : "equipos dados de baja"}. `}
+                {stats.forfeits > 0 && `${stats.forfeits} ${stats.forfeits === 1 ? "partido ganado" : "partidos ganados"} por W.O. (no cuentan como jugados).`}
+              </p>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function SectionTitle({ children }: { children: React.ReactNode }) {
+  return (
+    <h2 className="text-xs uppercase tracking-wide text-white bg-brand-teal-dark font-display font-bold px-4 py-2">
+      {children}
+    </h2>
+  );
+}
