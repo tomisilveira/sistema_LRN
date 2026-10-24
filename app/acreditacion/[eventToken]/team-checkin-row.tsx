@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useState, useTransition } from "react";
-import { setAccredited, setHomologated, setParticipantsPresent, updateTeam } from "./actions";
+import { deleteTeam, setAccredited, setHomologated, setParticipantsPresent, updateTeam } from "./actions";
 import type { Team } from "@/lib/database.types";
 import type { DisciplineColorSet } from "@/lib/discipline-colors";
 import { TeamLabel } from "@/app/components/team-label";
@@ -70,6 +70,9 @@ export function TeamCheckinRow({
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
+  // Cartel propio para borrar (nunca window.confirm: se bloquea en la
+  // tablet de la mesa).
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
   const savedTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const presentTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   // Fuente de verdad para el stepper: refleja el valor incluso entre dos
@@ -145,6 +148,19 @@ export function TeamCheckinRow({
         }
       });
     }, 650);
+  }
+
+  function confirmedDelete() {
+    setError(null);
+    startTransition(async () => {
+      try {
+        // Al revalidar, la fila desaparece sola de la lista.
+        await deleteTeam(eventToken, team.id);
+      } catch (err) {
+        setConfirmingDelete(false);
+        setError((err as Error).message ?? "No se pudo borrar. Probá de nuevo.");
+      }
+    });
   }
 
   const toggleBase =
@@ -269,8 +285,46 @@ export function TeamCheckinRow({
                 }}
               />
             </ModalFormButton>
+            <button
+              type="button"
+              onClick={() => {
+                setError(null);
+                setConfirmingDelete(true);
+              }}
+              disabled={pending || confirmingDelete}
+              className="text-[11.5px] rounded-md px-2.5 h-[30px] border border-red-500/40 bg-red-500/8 text-red-600 hover:bg-red-500/15 disabled:opacity-50"
+            >
+              Borrar
+            </button>
           </div>
         </div>
+
+        {confirmingDelete && (
+          <div className="rounded-lg border border-red-500/30 bg-red-500/8 p-2.5 space-y-2 panel-enter">
+            <p className="text-[13px] panel-label">
+              ¿Borrar <span className="font-semibold text-neutral-800">{team.name}</span>? Es para equipos mal inscriptos
+              (duplicados o de prueba): se borra del todo y no se puede deshacer.
+            </p>
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={confirmedDelete}
+                disabled={pending}
+                className="flex-1 rounded-lg panel-button-danger font-display font-semibold py-2 text-sm disabled:opacity-50"
+              >
+                {pending ? "Borrando…" : "Sí, borrar equipo"}
+              </button>
+              <button
+                type="button"
+                onClick={() => setConfirmingDelete(false)}
+                disabled={pending}
+                className="flex-1 rounded-lg panel-button-secondary font-display font-semibold py-2 text-sm disabled:opacity-50"
+              >
+                Cancelar
+              </button>
+            </div>
+          </div>
+        )}
 
         {error && <p className="text-[12px] text-red-500 dark:text-red-400 panel-enter">{error}</p>}
       </div>

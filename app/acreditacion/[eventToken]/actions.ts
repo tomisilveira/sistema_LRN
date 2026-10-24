@@ -195,6 +195,33 @@ export async function moveTeamToCompetition(eventToken: string, teamId: string, 
   revalidatePath(`/acreditacion/${eventToken}`);
 }
 
+/** Borrar un equipo mal inscripto (duplicado, de prueba, se anotó dos
+ * veces) desde la mesa de acreditación. Más restringido que removeTeam del
+ * admin: acá no hay login, así que solo se borra si el equipo todavía no
+ * jugó nada — sin partidos (de grupo ni de la llave) ni intentos de
+ * contrarreloj. Si ya jugó, lo tiene que resolver la organización (baja o
+ * reiniciar el torneo). Sale solo de su grupo (group_teams es cascade). */
+export async function deleteTeam(eventToken: string, teamId: string) {
+  const supabase = createAdminClient();
+  await assertTeamBelongsToEvent(supabase, eventToken, teamId);
+
+  const [{ count: matches }, { count: runs }] = await Promise.all([
+    supabase
+      .from("matches")
+      .select("id", { count: "exact", head: true })
+      .or(`team_a_id.eq.${teamId},team_b_id.eq.${teamId},winner_id.eq.${teamId}`),
+    supabase.from("time_trial_runs").select("id", { count: "exact", head: true }).eq("team_id", teamId),
+  ]);
+  if (matches || runs) {
+    throw new Error("Este equipo ya tiene partidos o intentos cargados — no se puede borrar desde acá. Pedile a la organización que le dé de baja.");
+  }
+
+  const { error } = await supabase.from("teams").delete().eq("id", teamId);
+  if (error) throw new Error(error.message);
+
+  revalidatePath(`/acreditacion/${eventToken}`);
+}
+
 /** Cargar un equipo nuevo directo desde la mesa de acreditación — para un
  * equipo que se presenta el día del evento sin haberse anotado antes por
  * el form público, sin que alguien tenga que ir al panel admin. Mismos
