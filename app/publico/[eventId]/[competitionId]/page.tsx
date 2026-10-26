@@ -1,10 +1,17 @@
 import { notFound } from "next/navigation";
-import { createServerSupabaseClient } from "@/lib/supabase/server";
+import { createPublicSupabaseClient } from "@/lib/supabase/public";
 import type { Competition, EventRow } from "@/lib/database.types";
 import type { CompetitionWithNames } from "@/lib/build-event-tab-items";
 import { PublicEventBody } from "@/app/components/public-event-body";
 
-export const revalidate = 0;
+// Rearmada cada 5 s para todos (ISR) — ver comentario en app/page.tsx.
+export const revalidate = 5;
+// Lista vacía = cada evento se arma la primera vez que alguien lo visita y
+// desde ahí queda guardado (sin esto Next la trata como dinámica y la
+// vuelve a armar en cada visita, ignorando `revalidate`).
+export async function generateStaticParams() {
+  return [];
+}
 
 // Ver comentario equivalente en app/page.tsx: `anon` solo tiene grant de
 // columnas puntuales sobre `events`, "*" rompe con permission denied.
@@ -21,7 +28,7 @@ export default async function PublicCompetitionPage({
   params: Promise<{ eventId: string; competitionId: string }>;
 }) {
   const { eventId, competitionId } = await params;
-  const supabase = await createServerSupabaseClient();
+  const supabase = createPublicSupabaseClient();
 
   const { data: competition } = await supabase
     .from("competitions")

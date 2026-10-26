@@ -1,5 +1,5 @@
 import { notFound } from "next/navigation";
-import { createServerSupabaseClient } from "@/lib/supabase/server";
+import { createPublicSupabaseClient } from "@/lib/supabase/public";
 import type { EventRow } from "@/lib/database.types";
 import type { CompetitionWithNames } from "@/lib/build-event-tab-items";
 import { buildCourtBoards, type CourtBoardMatch } from "@/lib/build-court-boards";
@@ -39,7 +39,14 @@ function groupUpcomingByDiscipline(upcoming: CourtBoardMatch[]): UpcomingDiscipl
   );
 }
 
-export const revalidate = 0;
+// Rearmada cada 5 s para todos (ISR) — ver comentario en app/page.tsx.
+export const revalidate = 5;
+// Lista vacía = cada evento se arma la primera vez que alguien lo visita y
+// desde ahí queda guardado (sin esto Next la trata como dinámica y la
+// vuelve a armar en cada visita, ignorando `revalidate`).
+export async function generateStaticParams() {
+  return [];
+}
 
 // Mismo criterio de columnas públicas que /publico (ver comentario
 // equivalente en app/page.tsx): `anon` solo tiene grant de columnas
@@ -52,9 +59,8 @@ const EVENT_PUBLIC_COLUMNS = "id, name, event_date, status, is_public, created_a
  * nadie va a tocar nada). Mismo criterio de acceso que /publico/[eventId]:
  * 404 si el evento no es público.
  *
- * Dos estados, sin ningún paso manual — `PublicRealtime` dispara
- * `router.refresh()` en cualquier cambio de `matches` y el paso de uno a
- * otro ocurre solo:
+ * Dos estados, sin ningún paso manual — `PublicRealtime` refresca la
+ * pantalla cada ~10 s y el paso de uno a otro ocurre solo:
  * - Hay algún partido en vivo en el evento → se muestra ÚNICAMENTE eso
  *   (ScreenBoards, filtrado a las canchas con partido en curso), con los
  *   próximos partidos de esa cancha debajo.
@@ -63,7 +69,7 @@ const EVENT_PUBLIC_COLUMNS = "id, name, event_date, status, is_public, created_a
  *   algo programado, los próximos partidos del evento abajo. */
 export default async function PantallaPage({ params }: { params: Promise<{ eventId: string }> }) {
   const { eventId } = await params;
-  const supabase = await createServerSupabaseClient();
+  const supabase = createPublicSupabaseClient();
 
   // Velocidad (sep 2026): esta pantalla se recarga con cada cambio de
   // partido, así que importan las consultas en fila (~75 ms c/u). Evento y

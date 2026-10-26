@@ -1,5 +1,5 @@
 import { notFound } from "next/navigation";
-import { createServerSupabaseClient } from "@/lib/supabase/server";
+import { createPublicSupabaseClient } from "@/lib/supabase/public";
 import type { EventRow } from "@/lib/database.types";
 import type { CompetitionWithNames } from "@/lib/build-event-tab-items";
 import { buildCourtBoards } from "@/lib/build-court-boards";
@@ -9,7 +9,14 @@ import { PublicRealtime } from "@/app/components/public-realtime";
 import { BrandIcon } from "@/app/components/brand-mark";
 import { MatchStageChip } from "@/app/components/match-stage-chip";
 
-export const revalidate = 0;
+// Rearmada cada 5 s para todos (ISR) — ver comentario en app/page.tsx.
+export const revalidate = 5;
+// Lista vacía = cada evento se arma la primera vez que alguien lo visita y
+// desde ahí queda guardado (sin esto Next la trata como dinámica y la
+// vuelve a armar en cada visita, ignorando `revalidate`).
+export async function generateStaticParams() {
+  return [];
+}
 
 // Mismo criterio de columnas públicas que /evento/[eventId]/pantalla.
 const EVENT_PUBLIC_COLUMNS = "id, name, event_date, status, is_public, created_at";
@@ -21,11 +28,11 @@ const UPCOMING_PER_COURT = 6;
  * se juega ahora y qué viene, en qué cancha?" — una columna por cancha, de
  * todas las disciplinas a la vez, con el color de cada disciplina. Sin
  * posiciones ni cuadros (eso queda en Modo pantalla). Mismo acceso que
- * /pantalla: 404 si el evento no es público; se refresca sola con cada
- * cambio de partido (PublicRealtime). */
+ * /pantalla: 404 si el evento no es público; se refresca sola cada ~10 s
+ * (PublicRealtime). */
 export default async function ProximosPage({ params }: { params: Promise<{ eventId: string }> }) {
   const { eventId } = await params;
-  const supabase = await createServerSupabaseClient();
+  const supabase = createPublicSupabaseClient();
 
   const [{ data: event }, { data: competitions }] = await Promise.all([
     supabase.from("events").select(EVENT_PUBLIC_COLUMNS).eq("id", eventId).maybeSingle<EventRow>(),

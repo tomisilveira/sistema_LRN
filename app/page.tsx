@@ -1,12 +1,16 @@
 import Link from "next/link";
-import { createServerSupabaseClient } from "@/lib/supabase/server";
+import { createPublicSupabaseClient } from "@/lib/supabase/public";
 import type { EventRow } from "@/lib/database.types";
 import type { CompetitionWithNames } from "@/lib/build-event-tab-items";
 import { PublicShell } from "@/app/components/public-shell";
 import { PublicEventBody } from "@/app/components/public-event-body";
 import { BrandLockup } from "@/app/components/brand-mark";
 
-export const revalidate = 0;
+// Página pública guardada y rearmada como mucho cada 5 s para TODOS los
+// visitantes (ISR) — no una vez por celular. Por eso usa
+// createPublicSupabaseClient (sin cookies): leer cookies la volvería
+// dinámica otra vez. Mismo criterio en todas las páginas públicas.
+export const revalidate = 5;
 
 // Consulta anónima (sin login): `anon` solo tiene grant de columnas
 // puntuales sobre `events` (ver 0003_accreditation.sql, 0005_event_visibility.sql)
@@ -15,7 +19,7 @@ export const revalidate = 0;
 const EVENT_PUBLIC_COLUMNS = "id, name, event_date, status, is_public, created_at";
 
 export default async function Home() {
-  const supabase = await createServerSupabaseClient();
+  const supabase = createPublicSupabaseClient();
 
   // Una sola tanda (sep 2026): la jornada de hoy trae sus torneos
   // embebidos, en paralelo con los eventos del switcher. Antes eran 3

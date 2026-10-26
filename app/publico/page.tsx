@@ -1,9 +1,10 @@
 import Link from "next/link";
-import { createServerSupabaseClient } from "@/lib/supabase/server";
+import { createPublicSupabaseClient } from "@/lib/supabase/public";
 import type { EventRow } from "@/lib/database.types";
 import { BrandLockup } from "@/app/components/brand-mark";
 
-export const revalidate = 0;
+// Rearmada cada 5 s para todos (ISR) — ver comentario en app/page.tsx.
+export const revalidate = 5;
 
 const statusLabel: Record<EventRow["status"], string> = {
   draft: "Próximamente",
@@ -18,7 +19,7 @@ const statusChipClass: Record<EventRow["status"], string> = {
 };
 
 export default async function PublicEventsPage() {
-  const supabase = await createServerSupabaseClient();
+  const supabase = createPublicSupabaseClient();
   // Consulta anónima (sin login): `anon` solo tiene grant de columnas
   // puntuales sobre `events` (ver 0003_accreditation.sql, 0005_event_visibility.sql)
   // — pedir "*" incluiría accreditation_token, sin grant, y la query entera
