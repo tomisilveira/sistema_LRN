@@ -7,6 +7,7 @@ import { TeamCheckinRow } from "./team-checkin-row";
 import { ModalFormButton } from "@/app/components/modal-form";
 import { TeamFormFields } from "@/app/components/team-form-fields";
 import { addTeam } from "./actions";
+import { parseMemberNames } from "@/lib/team-display";
 
 export interface AccreditationGroup {
   id: string;
@@ -21,9 +22,32 @@ export interface AccreditationGroup {
   moveTargets: { id: string; label: string; crossDiscipline: boolean }[];
 }
 
-/** Tablero de acreditación con buscador — filtra equipos por nombre o
- * institución en todos los torneos del evento a la vez, para no tener que
- * scrollear buscando a mano con la fila de gente esperando. */
+/** Personas inscriptas en un equipo: la cantidad declarada en la
+ * inscripción y, si falta, cuántos nombres se cargaron. */
+function inscribedPeople(t: Team): number {
+  return t.member_count ?? parseMemberNames(t.member_names).length;
+}
+
+/** Minúsculas y sin tildes, para que "fermin" encuentre "Fermín". */
+function normalize(s: string): string {
+  return s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+}
+
+/** Todo lo buscable de un equipo en un solo texto: nombre, integrantes,
+ * robots, institución, localidad/provincia, mentor y notas. */
+function teamSearchText(t: Team): string {
+  return normalize(
+    [t.name, t.member_names, t.robot_names, t.institution, t.locality, t.province, t.mentor_name, t.mentor_contact, t.notes]
+      .filter(Boolean)
+      .join(" ")
+  );
+}
+
+/** Tablero de acreditación con buscador — busca en todo (equipo,
+ * participantes, robots, institución, localidad, mentor, notas y el nombre
+ * del torneo) en todos los torneos del evento a la vez, para no tener que
+ * scrollear buscando a mano con la fila de gente esperando. Con varias
+ * palabras tienen que aparecer todas ("monsalve chos"). */
 export function AccreditationBoard({
   eventToken,
   groups,
@@ -32,21 +56,29 @@ export function AccreditationBoard({
   groups: AccreditationGroup[];
 }) {
   const [query, setQuery] = useState("");
-  const q = query.trim().toLowerCase();
+  const q = query.trim();
 
   const filteredGroups = useMemo(() => {
-    if (!q) return groups;
+    const words = normalize(q).split(/\s+/).filter(Boolean);
+    if (words.length === 0) return groups;
     return groups
-      .map((g) => ({
-        ...g,
-        teams: g.teams.filter(
-          (t) => t.name.toLowerCase().includes(q) || (t.institution ?? "").toLowerCase().includes(q)
-        ),
-      }))
+      .map((g) => {
+        const label = normalize(g.label);
+        return {
+          ...g,
+          teams: g.teams.filter((t) => {
+            const text = `${label} ${teamSearchText(t)}`;
+            return words.every((w) => text.includes(w));
+          }),
+        };
+      })
       .filter((g) => g.teams.length > 0);
   }, [groups, q]);
 
   const totalTeams = groups.reduce((sum, g) => sum + g.teams.length, 0);
+  const totalPeople = groups.reduce((sum, g) => sum + g.teams.reduce((s, t) => s + inscribedPeople(t), 0), 0);
+  const foundTeams = filteredGroups.reduce((sum, g) => sum + g.teams.length, 0);
+  const foundPeople = filteredGroups.reduce((sum, g) => sum + g.teams.reduce((s, t) => s + inscribedPeople(t), 0), 0);
   const readyTeams = groups.reduce(
     (sum, g) => sum + g.teams.filter((t) => t.accredited && t.homologated).length,
     0
@@ -73,13 +105,42 @@ export function AccreditationBoard({
             type="search"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Buscar equipo o institución…"
+            placeholder="Buscar equipo, participante, robot, escuela…"
             className="w-full h-11 rounded-lg panel-input pl-10 pr-3 text-[15px]"
           />
         </div>
         <span className="shrink-0 font-display font-bold text-[13px] rounded-full px-3 py-2 panel-chip-success whitespace-nowrap">
           {readyTeams}/{totalTeams} listos
         </span>
+      </div>
+
+      <div className="grid grid-cols-2 gap-2.5 -mt-2">
+        <div className="panel-card rounded-xl px-4 py-2.5">
+          <p className="text-[11px] font-semibold uppercase tracking-wide panel-label">Equipos inscriptos</p>
+          <p className="font-display font-bold text-2xl leading-tight">
+            {q ? (
+              <>
+                {foundTeams}
+                <span className="text-sm font-medium panel-label"> de {totalTeams}</span>
+              </>
+            ) : (
+              totalTeams
+            )}
+          </p>
+        </div>
+        <div className="panel-card rounded-xl px-4 py-2.5">
+          <p className="text-[11px] font-semibold uppercase tracking-wide panel-label">Personas inscriptas</p>
+          <p className="font-display font-bold text-2xl leading-tight">
+            {q ? (
+              <>
+                {foundPeople}
+                <span className="text-sm font-medium panel-label"> de {totalPeople}</span>
+              </>
+            ) : (
+              totalPeople
+            )}
+          </p>
+        </div>
       </div>
 
       {filteredGroups.length === 0 && (
@@ -90,13 +151,14 @@ export function AccreditationBoard({
 
       {filteredGroups.map((g) => {
         const groupReady = g.teams.filter((t) => t.accredited && t.homologated).length;
+        const groupPeople = g.teams.reduce((sum, t) => sum + inscribedPeople(t), 0);
         return (
           <section key={g.id} className="space-y-2.5 panel-enter">
             <div className="flex items-center gap-2 flex-wrap">
               <span className={`w-2 h-2 rounded-full shrink-0 ${g.colors.dot}`} aria-hidden="true" />
               <h2 className={`text-[12.5px] font-bold uppercase tracking-wide ${g.colors.text}`}>{g.label}</h2>
               <span className="text-[11px] panel-label">
-                {groupReady}/{g.teams.length} listos
+                {groupReady}/{g.teams.length} listos · {groupPeople} {groupPeople === 1 ? "persona" : "personas"}
               </span>
               <ModalFormButton
                 buttonLabel="+ Agregar equipo"

@@ -186,11 +186,13 @@ export function TeamCheckinRow({
             {team.name.trim().charAt(0).toUpperCase() || "?"}
           </span>
           <div className="min-w-0">
-            <p className="font-semibold text-base leading-tight truncate">
+            {/* Sin truncate: los nombres de los integrantes se ven completos
+                (antes se cortaban con "…" en celular/tablet). */}
+            <p className="font-semibold text-base leading-tight break-words">
               <TeamLabel name={team.name} memberNames={team.member_names} />
             </p>
             {(team.institution || team.locality) && (
-              <p className="text-[12.5px] panel-label truncate mt-0.5">
+              <p className="text-[12.5px] panel-label break-words mt-0.5">
                 {[team.institution, formatLocation(team.locality, team.province)].filter(Boolean).join(" · ")}
               </p>
             )}
