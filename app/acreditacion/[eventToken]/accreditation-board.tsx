@@ -180,6 +180,7 @@ export function AccreditationBoard({
                   isFutbol={g.isFutbol}
                   colors={g.colors}
                   moveTargets={g.canMove ? g.moveTargets : []}
+                  competitionLabel={g.label}
                 />
               ))}
             </div>

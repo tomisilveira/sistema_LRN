@@ -7,9 +7,10 @@ import type { DisciplineColorSet } from "@/lib/discipline-colors";
 import { TeamLabel } from "@/app/components/team-label";
 import { TeamFormFields } from "@/app/components/team-form-fields";
 import { ModalFormButton } from "@/app/components/modal-form";
-import { parseRobotNames } from "@/lib/team-display";
+import { parseMentorContact, parseRobotNames } from "@/lib/team-display";
 import { formatLocation } from "@/lib/argentina-locations";
 import { MoveTeamSelect } from "./move-team-select";
+import { TeamDetailsButton } from "./team-details-button";
 
 const svgBase = {
   fill: "none",
@@ -57,9 +58,12 @@ export function TeamCheckinRow({
   isFutbol,
   colors,
   moveTargets,
+  competitionLabel,
 }: {
   eventToken: string;
   team: Team;
+  /** Disciplina y categoría del torneo, para el cuadro "Ver inscripción". */
+  competitionLabel: string;
   isFutbol: boolean;
   colors: DisciplineColorSet;
   moveTargets: { id: string; label: string; crossDiscipline: boolean }[];
@@ -80,6 +84,7 @@ export function TeamCheckinRow({
   const presentRef = useRef(present);
 
   const ready = accredited && homologated;
+  const contact = parseMentorContact(team.mentor_contact);
   const statusLabel = ready
     ? "Listo"
     : accredited
@@ -196,6 +201,22 @@ export function TeamCheckinRow({
                 {[team.institution, formatLocation(team.locality, team.province)].filter(Boolean).join(" · ")}
               </p>
             )}
+            {/* Contacto del responsable: tocar para llamar o escribir. */}
+            {(team.mentor_name || contact.phones.length > 0 || contact.emails.length > 0) && (
+              <p className="text-[12.5px] mt-1 flex flex-wrap gap-x-3 gap-y-0.5">
+                {team.mentor_name && <span className="panel-label">Resp.: {team.mentor_name}</span>}
+                {contact.phones.map((ph) => (
+                  <a key={ph.href} href={ph.href} className="text-brand-teal-dark underline whitespace-nowrap">
+                    📞 {ph.label}
+                  </a>
+                ))}
+                {contact.emails.map((em) => (
+                  <a key={em} href={`mailto:${em}`} className="text-brand-teal-dark underline break-all">
+                    ✉️ {em}
+                  </a>
+                ))}
+              </p>
+            )}
           </div>
         </div>
         <span
@@ -264,8 +285,9 @@ export function TeamCheckinRow({
             )}
           </div>
 
-          <div className="flex items-center gap-1.5">
+          <div className="flex items-center gap-1.5 flex-wrap">
             <MoveTeamSelect eventToken={eventToken} teamId={team.id} teamName={team.name} options={moveTargets} />
+            <TeamDetailsButton team={team} competitionLabel={competitionLabel} />
             <ModalFormButton
               buttonLabel="Editar"
               buttonClassName="text-[11.5px] rounded-md px-2.5 h-[30px] panel-button-secondary"
