@@ -292,12 +292,14 @@ export default async function LocutorPage({ params }: { params: Promise<{ eventI
               {disciplineRows.length === 0 ? (
                 <p className="p-4 panel-label">Todavía no hay torneos cargados.</p>
               ) : (
+                <div className="overflow-x-auto">
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="text-xs uppercase tracking-wide panel-label text-right">
                       <th className="text-left font-semibold px-4 py-2">Disciplina</th>
-                      <th className="font-semibold px-2 py-2">Robots</th>
-                      <th className="font-semibold px-2 py-2">Personas</th>
+                      <th className="font-semibold px-1.5 py-2">Equipos</th>
+                      <th className="font-semibold px-1.5 py-2">Robots</th>
+                      <th className="font-semibold px-1.5 py-2">Personas</th>
                       <th className="font-semibold px-4 py-2">Jugados</th>
                     </tr>
                   </thead>
@@ -310,21 +312,24 @@ export default async function LocutorPage({ params }: { params: Promise<{ eventI
                             {d.name}
                           </span>
                         </td>
-                        <td className="px-2 pt-2 pb-1">{d.robots}</td>
-                        <td className="px-2 pt-2 pb-1">{d.participants}</td>
+                        <td className="px-1.5 pt-2 pb-1">{d.teams}</td>
+                        <td className="px-1.5 pt-2 pb-1">{d.robots}</td>
+                        <td className="px-1.5 pt-2 pb-1">{d.participants}</td>
                         <td className="px-4 pt-2 pb-1">{playedLabel(d)}</td>
                       </tr>
                       {d.categories.map((cat) => (
                         <tr key={cat.id} className="text-right tabular-nums text-[13px] panel-label">
                           <td className="text-left pl-9 pr-4 py-1 whitespace-nowrap">↳ {cat.name}</td>
-                          <td className="px-2 py-1">{cat.robots}</td>
-                          <td className="px-2 py-1">{cat.participants}</td>
+                          <td className="px-1.5 py-1">{cat.teams}</td>
+                          <td className="px-1.5 py-1">{cat.robots}</td>
+                          <td className="px-1.5 py-1">{cat.participants}</td>
                           <td className="px-4 py-1">{playedLabel(cat)}</td>
                         </tr>
                       ))}
                     </tbody>
                   ))}
                 </table>
+                </div>
               )}
             </section>
 
