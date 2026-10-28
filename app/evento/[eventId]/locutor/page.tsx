@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import type { EventRow, Match, TimeTrialRun } from "@/lib/database.types";
+import type { EventRow, Match, Team, TimeTrialRun } from "@/lib/database.types";
 import type { CompetitionWithNames } from "@/lib/build-event-tab-items";
 import { buildCourtBoards } from "@/lib/build-court-boards";
 import { computeEventStats, type StatsTeam } from "@/lib/event-stats";
@@ -9,6 +9,7 @@ import { disciplineColor } from "@/lib/discipline-colors";
 import { disciplineCategoryLabel, disciplineDisplayName } from "@/lib/discipline-display";
 import { matchStage } from "@/lib/match-stage";
 import { forfeitLabel } from "@/lib/forfeit-rules";
+import { buildTimeTrialRanking, formatRunTime } from "@/lib/time-trial";
 import { PublicRealtime } from "@/app/components/public-realtime";
 import { BrandIcon } from "@/app/components/brand-mark";
 import { MatchClock } from "@/app/components/match-clock";
@@ -64,16 +65,17 @@ export default async function LocutorPage({ params }: { params: Promise<{ eventI
       ? supabase.from("matches").select("*").in("competition_id", competitionIds)
       : Promise.resolve({ data: [] as Match[] }),
     competitionIds.length
-      ? supabase.from("time_trial_runs").select("competition_id").in("competition_id", competitionIds)
-      : Promise.resolve({ data: [] as Pick<TimeTrialRun, "competition_id">[] }),
+      ? supabase.from("time_trial_runs").select("*").in("competition_id", competitionIds)
+      : Promise.resolve({ data: [] as TimeTrialRun[] }),
   ]);
   const teamList = (teams ?? []) as LocutorTeam[];
   const matchList = (matches ?? []) as Match[];
+  const runList = (runs ?? []) as TimeTrialRun[];
   const stats = computeEventStats({
     competitions: competitionList,
     teams: teamList,
     matches: matchList,
-    runs: (runs ?? []) as Pick<TimeTrialRun, "competition_id">[],
+    runs: runList,
   });
 
   const teamName = (id: string | null) => teamList.find((t) => t.id === id)?.name ?? "?";
@@ -98,12 +100,53 @@ export default async function LocutorPage({ params }: { params: Promise<{ eventI
       };
     });
 
+  // Contrarreloj (seguidor de línea): no tiene final — el campeón es el 1º
+  // del ranking (mismo criterio que el podio), recién con el torneo cerrado.
+  // Un empate exacto en el 1er puesto muestra a los dos.
+  for (const c of competitionList) {
+    if (c.format_type !== "time_trial" || c.status !== "finished") continue;
+    const ranking = buildTimeTrialRanking(
+      teamList.filter((t) => t.competition_id === c.id) as unknown as Team[],
+      runList.filter((r) => r.competition_id === c.id)
+    );
+    for (const row of ranking.filter((r) => r.position === 1)) {
+      champions.push({
+        id: `${c.id}-${row.team.id}`,
+        label: `${disciplineCategoryLabel(c.disciplines, c.categories)} · mejor tiempo ${formatRunTime(row.bestMs)}`,
+        winner: row.team.name,
+        colors: disciplineColor(c.disciplines),
+      });
+    }
+  }
+
+  // Cada disciplina con su total y debajo una fila por categoría (infantil,
+  // juvenil/adultos...): mismos números, calculados torneo por torneo.
   const disciplineRows = stats.byDiscipline
     .map((d) => {
       const discipline = competitionList.find((c) => c.discipline_id === d.disciplineId)?.disciplines ?? null;
-      return { ...d, name: discipline ? disciplineDisplayName(discipline.name) : "?", colors: disciplineColor(discipline), sortOrder: discipline?.sort_order ?? 0 };
+      const categories = competitionList
+        .filter((c) => c.discipline_id === d.disciplineId)
+        .map((c) => {
+          const own = computeEventStats({
+            competitions: [c],
+            teams: teamList.filter((t) => t.competition_id === c.id),
+            matches: matchList.filter((m) => m.competition_id === c.id),
+            runs: runList.filter((r) => r.competition_id === c.id),
+          }).byDiscipline[0];
+          return { ...(own ?? { teams: 0, robots: 0, participants: 0, played: 0, total: 0, runs: 0 }), id: c.id, name: c.categories?.name ?? "?" };
+        })
+        .sort((a, b) => a.name.localeCompare(b.name, "es"));
+      return {
+        ...d,
+        name: discipline ? disciplineDisplayName(discipline.name) : "?",
+        colors: disciplineColor(discipline),
+        sortOrder: discipline?.sort_order ?? 0,
+        categories,
+      };
     })
     .sort((a, b) => a.sortOrder - b.sortOrder);
+  const playedLabel = (d: { played: number; total: number; runs: number }) =>
+    d.total > 0 ? `${d.played} / ${d.total}` : d.runs > 0 ? `${d.runs} intentos` : "—";
 
   const tiles: { label: string; value: number; detail?: string }[] = [
     { label: "Robots", value: stats.robots },
@@ -245,7 +288,7 @@ export default async function LocutorPage({ params }: { params: Promise<{ eventI
             )}
 
             <section className="panel-card rounded-xl overflow-hidden">
-              <SectionTitle>Por disciplina</SectionTitle>
+              <SectionTitle>Por disciplina y categoría</SectionTitle>
               {disciplineRows.length === 0 ? (
                 <p className="p-4 panel-label">Todavía no hay torneos cargados.</p>
               ) : (
@@ -258,23 +301,29 @@ export default async function LocutorPage({ params }: { params: Promise<{ eventI
                       <th className="font-semibold px-4 py-2">Jugados</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-neutral-100 dark:divide-neutral-800/60">
-                    {disciplineRows.map((d) => (
-                      <tr key={d.disciplineId} className="text-right tabular-nums">
-                        <td className="text-left px-4 py-2">
-                          <span className="inline-flex items-center gap-2 font-display font-semibold">
+                  {disciplineRows.map((d) => (
+                    <tbody key={d.disciplineId} className="border-t border-neutral-200 dark:border-neutral-800">
+                      <tr className="text-right tabular-nums font-semibold">
+                        <td className="text-left px-4 pt-2 pb-1">
+                          <span className="inline-flex items-center gap-2 font-display">
                             <span className={`w-2.5 h-2.5 rounded-full shrink-0 ${d.colors.dot}`} aria-hidden="true" />
                             {d.name}
                           </span>
                         </td>
-                        <td className="px-2 py-2">{d.robots}</td>
-                        <td className="px-2 py-2">{d.participants}</td>
-                        <td className="px-4 py-2">
-                          {d.total > 0 ? `${d.played} / ${d.total}` : d.runs > 0 ? `${d.runs} intentos` : "—"}
-                        </td>
+                        <td className="px-2 pt-2 pb-1">{d.robots}</td>
+                        <td className="px-2 pt-2 pb-1">{d.participants}</td>
+                        <td className="px-4 pt-2 pb-1">{playedLabel(d)}</td>
                       </tr>
-                    ))}
-                  </tbody>
+                      {d.categories.map((cat) => (
+                        <tr key={cat.id} className="text-right tabular-nums text-[13px] panel-label">
+                          <td className="text-left pl-9 pr-4 py-1 whitespace-nowrap">↳ {cat.name}</td>
+                          <td className="px-2 py-1">{cat.robots}</td>
+                          <td className="px-2 py-1">{cat.participants}</td>
+                          <td className="px-4 py-1">{playedLabel(cat)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  ))}
                 </table>
               )}
             </section>
