@@ -72,7 +72,11 @@ create table events (
   is_public boolean not null default true,
   -- Quién lo creó (dato histórico; el acceso lo da event_admins, al que el
   -- trigger events_add_creator_as_admin suma al creador).
-  created_by uuid default auth.uid() references auth.users (id) on delete set null
+  created_by uuid default auth.uid() references auth.users (id) on delete set null,
+  -- Números de la Liga Nacional que se juega en el mismo evento pero no se
+  -- maneja con este sistema — carga manual, se muestra en el locutor
+  -- (0021, formato en lib/national-league.ts). null = no hay.
+  national_league jsonb
 );
 
 -- Usuarios habilitados en el panel admin. 'superadmin' ve y edita todo,

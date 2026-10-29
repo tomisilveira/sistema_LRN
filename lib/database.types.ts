@@ -61,6 +61,9 @@ export interface EventRow {
   accreditation_token?: string;
   // Quién lo creó (0018) — null en eventos anteriores o creados por script.
   created_by?: string | null;
+  // Números de la Liga Nacional cargados a mano (0021) — leer siempre con
+  // normalizeNationalLeague (lib/national-league.ts). Sin grant para anon.
+  national_league?: unknown;
 }
 
 export interface Competition {

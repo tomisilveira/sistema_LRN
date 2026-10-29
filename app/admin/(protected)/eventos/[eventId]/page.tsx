@@ -19,6 +19,8 @@ import { CopyLinkButton } from "@/app/components/copy-link-button";
 import { canManageEvent, getAdminContext } from "@/lib/admin-auth";
 import { EventAdminsPanel } from "./event-admins-panel";
 import { InscriptionPanel } from "./inscription-panel";
+import { NationalLeaguePanel } from "./national-league-panel";
+import { normalizeNationalLeague } from "@/lib/national-league";
 import { RebalanceCourtsButton } from "./rebalance-courts-button";
 import {
   DownloadIcon,
@@ -86,6 +88,7 @@ export default async function EventPage({
   if (!event || !me || !allowed) notFound();
 
   const disciplinesById = new Map((disciplines ?? []).map((d: Discipline) => [d.id, d]));
+  const nationalLeague = normalizeNationalLeague(event.national_league);
 
   const setStatus = setEventStatusAction.bind(null, eventId);
   const setPublic = setEventPublicAction.bind(null, eventId);
@@ -407,6 +410,12 @@ export default async function EventPage({
           competitions={(competitions ?? []) as CompetitionWithNames[]}
         />
       ),
+    },
+    {
+      id: "liga-nacional",
+      label: "Liga Nacional",
+      badge: nationalLeague ? "cargada" : undefined,
+      content: <NationalLeaguePanel eventId={eventId} league={nationalLeague} />,
     },
     {
       id: "administradores",

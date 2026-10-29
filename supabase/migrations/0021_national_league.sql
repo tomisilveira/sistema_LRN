@@ -1,0 +1,22 @@
+-- ==========================================================================
+-- Liga Nacional en la pantalla del locutor (oct 2026).
+--
+--   · events.national_league: números de la Liga Nacional que se juega en
+--     el mismo evento pero NO se maneja con este sistema (fútbol, mini sumo,
+--     seguidor de línea — juvenil/adultos). Se cargan a mano desde la
+--     pestaña "Liga Nacional" del evento en el panel admin y se muestran en
+--     /evento/[id]/locutor. Formato (ver lib/national-league.ts):
+--       { "rows": [{ "label": text, "teams": int|null, "robots": int|null,
+--                    "participants": int|null }],
+--         "provinces": int|null, "note": text|null }
+--     null = no hay Liga Nacional en este evento.
+--
+-- Sin grant para `anon`: el locutor la lee con la service-role key (igual
+-- que los equipos) y `authenticated` ya tiene select/update de la tabla
+-- entera (0016) — la RLS de events (0018) decide quién puede editar.
+--
+-- Aplicar en el SQL Editor de Supabase ANTES de desplegar el código.
+-- Idempotente.
+-- ==========================================================================
+
+alter table events add column if not exists national_league jsonb;

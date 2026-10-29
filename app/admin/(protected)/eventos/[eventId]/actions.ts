@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { canManageEvent, getAdminContext } from "@/lib/admin-auth";
 import { rebalanceEventCourts, type RebalanceSummary } from "@/lib/rebalance-courts";
+import { parseNationalLeagueForm } from "@/lib/national-league";
 
 export type RebalanceResult = { ok: true; summary: RebalanceSummary } | { ok: false; error: string };
 
@@ -195,6 +196,31 @@ export async function setEventPublicAction(eventId: string, isPublic: boolean) {
   revalidatePath("/admin");
   revalidatePath("/publico");
   revalidatePath("/");
+}
+
+/** Guarda los números de la Liga Nacional (pestaña "Liga Nacional"): se
+ * juega en el mismo evento pero no con este sistema, y se muestran en el
+ * locutor. Formulario vacío = borra la sección. Corre con la sesión del
+ * admin: la RLS de events (0018) decide si puede editar este evento.
+ * Requiere 0021_national_league.sql aplicada. */
+export async function saveNationalLeague(eventId: string, formData: FormData) {
+  const league = parseNationalLeagueForm(formData);
+  const supabase = await createServerSupabaseClient();
+  const { data, error } = await supabase
+    .from("events")
+    .update({ national_league: league })
+    .eq("id", eventId)
+    .select("id");
+  if (error) {
+    throw new Error(
+      error.message.includes("national_league")
+        ? "Falta aplicar la migración 0021_national_league.sql en Supabase."
+        : error.message
+    );
+  }
+  if (!data?.length) throw new Error("No tenés permiso para editar este evento.");
+  revalidatePath(`/admin/eventos/${eventId}`);
+  revalidatePath(`/evento/${eventId}/locutor`);
 }
 
 /** Comparte el evento con otro administrador que ya exista. Corre con la

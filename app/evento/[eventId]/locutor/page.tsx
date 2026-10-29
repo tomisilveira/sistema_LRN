@@ -10,6 +10,7 @@ import { disciplineCategoryLabel, disciplineDisplayName } from "@/lib/discipline
 import { matchStage } from "@/lib/match-stage";
 import { forfeitLabel } from "@/lib/forfeit-rules";
 import { buildTimeTrialRanking, formatRunTime } from "@/lib/time-trial";
+import { nationalLeagueTotals, normalizeNationalLeague } from "@/lib/national-league";
 import { PublicRealtime } from "@/app/components/public-realtime";
 import { BrandIcon } from "@/app/components/brand-mark";
 import { MatchClock } from "@/app/components/match-clock";
@@ -51,7 +52,7 @@ export default async function LocutorPage({ params }: { params: Promise<{ eventI
   const competitionIds = competitionList.map((c) => c.id);
   const competitionById = new Map(competitionList.map((c) => [c.id, c]));
 
-  const [boards, { data: teams }, { data: matches }, { data: runs }] = await Promise.all([
+  const [boards, { data: teams }, { data: matches }, { data: runs }, { data: nationalLeagueRow }] = await Promise.all([
     buildCourtBoards(supabase, eventId, competitionList, { upcomingLimit: 1 }),
     competitionIds.length
       ? createAdminClient()
@@ -67,7 +68,13 @@ export default async function LocutorPage({ params }: { params: Promise<{ eventI
     competitionIds.length
       ? supabase.from("time_trial_runs").select("*").in("competition_id", competitionIds)
       : Promise.resolve({ data: [] as TimeTrialRun[] }),
+    // Liga Nacional: carga manual desde el admin (0021). Con la service-role
+    // porque `anon` no tiene grant de esa columna; si la migración todavía
+    // no está aplicada, la consulta falla y la sección simplemente no sale.
+    createAdminClient().from("events").select("national_league").eq("id", eventId).maybeSingle<{ national_league: unknown }>(),
   ]);
+  const nationalLeague = normalizeNationalLeague(nationalLeagueRow?.national_league);
+  const nationalTotals = nationalLeague ? nationalLeagueTotals(nationalLeague) : null;
   const teamList = (teams ?? []) as LocutorTeam[];
   const matchList = (matches ?? []) as Match[];
   const runList = (runs ?? []) as TimeTrialRun[];
@@ -332,6 +339,57 @@ export default async function LocutorPage({ params }: { params: Promise<{ eventI
                 </div>
               )}
             </section>
+
+            {nationalLeague && nationalTotals && (
+              <section className="panel-card rounded-xl overflow-hidden">
+                <SectionTitle>🇦🇷 Liga Nacional</SectionTitle>
+                {nationalLeague.rows.length > 0 && (
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="text-xs uppercase tracking-wide panel-label text-right">
+                          <th className="text-left font-semibold px-4 py-2">Disciplina</th>
+                          <th className="font-semibold px-1.5 py-2">Equipos</th>
+                          <th className="font-semibold px-1.5 py-2">Robots</th>
+                          <th className="font-semibold px-4 py-2">Personas</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-neutral-100 dark:divide-neutral-800/60">
+                        {nationalLeague.rows.map((r, i) => (
+                          <tr key={i} className="text-right tabular-nums">
+                            <td className="text-left px-4 py-2 font-display font-semibold">{r.label}</td>
+                            <td className="px-1.5 py-2">{r.teams ?? "—"}</td>
+                            <td className="px-1.5 py-2">{r.robots ?? "—"}</td>
+                            <td className="px-4 py-2">{r.participants ?? "—"}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                      {nationalLeague.rows.length > 1 && (
+                        <tfoot>
+                          <tr className="text-right tabular-nums font-bold border-t border-neutral-200 dark:border-neutral-800">
+                            <td className="text-left px-4 py-2">Total</td>
+                            <td className="px-1.5 py-2">{nationalTotals.teams ?? "—"}</td>
+                            <td className="px-1.5 py-2">{nationalTotals.robots ?? "—"}</td>
+                            <td className="px-4 py-2">{nationalTotals.participants ?? "—"}</td>
+                          </tr>
+                        </tfoot>
+                      )}
+                    </table>
+                  </div>
+                )}
+                {(nationalLeague.provinces !== null || nationalLeague.note) && (
+                  <div className="px-4 py-2.5 border-t border-neutral-100 dark:border-neutral-800/60 space-y-0.5">
+                    {nationalLeague.provinces !== null && (
+                      <p className="text-sm">
+                        <span className="font-display font-bold text-lg tabular-nums">{nationalLeague.provinces}</span>{" "}
+                        {nationalLeague.provinces === 1 ? "provincia" : "provincias"}
+                      </p>
+                    )}
+                    {nationalLeague.note && <p className="text-sm panel-label">{nationalLeague.note}</p>}
+                  </div>
+                )}
+              </section>
+            )}
 
             {stats.withdrawn + stats.forfeits > 0 && (
               <p className="text-xs panel-label px-1">
