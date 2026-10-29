@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
-import { generateRoundRobinPairs } from "@/lib/round-robin";
+import { MAX_ROUND_ROBIN_LEGS, generateRoundRobinLegs, missingRoundRobinMatches, roundRobinLegsOf } from "@/lib/round-robin";
 import { advanceWinner } from "@/lib/bracket-actions";
 import { computeMatchOutcome } from "@/lib/match-logic";
 import { generateBracketForCompetition, ensureThirdPlaceMatch } from "@/lib/generate-bracket-for-competition";
@@ -30,7 +30,7 @@ export async function updateCompetitionFormat(competitionId: string, formData: F
 
   const { data: competition } = await supabase
     .from("competitions")
-    .select("status, format_type")
+    .select("*")
     .eq("id", competitionId)
     .single<Competition>();
   if (!competition) throw new Error("Competencia no encontrada.");
@@ -86,6 +86,14 @@ export async function updateCompetitionFormat(competitionId: string, formData: F
   if (timerMode === "rounds" && (!roundsToWin || roundsToWin < 1)) {
     throw new Error("Definí cuántos rounds ganados definen el partido.");
   }
+  const legs = Number(formData.get("round_robin_legs") ?? 1);
+  if (!Number.isInteger(legs) || legs < 1 || legs > MAX_ROUND_ROBIN_LEGS) {
+    throw new Error(`Las vueltas del todos contra todos tienen que ser entre 1 y ${MAX_ROUND_ROBIN_LEGS}.`);
+  }
+  // Sin la migración 0022 la columna no existe: se guarda solo si ya está
+  // (el select "*" de arriba la trae) o si piden más de 1 vuelta (y ahí el
+  // error de abajo avisa que falta la migración).
+  const legsPatch = competition.round_robin_legs !== undefined || legs !== 1 ? { round_robin_legs: legs } : {};
 
   const { error } = await supabase
     .from("competitions")
@@ -100,9 +108,16 @@ export async function updateCompetitionFormat(competitionId: string, formData: F
       period_seconds: periodSeconds,
       periods_count: periodsCount,
       rounds_to_win: roundsToWin,
+      ...legsPatch,
     })
     .eq("id", competitionId);
-  if (error) throw new Error(error.message);
+  if (error) {
+    throw new Error(
+      error.message.includes("round_robin_legs")
+        ? "Falta aplicar la migración 0022_round_robin_legs.sql en Supabase para jugar más de una vuelta."
+        : error.message
+    );
+  }
 
   revalidateCompetition(competitionId);
 }
@@ -418,11 +433,13 @@ export async function startTournament(competitionId: string) {
   // partidos que falten" (ver syncGroupFixture). Antes esto era un error
   // duro.
 
+  // Varias vueltas (0022): cada par se enfrenta round_robin_legs veces.
+  const legs = roundRobinLegsOf(competition);
   const rows: Partial<Match>[] = [];
   for (const g of groups as unknown as { id: string; group_teams: { team_id: string }[] }[]) {
     const teamIds = g.group_teams.map((gt) => gt.team_id);
     if (teamIds.length < 2) continue;
-    for (const [a, b] of generateRoundRobinPairs(teamIds)) {
+    for (const [a, b] of generateRoundRobinLegs(teamIds, legs)) {
       rows.push({
         competition_id: competitionId,
         phase: "group",
@@ -490,12 +507,15 @@ export async function restartTournament(competitionId: string) {
 export async function syncGroupFixture(competitionId: string) {
   const supabase = await createServerSupabaseClient();
 
+  // "*" y no columnas puntuales: round_robin_legs puede no existir todavía
+  // (0022 sin aplicar) y pedirla por nombre rompería la consulta.
   const { data: competition } = await supabase
     .from("competitions")
-    .select("id, status, event_id, discipline_id")
+    .select("*")
     .eq("id", competitionId)
-    .single<Pick<Competition, "id" | "status" | "event_id" | "discipline_id">>();
+    .single<Competition>();
   if (!competition) throw new Error("Competencia no encontrada.");
+  const legs = roundRobinLegsOf(competition);
   if (competition.status === "setup") {
     throw new Error("El torneo todavía no arrancó — usá “Iniciar torneo”.");
   }
@@ -517,8 +537,6 @@ export async function syncGroupFixture(competitionId: string) {
     .eq("competition_id", competitionId)
     .eq("phase", "group");
 
-  const pairKey = (a: string, b: string) => [a, b].sort().join("::");
-
   const rowsToInsert: Partial<Match>[] = [];
   const matchIdsToDelete: string[] = [];
 
@@ -527,21 +545,16 @@ export async function syncGroupFixture(competitionId: string) {
     const teamIdSet = new Set(teamIds);
     const existing = (groupMatches ?? []).filter((m) => m.group_id === g.id);
 
-    const existingPairs = new Set(
-      existing
-        .filter((m) => m.team_a_id && m.team_b_id)
-        .map((m) => pairKey(m.team_a_id as string, m.team_b_id as string))
-    );
-
     // Partidos sin jugar de equipos que ya no están en el grupo → se sueltan.
     for (const m of existing) {
       const stillHere = m.team_a_id && m.team_b_id && teamIdSet.has(m.team_a_id) && teamIdSet.has(m.team_b_id);
       if (!stillHere && m.status !== "completed") matchIdsToDelete.push(m.id);
     }
 
-    // Pares del round-robin que todavía no tienen partido.
-    for (const [a, b] of generateRoundRobinPairs(teamIds)) {
-      if (existingPairs.has(pairKey(a, b))) continue;
+    // Partidos del round-robin (con todas sus vueltas) que todavía no
+    // existen. Los que se van a borrar arriba no cuentan como existentes.
+    const kept = existing.filter((m) => !matchIdsToDelete.includes(m.id));
+    for (const [a, b] of missingRoundRobinMatches(teamIds, legs, kept)) {
       rowsToInsert.push({
         competition_id: competitionId,
         phase: "group",

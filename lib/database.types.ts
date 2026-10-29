@@ -91,6 +91,9 @@ export interface Competition {
   period_seconds: number | null;
   periods_count: number;
   rounds_to_win: number | null;
+  // Veces que se enfrenta cada par en la fase de grupos (0022). Puede venir
+  // undefined si la migración no está aplicada: usar roundRobinLegsOf().
+  round_robin_legs?: number;
 }
 
 export interface Team {

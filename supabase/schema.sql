@@ -128,6 +128,10 @@ create table competitions (
   -- Quedó sin uso (pasó a ser obligatorio en todo cuadro con semifinales);
   -- la columna se deja por si vuelve a hacer falta el toggle por torneo.
   third_place_match boolean not null default true,
+  -- Cuántas veces se enfrenta cada par en la fase de grupos (0022): 1 =
+  -- todos contra todos simple; más, para grupos chicos que juegan varias
+  -- vueltas (ver generateRoundRobinLegs en lib/round-robin.ts).
+  round_robin_legs int not null default 1 check (round_robin_legs between 1 and 6),
   unique (event_id, discipline_id, category_id)
 );
 

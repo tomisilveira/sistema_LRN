@@ -3,6 +3,7 @@
 import { useState } from "react";
 import type { Competition } from "@/lib/database.types";
 import { updateCompetitionFormat } from "./actions";
+import { MAX_ROUND_ROBIN_LEGS, roundRobinLegsOf } from "@/lib/round-robin";
 
 export function EditFormatForm({ competitionId, competition }: { competitionId: string; competition: Competition }) {
   if (competition.format_type === "time_trial") {
@@ -114,6 +115,23 @@ function MatchFormatForm({ competitionId, competition }: { competitionId: string
             className="w-full rounded-md panel-input px-2 py-2 text-sm"
           />
         </div>
+      </div>
+      <div className="max-w-xs">
+        <label className="block text-xs panel-label mb-1">Veces que se enfrenta cada par (fase de grupos)</label>
+        <select
+          name="round_robin_legs"
+          defaultValue={roundRobinLegsOf(competition)}
+          className="w-full rounded-md panel-input px-3 py-2 text-sm"
+        >
+          {Array.from({ length: MAX_ROUND_ROBIN_LEGS }, (_, i) => i + 1).map((n) => (
+            <option key={n} value={n}>
+              {n === 1 ? "1 vez (todos contra todos simple)" : `${n} veces`}
+            </option>
+          ))}
+        </select>
+        <p className="text-xs panel-label mt-1">
+          Para grupos chicos: con 3 equipos y 4 veces, cada uno juega 8 partidos. La tabla suma todos.
+        </p>
       </div>
       <label className="flex items-center gap-2 text-sm">
         <input name="allow_draws" type="checkbox" defaultChecked={competition.allow_draws} className="rounded" />
