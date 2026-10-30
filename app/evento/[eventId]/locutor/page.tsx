@@ -155,7 +155,7 @@ export default async function LocutorPage({ params }: { params: Promise<{ eventI
   const playedLabel = (d: { played: number; total: number; runs: number }) =>
     d.total > 0 ? `${d.played} / ${d.total}` : d.runs > 0 ? `${d.runs} intentos` : "—";
 
-  const tiles: { label: string; value: number; detail?: string }[] = [
+  const tiles: Tile[] = [
     { label: "Robots", value: stats.robots },
     { label: "Participantes", value: stats.participants },
     { label: "Equipos", value: stats.teams, detail: stats.accredited ? `${stats.accredited} acreditados` : undefined },
@@ -170,6 +170,34 @@ export default async function LocutorPage({ params }: { params: Promise<{ eventI
   ];
   if (stats.goals > 0) tiles.push({ label: "Goles", value: stats.goals });
   if (stats.runs > 0) tiles.push({ label: "Intentos contrarreloj", value: stats.runs });
+
+  // Con Liga Nacional cargada: primero la suma de las dos ligas (solo lo que
+  // se puede sumar — robots, equipos y participantes; instituciones,
+  // localidades y partidos la Nacional no los tiene), después cada liga.
+  const sumWithNational = (provincial: number, national: number | null) => provincial + (national ?? 0);
+  const splitDetail = (provincial: number, national: number | null) =>
+    `${provincial} provincial · ${national ?? "—"} nacional`;
+  const totalTiles: Tile[] = nationalTotals
+    ? [
+        { label: "Robots", value: sumWithNational(stats.robots, nationalTotals.robots), detail: splitDetail(stats.robots, nationalTotals.robots) },
+        {
+          label: "Participantes",
+          value: sumWithNational(stats.participants, nationalTotals.participants),
+          detail: splitDetail(stats.participants, nationalTotals.participants),
+        },
+        { label: "Equipos", value: sumWithNational(stats.teams, nationalTotals.teams), detail: splitDetail(stats.teams, nationalTotals.teams) },
+      ]
+    : [];
+  const nationalTiles: Tile[] = nationalTotals
+    ? [
+        { label: "Robots", value: nationalTotals.robots ?? "—" },
+        { label: "Participantes", value: nationalTotals.participants ?? "—" },
+        { label: "Equipos", value: nationalTotals.teams ?? "—" },
+        ...(nationalLeague?.provinces !== null && nationalLeague?.provinces !== undefined
+          ? [{ label: "Provincias", value: nationalLeague.provinces }]
+          : []),
+      ]
+    : [];
 
   return (
     <div className="panel-page min-h-screen">
@@ -186,15 +214,15 @@ export default async function LocutorPage({ params }: { params: Promise<{ eventI
           <p className="text-sm font-display font-semibold panel-label shrink-0">{event.event_date}</p>
         </header>
 
-        <section className="grid gap-3 grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 xl:grid-cols-9 panel-enter-stagger">
-          {tiles.map((t) => (
-            <div key={t.label} className="panel-card rounded-xl px-4 py-3">
-              <p className="text-xs uppercase tracking-wide font-display font-semibold panel-label">{t.label}</p>
-              <p className="text-4xl font-display font-bold tabular-nums leading-tight">{t.value}</p>
-              {t.detail && <p className="text-xs panel-label">{t.detail}</p>}
-            </div>
-          ))}
-        </section>
+        {totalTiles.length > 0 ? (
+          <>
+            <TileGroup title="Total del evento · las dos ligas" tiles={totalTiles} highlight />
+            <TileGroup title="Liga Provincial" tiles={tiles} />
+            <TileGroup title="🇦🇷 Liga Nacional" tiles={nationalTiles} />
+          </>
+        ) : (
+          <TileGroup tiles={tiles} />
+        )}
 
         <div className="grid gap-5 lg:grid-cols-[3fr_2fr]">
           <div className="space-y-5 min-w-0">
@@ -401,6 +429,36 @@ export default async function LocutorPage({ params }: { params: Promise<{ eventI
         </div>
       </div>
     </div>
+  );
+}
+
+type Tile = { label: string; value: number | string; detail?: string };
+
+/** Fila de números grandes. `highlight`: la suma de las dos ligas, más
+ * grande y con el color de marca, porque es la que se dice al micrófono. */
+function TileGroup({ title, tiles, highlight = false }: { title?: string; tiles: Tile[]; highlight?: boolean }) {
+  return (
+    <section className="space-y-2">
+      {title && (
+        <h2 className={`text-xs uppercase tracking-wide font-display font-bold ${highlight ? "text-brand-teal-dark" : "panel-label"}`}>
+          {title}
+        </h2>
+      )}
+      <div className="grid gap-3 grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 xl:grid-cols-9 panel-enter-stagger">
+        {tiles.map((t) => (
+          <div
+            key={t.label}
+            className={`rounded-xl px-4 py-3 ${highlight ? "panel-card border-2 border-brand-teal bg-brand-teal/8" : "panel-card"}`}
+          >
+            <p className="text-xs uppercase tracking-wide font-display font-semibold panel-label">{t.label}</p>
+            <p className={`font-display font-bold tabular-nums leading-tight ${highlight ? "text-5xl text-brand-teal-dark" : "text-4xl"}`}>
+              {t.value}
+            </p>
+            {t.detail && <p className="text-xs panel-label">{t.detail}</p>}
+          </div>
+        ))}
+      </div>
+    </section>
   );
 }
 
