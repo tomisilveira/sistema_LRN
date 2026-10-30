@@ -38,6 +38,34 @@ export function CourtQrSheet({ eventName, items }: { eventName: string; items: C
     };
   }, [items]);
 
+  const [pdfState, setPdfState] = useState<"idle" | "working" | "error">("idle");
+
+  /** PDF armado en el navegador (lib/court-qr-pdf.ts, cargado recién al
+   * tocar el botón para no sumar peso a la página). */
+  async function downloadPdf() {
+    if (!origin) return;
+    setPdfState("working");
+    try {
+      const { buildCourtQrPdf } = await import("@/lib/court-qr-pdf");
+      const bytes = await buildCourtQrPdf(
+        eventName,
+        items.map((it) => ({ name: it.name, url: `${origin}${it.path}`, hex: it.colors.hex, textHex: it.colors.textHex }))
+      );
+      const blob = new Blob([bytes as BlobPart], { type: "application/pdf" });
+      const href = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = href;
+      a.download = `qr-canchas-${eventName.normalize("NFD").replace(/[^\w]+/g, "-").replace(/^-|-$/g, "").toLowerCase()}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(() => URL.revokeObjectURL(href), 10_000);
+      setPdfState("idle");
+    } catch {
+      setPdfState("error");
+    }
+  }
+
   const pages: CourtQrItem[][] = [];
   for (let i = 0; i < items.length; i += PER_PAGE) pages.push(items.slice(i, i + PER_PAGE));
   const ready = items.length > 0 && Object.keys(svgs).length === items.length;
@@ -57,14 +85,25 @@ export function CourtQrSheet({ eventName, items }: { eventName: string; items: C
             QR abre la pantalla del juez de esa cancha: no lo dejes a la vista del público.
           </p>
         </div>
-        <button
-          type="button"
-          onClick={() => window.print()}
-          disabled={!ready}
-          className="rounded-lg panel-button-primary font-display font-semibold px-5 py-2.5 text-sm disabled:opacity-50"
-        >
-          {ready ? "🖨️ Imprimir" : "Generando QR…"}
-        </button>
+        <div className="flex flex-wrap items-center gap-2">
+          {pdfState === "error" && <span className="text-sm text-red-500">No se pudo armar el PDF. Probá de nuevo.</span>}
+          <button
+            type="button"
+            onClick={downloadPdf}
+            disabled={!ready || pdfState === "working"}
+            className="rounded-lg panel-button-primary font-display font-semibold px-5 py-2.5 text-sm disabled:opacity-50"
+          >
+            {pdfState === "working" ? "Armando PDF…" : "⬇️ Descargar PDF"}
+          </button>
+          <button
+            type="button"
+            onClick={() => window.print()}
+            disabled={!ready}
+            className="rounded-lg panel-button-secondary font-display font-semibold px-5 py-2.5 text-sm disabled:opacity-50"
+          >
+            {ready ? "🖨️ Imprimir" : "Generando QR…"}
+          </button>
+        </div>
       </div>
 
       {items.length === 0 && <p className="text-sm panel-label">Este evento todavía no tiene canchas.</p>}
