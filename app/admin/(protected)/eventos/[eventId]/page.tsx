@@ -126,6 +126,12 @@ export default async function EventPage({
             </div>
             {hasCourts && (
               <div className="flex flex-wrap items-start justify-end gap-2">
+                <Link
+                  href={`/admin/eventos/${eventId}/qr-canchas`}
+                  className="rounded-md panel-button-secondary font-medium px-4 py-2 text-sm shrink-0 whitespace-nowrap"
+                >
+                  🖨️ Imprimir QR de canchas
+                </Link>
                 <RebalanceCourtsButton eventId={eventId} />
                 <ModalFormButton
                   buttonLabel="+ Agregar cancha"

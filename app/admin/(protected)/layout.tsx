@@ -48,8 +48,11 @@ export default async function ProtectedAdminLayout({ children }: { children: Rea
   return (
     <SectionNavProvider>
       <div className="min-h-screen md:flex">
-        <AdminSidebar userEmail={userEmail} events={events} isSuperadmin={admin.isSuperadmin} />
-        <main className="flex-1 p-6 panel-enter min-w-0">{children}</main>
+        {/* Al imprimir (ej. hoja de QR de canchas) solo sale el contenido. */}
+        <div className="contents print:hidden">
+          <AdminSidebar userEmail={userEmail} events={events} isSuperadmin={admin.isSuperadmin} />
+        </div>
+        <main className="flex-1 p-6 print:p-0 panel-enter min-w-0">{children}</main>
       </div>
     </SectionNavProvider>
   );
