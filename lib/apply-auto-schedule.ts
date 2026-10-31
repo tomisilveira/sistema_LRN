@@ -1,6 +1,6 @@
 import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { autoScheduleMatches, type SchedulableMatch } from "./auto-schedule";
+import { autoScheduleMatches, scheduleGroupMatches, type SchedulableMatch } from "./auto-schedule";
 
 /** Canchas utilizables para una competencia: primero las que ya están
  * etiquetadas con su disciplina; si no hay ninguna así, cualquier cancha
@@ -56,4 +56,19 @@ export async function autoScheduleAndPersist(
   if (matches.length === 0) return;
   const courts = await getUsableCourts(supabase, eventId, disciplineId);
   await persistCourtAssignments(supabase, autoScheduleMatches(matches, courts));
+}
+
+/** Igual que autoScheduleAndPersist pero para la fase de grupos completa
+ * (Iniciar torneo): llena turno por turno dando descanso entre partidos
+ * (ver scheduleGroupMatches). `matches` tiene que venir en orden de juego
+ * (por rondas, intercalando grupos). */
+export async function scheduleGroupsAndPersist(
+  supabase: SupabaseClient,
+  eventId: string,
+  disciplineId: string,
+  matches: SchedulableMatch[]
+): Promise<void> {
+  if (matches.length === 0) return;
+  const courts = await getUsableCourts(supabase, eventId, disciplineId);
+  await persistCourtAssignments(supabase, scheduleGroupMatches(matches, courts));
 }

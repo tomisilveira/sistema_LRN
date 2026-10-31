@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
-import { MAX_ROUND_ROBIN_LEGS, generateRoundRobinLegs, missingRoundRobinMatches, roundRobinLegsOf } from "@/lib/round-robin";
+import { MAX_ROUND_ROBIN_LEGS, interleaveRounds, missingRoundRobinMatches, roundRobinLegRounds, roundRobinLegsOf } from "@/lib/round-robin";
 import { advanceWinner } from "@/lib/bracket-actions";
 import { computeMatchOutcome } from "@/lib/match-logic";
 import { generateBracketForCompetition, ensureThirdPlaceMatch } from "@/lib/generate-bracket-for-competition";
@@ -15,7 +15,7 @@ import {
   syntheticRoundWinners,
 } from "@/lib/match-correction";
 import { parseTeamInput, parseMentorInput, isFutbolCompetition } from "@/lib/team-input";
-import { autoScheduleAndPersist } from "@/lib/apply-auto-schedule";
+import { autoScheduleAndPersist, scheduleGroupsAndPersist } from "@/lib/apply-auto-schedule";
 import type { SchedulableMatch } from "@/lib/auto-schedule";
 import type { Competition, ForfeitSide, Match } from "@/lib/database.types";
 import { applyForfeit, reinstateTeam, withdrawTeam } from "@/lib/forfeit";
@@ -434,33 +434,49 @@ export async function startTournament(competitionId: string) {
   // duro.
 
   // Varias vueltas (0022): cada par se enfrenta round_robin_legs veces.
+  // Orden de juego: por rondas (cada equipo juega una vez por ronda) y
+  // mezclando los grupos — ronda 1 de cada grupo, ronda 2 de cada grupo...
+  // Así nadie juega todos sus partidos seguidos y después queda parado.
   const legs = roundRobinLegsOf(competition);
-  const rows: Partial<Match>[] = [];
-  for (const g of groups as unknown as { id: string; group_teams: { team_id: string }[] }[]) {
-    const teamIds = g.group_teams.map((gt) => gt.team_id);
-    if (teamIds.length < 2) continue;
-    for (const [a, b] of generateRoundRobinLegs(teamIds, legs)) {
-      rows.push({
-        competition_id: competitionId,
-        phase: "group",
-        group_id: g.id,
-        team_a_id: a,
-        team_b_id: b,
-        status: "scheduled",
-      });
-    }
-  }
+  const roundsPerGroup = (groups as unknown as { id: string; group_teams: { team_id: string }[] }[]).map((g) =>
+    roundRobinLegRounds(
+      g.group_teams.map((gt) => gt.team_id),
+      legs
+    ).map((round) =>
+      round.map(
+        ([a, b]): Partial<Match> => ({
+          competition_id: competitionId,
+          phase: "group",
+          group_id: g.id,
+          team_a_id: a,
+          team_b_id: b,
+          status: "scheduled",
+        })
+      )
+    )
+  );
+  const rows = interleaveRounds(roundsPerGroup);
   if (rows.length === 0) throw new Error("Ningún grupo tiene equipos suficientes todavía.");
 
-  const { data: inserted, error } = await supabase.from("matches").insert(rows).select("id, team_a_id, team_b_id");
+  const { data: inserted, error } = await supabase
+    .from("matches")
+    .insert(rows)
+    .select("id, group_id, team_a_id, team_b_id");
   if (error) throw new Error(error.message);
 
-  await autoScheduleAndPersist(
-    supabase,
-    competition.event_id,
-    competition.discipline_id,
-    (inserted ?? []) as SchedulableMatch[]
-  );
+  // El orden del RETURNING no está garantizado: se vuelve al orden de juego
+  // emparejando cada fila insertada con la suya (grupo + equipos, en orden
+  // de aparición por si el mismo par se repite en varias vueltas).
+  const byKey = new Map<string, SchedulableMatch[]>();
+  for (const m of (inserted ?? []) as (SchedulableMatch & { group_id: string })[]) {
+    const k = `${m.group_id}|${m.team_a_id}|${m.team_b_id}`;
+    byKey.set(k, [...(byKey.get(k) ?? []), m]);
+  }
+  const ordered = rows
+    .map((r) => byKey.get(`${r.group_id}|${r.team_a_id}|${r.team_b_id}`)?.shift())
+    .filter((m): m is SchedulableMatch => !!m);
+
+  await scheduleGroupsAndPersist(supabase, competition.event_id, competition.discipline_id, ordered);
 
   // Se cierra la inscripción sola acá — una vez armado el fixture, un
   // equipo nuevo ya no entraría a ningún grupo (ver

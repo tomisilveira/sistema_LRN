@@ -75,6 +75,47 @@ export function autoScheduleMatches(
 }
 
 // ---------------------------------------------------------------------------
+// Fase de grupos: turno por turno, con descanso entre partidos
+// ---------------------------------------------------------------------------
+// autoScheduleMatches toma los partidos en orden y les busca el turno libre
+// más temprano: si vienen ordenados por equipo (el 1 contra todos, después
+// el 2...), el primer equipo juega todos sus partidos seguidos y después
+// queda parado. Esto llena la grilla turno por turno: en cada turno, cada
+// cancha toma el próximo partido de la lista cuyos equipos estén libres y,
+// si se puede, que NO hayan jugado en el turno anterior. Ninguna cancha
+// queda vacía mientras haya un partido que se pueda jugar.
+
+export function scheduleGroupMatches(
+  matches: SchedulableMatch[],
+  courts: CourtOption[],
+  startTurno = 1
+): ScheduleAssignment[] {
+  if (courts.length === 0 || matches.length === 0) return [];
+  const pending = [...matches];
+  const lastPlayed = new Map<string, number>();
+  const result: ScheduleAssignment[] = [];
+  const teams = (m: SchedulableMatch) => [m.team_a_id, m.team_b_id].filter((t): t is string => !!t);
+
+  for (let turno = startTurno; pending.length > 0; turno++) {
+    const playingNow = new Set<string>();
+    for (const court of courts) {
+      const isFree = (m: SchedulableMatch) => teams(m).every((t) => !playingNow.has(t));
+      const rested = (m: SchedulableMatch) => teams(m).every((t) => lastPlayed.get(t) !== turno - 1);
+      let idx = pending.findIndex((m) => isFree(m) && rested(m));
+      if (idx === -1) idx = pending.findIndex(isFree);
+      if (idx === -1) break; // nadie más puede jugar en este turno
+      const [m] = pending.splice(idx, 1);
+      result.push({ matchId: m.id, courtId: court.id, turno });
+      for (const t of teams(m)) {
+        playingNow.add(t);
+        lastPlayed.set(t, turno);
+      }
+    }
+  }
+  return result;
+}
+
+// ---------------------------------------------------------------------------
 // Redistribución equilibrada (botón "Redistribuir canchas")
 // ---------------------------------------------------------------------------
 // autoScheduleMatches agenda UN torneo por vez, siempre arrancando del
