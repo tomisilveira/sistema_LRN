@@ -6,6 +6,7 @@ import { buildCourtBoards } from "@/lib/build-court-boards";
 import { disciplineColor } from "@/lib/discipline-colors";
 import { disciplineDisplayName } from "@/lib/discipline-display";
 import { PublicRealtime } from "@/app/components/public-realtime";
+import { AutoScroll } from "@/app/components/auto-scroll";
 import { BrandIcon } from "@/app/components/brand-mark";
 import { MatchStageChip } from "@/app/components/match-stage-chip";
 
@@ -29,7 +30,7 @@ const UPCOMING_PER_COURT = 6;
  * todas las disciplinas a la vez, con el color de cada disciplina. Sin
  * posiciones ni cuadros (eso queda en Modo pantalla). Mismo acceso que
  * /pantalla: 404 si el evento no es público; se refresca sola cada ~10 s
- * (PublicRealtime). */
+ * (PublicRealtime) y baja sola para mostrar todas las canchas (AutoScroll). */
 export default async function ProximosPage({ params }: { params: Promise<{ eventId: string }> }) {
   const { eventId } = await params;
   const supabase = createPublicSupabaseClient();
@@ -64,6 +65,7 @@ export default async function ProximosPage({ params }: { params: Promise<{ event
   return (
     <div className="panel-page min-h-screen">
       <PublicRealtime />
+      <AutoScroll />
       <div className="p-4 sm:p-6 space-y-5">
         <header className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 pb-3 border-b-2 border-neutral-200 dark:border-neutral-800 panel-enter">
           <div className="flex items-center gap-2.5 min-w-0">
