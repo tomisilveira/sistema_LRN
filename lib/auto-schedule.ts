@@ -131,6 +131,9 @@ export interface RebalanceMatch extends SchedulableMatch {
   competitionId: string;
   /** 0 = fase de grupos; después, rondas del cuadro en orden de juego. */
   stage: number;
+  /** Canchas permitidas para este partido (torneo con canchas elegidas,
+   * competitions.court_ids); sin esto, cualquiera de `courts`. */
+  courtIds?: string[];
 }
 
 /** Orden de juego de las rondas del cuadro (la final, última: espera al 3er
@@ -197,6 +200,7 @@ export function rebalanceSchedule(
     const min = minTurnoFor(m);
     let best: { courtId: string; turno: number; load: number } | null = null;
     for (const c of courts) {
+      if (m.courtIds && !m.courtIds.includes(c.id)) continue;
       let t = Math.max(courtNext.get(c.id)!, min);
       while (!free(m.team_a_id, t) || !free(m.team_b_id, t)) t++;
       const load = courtLoad.get(c.id)!;

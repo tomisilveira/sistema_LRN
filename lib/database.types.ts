@@ -94,6 +94,9 @@ export interface Competition {
   // Veces que se enfrenta cada par en la fase de grupos (0022). Puede venir
   // undefined si la migración no está aplicada: usar roundRobinLegsOf().
   round_robin_legs?: number;
+  // Canchas que usa este torneo (0023). null/vacío/undefined = todas las de
+  // su disciplina (undefined también si la migración no está aplicada).
+  court_ids?: string[] | null;
 }
 
 export interface Team {

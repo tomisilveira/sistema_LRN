@@ -2,13 +2,15 @@ import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { autoScheduleMatches, scheduleGroupMatches, type SchedulableMatch } from "./auto-schedule";
 
-/** Canchas utilizables para una competencia: primero las que ya están
- * etiquetadas con su disciplina; si no hay ninguna así, cualquier cancha
- * del evento (mejor asignar algo que no asignar nada). */
+/** Canchas utilizables para una competencia: si el torneo eligió canchas
+ * (`onlyCourtIds`, competitions.court_ids), esas; si no, las etiquetadas con
+ * su disciplina; si no hay ninguna así, cualquier cancha del evento (mejor
+ * asignar algo que no asignar nada). */
 export async function getUsableCourts(
   supabase: SupabaseClient,
   eventId: string,
-  disciplineId: string
+  disciplineId: string,
+  onlyCourtIds?: string[] | null
 ): Promise<{ id: string }[]> {
   const { data: courts } = await supabase
     .from("courts")
@@ -17,6 +19,10 @@ export async function getUsableCourts(
     .order("sort_order");
 
   const list = courts ?? [];
+  if (onlyCourtIds && onlyCourtIds.length > 0) {
+    const chosen = list.filter((c) => onlyCourtIds.includes(c.id));
+    if (chosen.length > 0) return chosen.map((c) => ({ id: c.id }));
+  }
   const matching = list.filter((c) => c.discipline_id === disciplineId);
   return (matching.length > 0 ? matching : list).map((c) => ({ id: c.id }));
 }
@@ -51,10 +57,11 @@ export async function autoScheduleAndPersist(
   supabase: SupabaseClient,
   eventId: string,
   disciplineId: string,
-  matches: SchedulableMatch[]
+  matches: SchedulableMatch[],
+  onlyCourtIds?: string[] | null
 ): Promise<void> {
   if (matches.length === 0) return;
-  const courts = await getUsableCourts(supabase, eventId, disciplineId);
+  const courts = await getUsableCourts(supabase, eventId, disciplineId, onlyCourtIds);
   await persistCourtAssignments(supabase, autoScheduleMatches(matches, courts));
 }
 
@@ -66,9 +73,10 @@ export async function scheduleGroupsAndPersist(
   supabase: SupabaseClient,
   eventId: string,
   disciplineId: string,
-  matches: SchedulableMatch[]
+  matches: SchedulableMatch[],
+  onlyCourtIds?: string[] | null
 ): Promise<void> {
   if (matches.length === 0) return;
-  const courts = await getUsableCourts(supabase, eventId, disciplineId);
+  const courts = await getUsableCourts(supabase, eventId, disciplineId, onlyCourtIds);
   await persistCourtAssignments(supabase, scheduleGroupMatches(matches, courts));
 }

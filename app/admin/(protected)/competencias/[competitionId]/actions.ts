@@ -122,6 +122,41 @@ export async function updateCompetitionFormat(competitionId: string, formData: F
   revalidateCompetition(competitionId);
 }
 
+/** "Canchas de este torneo": restringe a qué canchas se mandan los partidos
+ * de este torneo (ej. fútbol infantil en 1-3, juvenil en 4-5). Ninguna
+ * tildada = todas las de la disciplina. Se puede cambiar en cualquier
+ * momento: aplica a lo que se agende de acá en más; para mover lo que ya
+ * está agendado y sin jugar, "Redistribuir canchas". Requiere 0023. */
+export async function setCompetitionCourts(competitionId: string, formData: FormData) {
+  const supabase = await createServerSupabaseClient();
+  const { data: competition } = await supabase
+    .from("competitions")
+    .select("event_id")
+    .eq("id", competitionId)
+    .single<Pick<Competition, "event_id">>();
+  if (!competition) throw new Error("Competencia no encontrada.");
+
+  const requested = formData.getAll("court_ids").map(String);
+  const { data: eventCourts } = await supabase.from("courts").select("id").eq("event_id", competition.event_id);
+  const valid = new Set((eventCourts ?? []).map((c) => c.id));
+  const courtIds = requested.filter((id) => valid.has(id));
+
+  const { data, error } = await supabase
+    .from("competitions")
+    .update({ court_ids: courtIds.length > 0 ? courtIds : null })
+    .eq("id", competitionId)
+    .select("id");
+  if (error) {
+    throw new Error(
+      error.message.includes("court_ids")
+        ? "Falta aplicar la migración 0023_competition_courts.sql en Supabase."
+        : error.message
+    );
+  }
+  if (!data?.length) throw new Error("No tenés permiso para editar este torneo.");
+  revalidateCompetition(competitionId);
+}
+
 /** Borra el torneo entero: equipos, grupos y partidos se van con él (todos
  * con ON DELETE CASCADE desde `competitions`, ver 0001_init.sql) —
  * irreversible, por eso el confirm fuerte en la UI. */
@@ -476,7 +511,7 @@ export async function startTournament(competitionId: string) {
     .map((r) => byKey.get(`${r.group_id}|${r.team_a_id}|${r.team_b_id}`)?.shift())
     .filter((m): m is SchedulableMatch => !!m);
 
-  await scheduleGroupsAndPersist(supabase, competition.event_id, competition.discipline_id, ordered);
+  await scheduleGroupsAndPersist(supabase, competition.event_id, competition.discipline_id, ordered, competition.court_ids);
 
   // Se cierra la inscripción sola acá — una vez armado el fixture, un
   // equipo nuevo ya no entraría a ningún grupo (ver
@@ -598,7 +633,8 @@ export async function syncGroupFixture(competitionId: string) {
       supabase,
       competition.event_id,
       competition.discipline_id,
-      (inserted ?? []) as SchedulableMatch[]
+      (inserted ?? []) as SchedulableMatch[],
+      competition.court_ids
     );
 
     // Partidos nuevos de un equipo dado de baja: W.O. automático, igual que

@@ -132,6 +132,9 @@ create table competitions (
   -- todos contra todos simple; más, para grupos chicos que juegan varias
   -- vueltas (ver generateRoundRobinLegs en lib/round-robin.ts).
   round_robin_legs int not null default 1 check (round_robin_legs between 1 and 6),
+  -- Canchas que usa este torneo (0023); null/vacío = todas las de su
+  -- disciplina. Ej.: una categoría en 3 canchas y la otra en 2.
+  court_ids uuid[],
   unique (event_id, discipline_id, category_id)
 );
 

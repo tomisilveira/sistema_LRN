@@ -171,3 +171,23 @@ test("antes: el orden equipo por equipo hacía jugar partidos seguidos", () => {
   const old = autoScheduleMatches(oldOrder, [{ id: "C1" }]);
   assert.ok(longestStreak(old, oldOrder) >= 2);
 });
+
+test("rebalanceSchedule: cada partido solo va a las canchas de su torneo", () => {
+  const mk = (comp: string, teams: string[]) =>
+    generateRoundRobinPairs(teams).map(([a, b], i): RebalanceMatch => ({
+      id: `${comp}${i}`,
+      team_a_id: a,
+      team_b_id: b,
+      competitionId: comp,
+      chain: `${comp}|`,
+      stage: 0,
+      courtIds: comp === "inf" ? ["C1", "C2", "C3"] : ["C4", "C5"],
+    }));
+  const matches = [...mk("inf", ["a", "b", "c", "d"]), ...mk("juv", ["e", "f", "g", "h"])];
+  const res = rebalanceSchedule(matches, ["C1", "C2", "C3", "C4", "C5"].map((id) => ({ id })), 1);
+  assert.equal(res.length, matches.length);
+  for (const r of res) {
+    const allowed = r.matchId.startsWith("inf") ? ["C1", "C2", "C3"] : ["C4", "C5"];
+    assert.ok(allowed.includes(r.courtId), `${r.matchId} fue a ${r.courtId}`);
+  }
+});

@@ -53,6 +53,7 @@ import { disciplineColor } from "@/lib/discipline-colors";
 import { disciplineCategoryLabel, disciplineDisplayName } from "@/lib/discipline-display";
 import { FormatAdvisory } from "./format-advisory";
 import { EditFormatForm } from "./edit-format-form";
+import { CompetitionCourtsForm } from "./competition-courts-form";
 import { PodiumPanel } from "./podium-panel";
 import { RebalanceCourtsButton } from "@/app/admin/(protected)/eventos/[eventId]/rebalance-courts-button";
 import { buildPodium } from "@/lib/podium";
@@ -356,6 +357,25 @@ export default async function CompetitionPage({
               </p>
             )}
           </section>
+
+          {!isTimeTrial && (
+            <section className={`panel-card rounded-xl p-4 space-y-3 border-l-4 ${colors.border}`}>
+              <h2 className="font-medium">Canchas de este torneo</h2>
+              <CompetitionCourtsForm
+                competitionId={competitionId}
+                courts={courts.map((c) => {
+                  const disciplineName = c.discipline_id ? disciplineNameById.get(c.discipline_id) : undefined;
+                  return {
+                    id: c.id,
+                    label: disciplineName ? `${c.name} · ${disciplineName}` : c.name,
+                    ownDiscipline: c.discipline_id === competition.discipline_id,
+                  };
+                })}
+                selected={competition.court_ids ?? []}
+                started={competition.status !== "setup"}
+              />
+            </section>
+          )}
 
           <section className="rounded-xl p-4 space-y-3 border border-red-500/30 bg-red-500/[0.03]">
             <h2 className="font-medium text-red-600">Zona de peligro</h2>

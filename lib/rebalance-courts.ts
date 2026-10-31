@@ -20,7 +20,13 @@ export interface RebalanceSummary {
 }
 
 type CourtRow = { id: string; discipline_id: string | null; sort_order: number };
-type CompetitionRow = { id: string; discipline_id: string; disciplines: { name: string } | null };
+type CompetitionRow = {
+  id: string;
+  discipline_id: string;
+  /** Canchas elegidas para el torneo (0023); puede no venir sin la migración. */
+  court_ids?: string[] | null;
+  disciplines: { name: string } | null;
+};
 type MatchRow = {
   id: string;
   competition_id: string;
@@ -55,7 +61,8 @@ export async function rebalanceEventCourts(
 ): Promise<RebalanceSummary> {
   const [{ data: courtsData, error: courtsError }, { data: compsData, error: compsError }] = await Promise.all([
     supabase.from("courts").select("id, discipline_id, sort_order").eq("event_id", eventId).order("sort_order"),
-    supabase.from("competitions").select("id, discipline_id, disciplines(name)").eq("event_id", eventId),
+    // "*" y no columnas puntuales: court_ids puede no existir (0023 sin aplicar).
+    supabase.from("competitions").select("*, disciplines(name)").eq("event_id", eventId),
   ]);
   if (courtsError) throw new Error(courtsError.message);
   if (compsError) throw new Error(compsError.message);
@@ -84,21 +91,38 @@ export async function rebalanceEventCourts(
     return untagged.length > 0 ? untagged : courts;
   };
 
-  // Agrupar disciplinas por juego de canchas.
-  const pools = new Map<string, { courts: CourtRow[]; competitions: CompetitionRow[] }>();
+  // Canchas de cada torneo: las elegidas en el torneo (court_ids) si hay,
+  // si no las de su disciplina.
+  const courtsOfComp = new Map<string, CourtRow[]>();
   for (const comp of competitions) {
-    const poolCourts = courtsFor(comp.discipline_id);
-    const key = poolCourts.map((c) => c.id).join(",");
-    const pool = pools.get(key) ?? { courts: poolCourts, competitions: [] };
-    pool.competitions.push(comp);
-    pools.set(key, pool);
+    const chosen = (comp.court_ids ?? []).length > 0 ? courts.filter((c) => comp.court_ids!.includes(c.id)) : [];
+    courtsOfComp.set(comp.id, chosen.length > 0 ? chosen : courtsFor(comp.discipline_id));
   }
+
+  // Agrupar torneos que comparten alguna cancha (se reparten juntos para no
+  // pisarse); cada partido después solo va a las canchas de su torneo.
+  type Pool = { courtIds: Set<string>; competitions: CompetitionRow[] };
+  let poolList: Pool[] = [];
+  for (const comp of competitions) {
+    const ids = new Set(courtsOfComp.get(comp.id)!.map((c) => c.id));
+    const overlapping = poolList.filter((p) => [...ids].some((id) => p.courtIds.has(id)));
+    const merged: Pool = { courtIds: ids, competitions: [comp] };
+    for (const p of overlapping) {
+      p.courtIds.forEach((id) => merged.courtIds.add(id));
+      merged.competitions.push(...p.competitions);
+    }
+    poolList = [...poolList.filter((p) => !overlapping.includes(p)), merged];
+  }
+  const pools = poolList.map((p) => ({
+    courts: courts.filter((c) => p.courtIds.has(c.id)),
+    competitions: p.competitions,
+  }));
 
   const stageOf = (m: MatchRow) => (m.phase === "group" ? 0 : bracketStage(m.round));
   const updates: ScheduleAssignment[] = [];
   const rows: RebalanceSummaryRow[] = [];
 
-  for (const pool of pools.values()) {
+  for (const pool of pools) {
     const compIds = new Set(pool.competitions.map((c) => c.id));
     const courtIds = new Set(pool.courts.map((c) => c.id));
 
@@ -125,6 +149,7 @@ export async function rebalanceEventCourts(
         competitionId: m.competition_id,
         chain: `${m.competition_id}|${m.bracket_type ?? ""}`,
         stage: stageOf(m),
+        courtIds: courtsOfComp.get(m.competition_id)!.map((c) => c.id),
       }));
     if (movable.length === 0) continue;
 

@@ -160,7 +160,8 @@ export async function generateBracketForCompetition(supabase: SupabaseClient, co
       supabase,
       competition.event_id,
       competition.discipline_id,
-      toSchedule as SchedulableMatch[]
+      toSchedule as SchedulableMatch[],
+      competition.court_ids
     );
   }
 
@@ -303,9 +304,13 @@ export async function ensureThirdPlaceMatch(
     // sin partido (y la final vuelve a habilitarse). Nada que agendar.
     if (await resolveThirdPlaceWithoutRival(supabase, tp.id)) continue;
 
-    await autoScheduleAndPersist(supabase, competition.event_id, competition.discipline_id, [
-      { id: tp.id, team_a_id: tpNow?.team_a_id ?? null, team_b_id: tpNow?.team_b_id ?? null },
-    ] as SchedulableMatch[]);
+    await autoScheduleAndPersist(
+      supabase,
+      competition.event_id,
+      competition.discipline_id,
+      [{ id: tp.id, team_a_id: tpNow?.team_a_id ?? null, team_b_id: tpNow?.team_b_id ?? null }] as SchedulableMatch[],
+      competition.court_ids
+    );
   }
 
   return created;
