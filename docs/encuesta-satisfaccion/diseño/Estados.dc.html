@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>Estados del robot</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Exo+2:wght@600;700;800&amp;family=Nunito:wght@400;600;700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+</style>
+</helmet>
+<div style="width: 1120px; height: 720px; box-sizing: border-box; background: #F3F8F9; font-family: Nunito, sans-serif; color: #1F3A43; padding: 40px; display: flex; flex-direction: column; gap: 24px">
+<div style="display: flex; flex-direction: column; gap: 6px">
+<h1 style="margin: 0; font-family: 'Exo 2', sans-serif; font-weight: 800; font-size: 30px">Los estados del robot</h1>
+<p style="margin: 0; font-size: 16px; color: #3B5862">Cada pantalla y cada respuesta disparan un movimiento distinto.</p>
+</div>
+<div style="display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 20px; flex-grow: 1">
+<sc-for list="{{moods}}" as="m" hint-placeholder-count="8">
+<div style="background: #FFFFFF; border: 1px solid #DCE9EC; border-radius: 16px; padding: 18px; display: flex; flex-direction: column; align-items: center; gap: 10px; text-align: center">
+<dc-import name="Robot" mood="{{m.id}}" message="" size="100" layout="columna" hint-size="100px,110px"></dc-import>
+<span style="font-family: 'Exo 2', sans-serif; font-weight: 800; font-size: 18px">{{m.name}}</span>
+<span style="font-size: 14px; line-height: 1.4; color: #4A6670">{{m.when}}</span>
+</div>
+</sc-for>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1120,"height":720}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return {
+      moods: [
+        { id: 'saludo',   name: 'Saludo',   when: 'Bienvenida y bloque de los chicos. Saluda con la mano y guiña.' },
+        { id: 'curioso',  name: 'Curioso',  when: 'Antes de una pregunta abierta. Mira de un lado al otro.' },
+        { id: 'feliz',    name: 'Feliz',    when: 'Respuesta "Muy bien" o eligieron "Padres". Rebota.' },
+        { id: 'festejo',  name: 'Festejo',  when: '"¡Genial!", si ya conocían a ANIDE y pantalla final. Salta y agita los brazos.' },
+        { id: 'pensando', name: 'Pensando', when: 'Respuesta "Regular". Inclina la cabeza, aparecen puntitos.' },
+        { id: 'sorpresa', name: 'Sorpresa', when: 'Disponible para un dato llamativo. Se agranda de golpe.' },
+        { id: 'triste',   name: 'Triste',   when: 'Respuesta "Mal". Se achica y baja la mirada: empatía, no drama.' },
+        { id: 'atento',   name: 'Atento',   when: 'Pantalla del día del evento. Asiente mientras leés.' }
+      ]
+    };
+  }
+}
+</script>
+</body>
+</html>

@@ -15,6 +15,7 @@ type SidebarEvent = Pick<EventRow, "id" | "name" | "is_public" | "status" | "eve
 // eventos no los ve (la RLS además rechaza la escritura, ver 0018).
 const NAV_ITEMS = [
   { href: "/admin", label: "Eventos", superadminOnly: false },
+  { href: "/admin/encuesta", label: "Encuesta", superadminOnly: false },
   { href: "/admin/disciplinas", label: "Disciplinas", superadminOnly: true },
   { href: "/admin/categorias", label: "Categorías", superadminOnly: true },
   { href: "/admin/usuarios", label: "Usuarios", superadminOnly: true },

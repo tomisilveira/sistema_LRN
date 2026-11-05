@@ -1,0 +1,108 @@
+/* Robot de la encuesta — reimplementación de Robot.dc.html. */
+
+.root {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: #1f3a43;
+  width: 100%;
+  box-sizing: border-box;
+}
+.row { flex-direction: row; }
+.col { flex-direction: column; }
+
+.svg { flex-shrink: 0; overflow: visible; }
+
+.g { transform-box: fill-box; transform-origin: center; }
+.hr { transform-box: fill-box; transform-origin: 5% 70%; }
+.hl { transform-box: fill-box; transform-origin: 80% 5%; }
+
+.float { animation: rb-float 3s ease-in-out infinite; }
+.bounce { animation: rb-bounce 0.9s ease-in-out infinite; }
+.jump { animation: rb-jump 1s cubic-bezier(0.3, 0, 0.3, 1) infinite; }
+.tilt { animation: rb-tilt 2.6s ease-in-out infinite; }
+.pop { animation: rb-pop 0.55s ease-out 1, rb-float 3s ease-in-out 0.55s infinite; }
+.droop { animation: rb-droop 2.6s ease-in-out infinite; }
+.nod { animation: rb-nod 1.8s ease-in-out infinite; }
+.wave { animation: rb-wave 0.65s ease-in-out infinite alternate; }
+.wavel { animation: rb-wavel 0.65s ease-in-out infinite alternate; }
+.look { animation: rb-look 3.2s ease-in-out infinite; }
+.blink { animation: rb-blink 4s infinite; }
+.sway { animation: rb-sway 6s ease-in-out infinite; }
+.dots circle { animation: rb-dot 1.2s ease-in-out infinite; }
+.dots circle:nth-child(2) { animation-delay: 0.2s; }
+.dots circle:nth-child(3) { animation-delay: 0.4s; }
+.caret { animation: rb-caret 0.8s steps(1) infinite; color: #f59e0b; }
+.hop { animation: rb-hop 0.46s cubic-bezier(0.3, 1.6, 0.5, 1); }
+.bpop { animation: rb-bpop 0.32s cubic-bezier(0.3, 1.5, 0.5, 1); }
+
+@keyframes rb-float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-6px); } }
+@keyframes rb-bounce { 0%, 100% { transform: translateY(0); } 40%, 60% { transform: translateY(-12px); } }
+@keyframes rb-jump {
+  0%, 100% { transform: translateY(0) scale(1.05, 0.95); }
+  15% { transform: translateY(0) scale(1); }
+  50% { transform: translateY(-26px) scale(0.98, 1.03); }
+  85% { transform: translateY(0); }
+}
+@keyframes rb-tilt { 0%, 100% { transform: rotate(-7deg); } 50% { transform: rotate(7deg); } }
+@keyframes rb-pop { 0% { transform: scale(0.7); } 60% { transform: scale(1.12); } 100% { transform: scale(1); } }
+@keyframes rb-droop { 0%, 100% { transform: translateY(0) rotate(0); } 50% { transform: translateY(6px) rotate(-5deg); } }
+@keyframes rb-nod { 0%, 60%, 100% { transform: rotate(0); } 20% { transform: rotate(7deg); } 40% { transform: rotate(-2deg); } }
+@keyframes rb-wave { from { transform: rotate(-14deg); } to { transform: rotate(30deg); } }
+@keyframes rb-wavel { from { transform: rotate(14deg); } to { transform: rotate(-30deg); } }
+@keyframes rb-look {
+  0%, 20% { transform: translateX(0); }
+  35%, 55% { transform: translateX(-5px); }
+  70%, 90% { transform: translateX(5px); }
+  100% { transform: translateX(0); }
+}
+@keyframes rb-blink { 0%, 92%, 100% { transform: scaleY(1); } 96% { transform: scaleY(0.1); } }
+@keyframes rb-sway { 0%, 100% { transform: rotate(-4deg); } 50% { transform: rotate(4deg); } }
+@keyframes rb-dot { 0%, 100% { opacity: 0.25; } 50% { opacity: 1; } }
+@keyframes rb-caret { 50% { opacity: 0; } }
+@keyframes rb-hop {
+  0% { transform: translateY(0) scale(1); }
+  30% { transform: translateY(-16px) scale(1.07, 0.93); }
+  60% { transform: translateY(0) scale(0.95, 1.05); }
+  100% { transform: none; }
+}
+@keyframes rb-bpop { from { transform: scale(0.9); opacity: 0.4; } to { transform: none; opacity: 1; } }
+
+.bubble {
+  flex-grow: 1;
+  display: grid;
+  align-content: center;
+  background: #ffffff;
+  border: 1.5px solid #cfe3e8;
+  border-radius: 16px 16px 16px 4px;
+  padding: 10px 14px;
+  font-size: 16px;
+  line-height: 1.4;
+  font-weight: 600;
+  box-shadow: 0 2px 0 #dce9ec;
+  text-align: left;
+  box-sizing: border-box;
+  transform-origin: left center;
+  min-width: 0;
+}
+.bubbleCol { border-radius: 16px; text-align: center; width: 100%; transform-origin: center top; }
+.compact { font-size: 15px; }
+.ghost { grid-area: 1 / 1; visibility: hidden; }
+.typed { grid-area: 1 / 1; }
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .root,
+  .root * { animation: none !important; transition: none !important; }
+  .caret { display: none; }
+}

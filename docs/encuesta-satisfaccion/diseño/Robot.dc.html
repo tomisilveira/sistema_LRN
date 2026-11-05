@@ -1,0 +1,174 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>Robot de la Liga</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Exo+2:wght@600;700;800&amp;family=Nunito:wght@400;600;700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+.rb-g{transform-box:fill-box;transform-origin:center}
+.rb-hr{transform-box:fill-box;transform-origin:5% 70%}
+.rb-hl{transform-box:fill-box;transform-origin:80% 5%}
+.rb-float{animation:rb-float 3s ease-in-out infinite}
+.rb-bounce{animation:rb-bounce .9s ease-in-out infinite}
+.rb-jump{animation:rb-jump 1s cubic-bezier(.3,0,.3,1) infinite}
+.rb-tilt{animation:rb-tilt 2.6s ease-in-out infinite}
+.rb-pop{animation:rb-pop .55s ease-out 1,rb-float 3s ease-in-out .55s infinite}
+.rb-droop{animation:rb-droop 2.6s ease-in-out infinite}
+.rb-nod{animation:rb-nod 1.8s ease-in-out infinite}
+.rb-wave{animation:rb-wave .65s ease-in-out infinite alternate}
+.rb-wavel{animation:rb-wavel .65s ease-in-out infinite alternate}
+.rb-look{animation:rb-look 3.2s ease-in-out infinite}
+.rb-blink{animation:rb-blink 4s infinite}
+.rb-sway{animation:rb-sway 6s ease-in-out infinite}
+.rb-dots circle{animation:rb-dot 1.2s ease-in-out infinite}
+.rb-dots circle:nth-child(2){animation-delay:.2s}
+.rb-dots circle:nth-child(3){animation-delay:.4s}
+.rb-caret{animation:rb-caret .8s steps(1) infinite}
+@keyframes rb-float{0%,100%{transform:translateY(0)}50%{transform:translateY(-6px)}}
+@keyframes rb-bounce{0%,100%{transform:translateY(0)}40%,60%{transform:translateY(-12px)}}
+@keyframes rb-jump{0%,100%{transform:translateY(0) scale(1.05,.95)}15%{transform:translateY(0) scale(1)}50%{transform:translateY(-26px) scale(.98,1.03)}85%{transform:translateY(0)}}
+@keyframes rb-tilt{0%,100%{transform:rotate(-7deg)}50%{transform:rotate(7deg)}}
+@keyframes rb-pop{0%{transform:scale(.7)}60%{transform:scale(1.12)}100%{transform:scale(1)}}
+@keyframes rb-droop{0%,100%{transform:translateY(0) rotate(0)}50%{transform:translateY(6px) rotate(-5deg)}}
+@keyframes rb-nod{0%,60%,100%{transform:rotate(0)}20%{transform:rotate(7deg)}40%{transform:rotate(-2deg)}}
+@keyframes rb-wave{from{transform:rotate(-14deg)}to{transform:rotate(30deg)}}
+@keyframes rb-wavel{from{transform:rotate(14deg)}to{transform:rotate(-30deg)}}
+@keyframes rb-look{0%,20%{transform:translateX(0)}35%,55%{transform:translateX(-5px)}70%,90%{transform:translateX(5px)}100%{transform:translateX(0)}}
+@keyframes rb-blink{0%,92%,100%{transform:scaleY(1)}96%{transform:scaleY(.1)}}
+@keyframes rb-sway{0%,100%{transform:rotate(-4deg)}50%{transform:rotate(4deg)}}
+@keyframes rb-dot{0%,100%{opacity:.25}50%{opacity:1}}
+@keyframes rb-caret{50%{opacity:0}}
+.rb-hop{animation:rb-hop .46s cubic-bezier(.3,1.6,.5,1)}
+@keyframes rb-hop{0%{transform:translateY(0) scale(1)}30%{transform:translateY(-16px) scale(1.07,.93)}60%{transform:translateY(0) scale(.95,1.05)}100%{transform:none}}
+.rb-bpop{animation:rb-bpop .32s cubic-bezier(.3,1.5,.5,1)}
+@keyframes rb-bpop{from{transform:scale(.9);opacity:.4}to{transform:none;opacity:1}}
+@media (prefers-reduced-motion: reduce){.rb-root *{animation:none !important}}
+</style>
+</helmet>
+<div class="rb-root" style="display: flex; flex-direction: {{dir}}; align-items: center; gap: 12px; font-family: Nunito, sans-serif; color: #1F3A43; width: 100%; box-sizing: border-box">
+<svg width="{{size}}" height="{{sizeH}}" viewBox="0 0 200 220" role="img" aria-label="Robot de la Liga Robótica Neuquina" style="flex-shrink: 0; overflow: visible">
+<g class="rb-g {{hopCls}}">
+<g class="rb-g {{bodyCls}}">
+<g class="rb-g rb-sway"><polygon points="32,8 192,94 60,212" fill="none" stroke="#B4DDE5" stroke-width="6" stroke-linejoin="round"></polygon></g>
+<g class="rb-hl {{hlCls}}"><path d="M30 108 C20 120 8 135 12 148 C16 157 29 155 33 144 C37 132 35 118 30 108 Z" fill="#33525C"></path></g>
+<path d="M90 27 C126 27 146 55 146 95 C146 140 122 183 90 183 C62 183 36 150 34 100 C33 58 54 27 90 27 Z" fill="#FFA200" stroke="#FFFFFF" stroke-width="6"></path>
+<path d="M50 66 C53 59 112 56 124 60 C135 64 139 86 132 100 C120 116 66 120 50 104 C42 96 44 76 50 66 Z" fill="#FFFFFF"></path>
+<g class="rb-g {{eyeCls}}">
+<sc-if value="{{eGuino}}" hint-placeholder-val="{{ true }}">
+<path d="M60 89 Q70 75 80 88" stroke="#33525C" stroke-width="5" fill="none" stroke-linecap="round"></path>
+<ellipse cx="108" cy="83" rx="8" ry="10" fill="#33525C"></ellipse>
+</sc-if>
+<sc-if value="{{eFeliz}}">
+<path d="M60 89 Q70 75 80 88" stroke="#33525C" stroke-width="5" fill="none" stroke-linecap="round"></path>
+<path d="M98 88 Q108 74 118 87" stroke="#33525C" stroke-width="5" fill="none" stroke-linecap="round"></path>
+</sc-if>
+<sc-if value="{{eAbiertos}}">
+<ellipse cx="70" cy="84" rx="7" ry="9" fill="#33525C"></ellipse>
+<ellipse cx="108" cy="83" rx="7" ry="9" fill="#33525C"></ellipse>
+</sc-if>
+<sc-if value="{{eSorpresa}}">
+<circle cx="70" cy="84" r="11" fill="#33525C"></circle>
+<circle cx="108" cy="83" r="11" fill="#33525C"></circle>
+<circle cx="73" cy="80" r="3" fill="#FFFFFF"></circle>
+<circle cx="111" cy="79" r="3" fill="#FFFFFF"></circle>
+</sc-if>
+<sc-if value="{{eTriste}}">
+<path d="M58 74 L79 68" stroke="#33525C" stroke-width="4" stroke-linecap="round"></path>
+<path d="M120 74 L99 68" stroke="#33525C" stroke-width="4" stroke-linecap="round"></path>
+<ellipse cx="70" cy="88" rx="6" ry="7" fill="#33525C"></ellipse>
+<ellipse cx="108" cy="88" rx="6" ry="7" fill="#33525C"></ellipse>
+</sc-if>
+<sc-if value="{{ePensando}}">
+<ellipse cx="76" cy="78" rx="6" ry="8" fill="#33525C"></ellipse>
+<ellipse cx="114" cy="77" rx="6" ry="8" fill="#33525C"></ellipse>
+</sc-if>
+</g>
+<g class="rb-hr {{hrCls}}"><path d="M150 112 C160 128 176 132 186 122 C194 112 190 96 176 94 C168 93 164 100 168 106 C171 112 166 118 158 116 C154 115 152 113 150 112 Z" fill="#33525C"></path></g>
+<sc-if value="{{dots}}">
+<g class="rb-dots"><circle cx="160" cy="40" r="5" fill="#33525C"></circle><circle cx="176" cy="30" r="6" fill="#33525C"></circle><circle cx="194" cy="18" r="7" fill="#33525C"></circle></g>
+</sc-if>
+</g>
+</g>
+</svg>
+<sc-if value="{{showBubble}}" hint-placeholder-val="{{ true }}">
+<div class="{{bubbleCls}}" style="flex-grow: 1; display: grid; align-content: center; background: #FFFFFF; border: 1.5px solid #CFE3E8; border-radius: {{radius}}; padding: 10px 14px; font-size: {{fs}}; line-height: 1.4; font-weight: 600; box-shadow: 0 2px 0 #DCE9EC; text-align: {{align}}; min-height: {{minH}}; box-sizing: border-box; transform-origin: left center">
+<span style="grid-area: 1 / 1; visibility: hidden" aria-hidden="true">{{full}}</span>
+<span style="grid-area: 1 / 1" aria-live="polite">{{typed}}<sc-if value="{{typing}}"><span class="rb-caret" style="color: #F59E0B" aria-hidden="true">▍</span></sc-if></span>
+</div>
+</sc-if>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"mood":{"editor":"enum","options":["saludo","curioso","feliz","festejo","pensando","sorpresa","triste","atento"],"default":"saludo"},"message":{"editor":"text","default":"¡Hola! ¿Me ayudás a mejorar la Liga?"},"size":{"editor":"int","default":110,"min":48,"max":260},"layout":{"editor":"enum","options":["fila","columna"],"default":"fila"},"bump":{"editor":null},"minLines":{"editor":"int","default":0,"min":0,"max":5},"compact":{"editor":"boolean","default":false},"$preview":{"width":360,"height":170}}'>
+class Component extends DCLogic {
+  msg() { return this.props.message ?? '¡Hola! ¿Me ayudás a mejorar la Liga?'; }
+  componentDidMount() { this.startTyping(); }
+  componentDidUpdate(prev) {
+    if (prev.message !== this.props.message) this.startTyping();
+    if (prev.bump !== this.props.bump) {
+      clearTimeout(this.hopT);
+      this.setState({ hop: true });
+      this.hopT = setTimeout(() => this.setState({ hop: false }), 470);
+    }
+  }
+  componentWillUnmount() { clearInterval(this.timer); clearTimeout(this.hopT); clearTimeout(this.popT); }
+  startTyping() {
+    clearInterval(this.timer);
+    const msg = this.msg();
+    let reduce = false;
+    try { reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches; } catch (e) {}
+    if (reduce || !msg) { this.setState({ n: msg.length }); return; }
+    clearTimeout(this.popT);
+    this.setState({ n: 0, pop: true });
+    this.popT = setTimeout(() => this.setState({ pop: false }), 340);
+    this.timer = setInterval(() => {
+      const n = ((this.state && this.state.n) || 0) + 1;
+      if (n >= msg.length) clearInterval(this.timer);
+      this.setState({ n: n });
+    }, 26);
+  }
+  renderVals() {
+    const M = {
+      saludo:   { body: 'rb-float',  eyes: 'guino',    eyeCls: 'rb-blink', hr: 'rb-wave',  hl: '' },
+      curioso:  { body: 'rb-float',  eyes: 'abiertos', eyeCls: 'rb-look',  hr: '',         hl: '' },
+      feliz:    { body: 'rb-bounce', eyes: 'feliz',    eyeCls: '',         hr: '',         hl: '' },
+      festejo:  { body: 'rb-jump',   eyes: 'feliz',    eyeCls: '',         hr: 'rb-wave',  hl: 'rb-wavel' },
+      pensando: { body: 'rb-tilt',   eyes: 'pensando', eyeCls: '',         hr: '',         hl: '', dots: true },
+      sorpresa: { body: 'rb-pop',    eyes: 'sorpresa', eyeCls: '',         hr: '',         hl: '' },
+      triste:   { body: 'rb-droop',  eyes: 'triste',   eyeCls: 'rb-blink', hr: '',         hl: '' },
+      atento:   { body: 'rb-nod',    eyes: 'abiertos', eyeCls: 'rb-blink', hr: '',         hl: '' }
+    };
+    const m = M[this.props.mood] || M.saludo;
+    const size = this.props.size ?? 110;
+    const col = this.props.layout === 'columna';
+    const full = this.msg();
+    const n = (this.state && typeof this.state.n === 'number') ? this.state.n : full.length;
+    return {
+      size: size,
+      sizeH: Math.round(size * 1.1),
+      dir: col ? 'column' : 'row',
+      align: col ? 'center' : 'left',
+      radius: col ? '16px' : '16px 16px 16px 4px',
+      bodyCls: m.body, eyeCls: m.eyeCls, hrCls: m.hr, hlCls: m.hl,
+      eGuino: m.eyes === 'guino', eFeliz: m.eyes === 'feliz', eAbiertos: m.eyes === 'abiertos',
+      eSorpresa: m.eyes === 'sorpresa', eTriste: m.eyes === 'triste', ePensando: m.eyes === 'pensando',
+      dots: !!m.dots,
+      showBubble: full.length > 0,
+      full: full,
+      typed: full.slice(0, n),
+      typing: n < full.length,
+      hopCls: (this.state && this.state.hop) ? 'rb-hop' : '',
+      bubbleCls: (this.state && this.state.pop) ? 'rb-bpop' : '',
+      fs: this.props.compact ? '15px' : '16px',
+      minH: (this.props.minLines ? Math.round(this.props.minLines * (this.props.compact ? 21 : 22.4) + 22) : 0) + 'px'
+    };
+  }
+}
+</script>
+</body>
+</html>
