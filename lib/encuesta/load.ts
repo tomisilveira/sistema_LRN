@@ -7,7 +7,7 @@ import type { EncuestaResponse } from "./stats";
 // Se lee con el cliente de la SESIÓN del admin: la RLS de 0024 ya deja ver
 // solo lo que corresponde (superadmin todo; event_admin, sus eventos).
 
-export type Filters = { evento?: string; disciplina?: string; localidad?: string };
+export type Filters = { evento?: string; disciplina?: string; localidad?: string; quien?: string };
 
 export type EnrichedResponse = EncuestaResponse & {
   event_id: string | null;
@@ -56,7 +56,8 @@ export function applyFilters(rows: EnrichedResponse[], f: Filters): EnrichedResp
     (r) =>
       (!f.evento || (f.evento === "sin" ? r.event_id === null : r.event_id === f.evento)) &&
       (!f.disciplina || r.discipline_id === f.disciplina) &&
-      (!f.localidad || r.locality === f.localidad)
+      (!f.localidad || r.locality === f.localidad) &&
+      (!f.quien || r.quien_responde === f.quien)
   );
 }
 
@@ -66,5 +67,5 @@ export function readFilters(sp: Record<string, string | string[] | undefined> | 
     const s = Array.isArray(v) ? v[0] : v;
     return s ? s.slice(0, 200) : undefined;
   };
-  return { evento: get("evento"), disciplina: get("disciplina"), localidad: get("localidad") };
+  return { evento: get("evento"), disciplina: get("disciplina"), localidad: get("localidad"), quien: get("quien") };
 }

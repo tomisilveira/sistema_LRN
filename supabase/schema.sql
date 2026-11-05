@@ -701,16 +701,20 @@ create table if not exists encuesta_satisfaccion_familias (
   quien_responde text not null check (quien_responde in ('padres', 'docente', 'mayor')),
 
   experiencia smallint check (experiencia between 1 and 5),
+  experiencia_equipo smallint check (experiencia_equipo between 1 and 5),
   que_conto text check (length(que_conto) <= 2000),
   primera_vez text check (primera_vez in ('primera', 'regional', '2025')),
   nps smallint check (nps between 0 and 10),
 
   como_se_entero jsonb not null default '[]'::jsonb check (jsonb_typeof(como_se_entero) = 'array'),
+  como_se_entero_otro text check (length(como_se_entero_otro) <= 2000),
   conocia_anide text check (conocia_anide in ('si', 'suena', 'no')),
   sede_cercana text check (sede_cercana in ('si', 'no', 'quiero_info')),
 
   info_previa text check (info_previa in ('si', 'mas_o_menos', 'no')),
+  acompanamiento_referente text check (acompanamiento_referente in ('si', 'mas_o_menos', 'no')),
   puntaje_comodidad smallint check (puntaje_comodidad between 1 and 5),
+  puntaje_organizacion smallint check (puntaje_organizacion between 1 and 5),
   puntaje_seguridad smallint check (puntaje_seguridad between 1 and 5),
   puntaje_esperas smallint check (puntaje_esperas between 1 and 5),
   horas_total text check (horas_total in ('<3', '3-6', '>6')),

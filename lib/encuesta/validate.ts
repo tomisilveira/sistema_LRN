@@ -9,14 +9,18 @@ export type EncuestaRow = {
   respondent_id: string;
   quien_responde: string;
   experiencia: number | null;
+  experiencia_equipo: number | null;
   que_conto: string | null;
   primera_vez: string | null;
   nps: number | null;
   como_se_entero: string[];
+  como_se_entero_otro: string | null;
   conocia_anide: string | null;
   sede_cercana: string | null;
   info_previa: string | null;
+  acompanamiento_referente: string | null;
   puntaje_comodidad: number | null;
+  puntaje_organizacion: number | null;
   puntaje_seguridad: number | null;
   puntaje_esperas: number | null;
   horas_total: string | null;
@@ -84,20 +88,34 @@ export function validateEncuesta(input: unknown): ValidationResult {
     }
   }
 
+  const comoSeEntero = multi("como_se_entero");
+  // Cada público guarda solo lo que se le preguntó (lib/encuesta/questions.ts,
+  // questionsFor): si alguien cambió "quién responde" después de completar
+  // algo, lo que ya no ve no se guarda. El bloque de chicos y chicas es solo
+  // para familias; "cómo vivió la Liga tu equipo", solo para docentes; "¿se
+  // sintió acompañado/a por el referente?", para todos menos docentes.
+  const sinChicos = quien !== "padres";
+  const esDocente = quien === "docente";
+
   return {
     ok: true,
     row: {
       respondent_id: respondentId.toLowerCase(),
       quien_responde: quien,
       experiencia: int("experiencia"),
+      experiencia_equipo: esDocente ? int("experiencia_equipo") : null,
       que_conto: texts.que_conto,
       primera_vez: choice("primera_vez"),
       nps: int("nps"),
-      como_se_entero: multi("como_se_entero"),
+      como_se_entero: comoSeEntero,
+      // El "¿cuál?" solo vale con "Otro" marcado.
+      como_se_entero_otro: comoSeEntero.includes("otro") ? texts.como_se_entero_otro : null,
       conocia_anide: choice("conocia_anide"),
       sede_cercana: choice("sede_cercana"),
       info_previa: choice("info_previa"),
+      acompanamiento_referente: esDocente ? null : choice("acompanamiento_referente"),
       puntaje_comodidad: int("puntaje_comodidad"),
+      puntaje_organizacion: int("puntaje_organizacion"),
       puntaje_seguridad: int("puntaje_seguridad"),
       puntaje_esperas: int("puntaje_esperas"),
       horas_total: choice("horas_total"),
@@ -108,8 +126,8 @@ export function validateEncuesta(input: unknown): ValidationResult {
       acepta_contacto: acepta,
       email_contacto: acepta ? email : null,
       cambiaria: texts.cambiaria,
-      chico_mas_gusto: texts.chico_mas_gusto,
-      chico_menos_gusto: texts.chico_menos_gusto,
+      chico_mas_gusto: sinChicos ? null : texts.chico_mas_gusto,
+      chico_menos_gusto: sinChicos ? null : texts.chico_menos_gusto,
     },
   };
 }

@@ -136,7 +136,6 @@
 .num:active { transform: scale(0.92); }
 .num[aria-pressed="true"] { background: #33525c; border-color: #33525c; color: #fff; animation: pick 0.34s cubic-bezier(0.3, 1.6, 0.5, 1); }
 .num:focus-visible, .face:focus-visible, .btn:focus-visible, .linkcard:focus-visible { outline: 3px solid #33525c; outline-offset: 2px; }
-.ends { display: flex; justify-content: space-between; font-size: 13px; color: #4a6670; }
 
 .faces { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 4px; }
 .face {

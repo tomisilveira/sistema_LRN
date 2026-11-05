@@ -20,6 +20,7 @@ const CHOICE_TITLES: Record<string, string> = {
   conocia_anide: "¿Conocía a ANIDE?",
   sede_cercana: "¿Sabía de la sede cercana?",
   info_previa: "¿Tenía la info previa clara?",
+  acompanamiento_referente: "¿Se sintió acompañado/a por su referente? (familias y participantes)",
   horas_total: "Horas en el evento",
   volveria_2027: "¿Vuelve en 2027?",
 };
@@ -29,16 +30,19 @@ const MULTI_TITLES: Record<string, string> = {
 };
 const SCORE_TITLES: Record<string, string> = {
   experiencia: "Experiencia (1 Mal – 5 ¡Genial!)",
-  puntaje_comodidad: "Comodidad para acompañar",
-  puntaje_seguridad: "Seguridad y cuidado de los chicos",
+  experiencia_equipo: "Cómo vivió la Liga el equipo (docentes)",
+  puntaje_comodidad: "Comodidad (para acompañar / del lugar)",
+  puntaje_organizacion: "Disponibilidad y atención de la organización",
+  puntaje_seguridad: "Seguridad y cuidado de chicos y chicas",
   puntaje_esperas: "Tiempos de espera",
 };
 const TEXT_TITLES: Record<string, string> = {
-  que_conto: "¿Qué te contó tu hijo/a a la vuelta?",
+  que_conto: "¿Qué te contó tu hijo/a? / ¿Qué te llevás? / ¿Qué te comentó tu equipo?",
+  como_se_entero_otro: "Cómo se enteró: Otro",
   momento_malo: "¿Hubo algún momento que no estuvo bueno?",
   cambiaria: "Si pudieras cambiar o sumar una sola cosa…",
-  chico_mas_gusto: "Chicos: lo que más les gustó",
-  chico_menos_gusto: "Chicos: lo que menos les gustó",
+  chico_mas_gusto: "Chicos y chicas: lo que más les gustó",
+  chico_menos_gusto: "Chicos y chicas: lo que menos les gustó",
 };
 
 function Bars({ counts, total }: { counts: Count[]; total: number }) {
@@ -129,7 +133,7 @@ export default async function EncuestaAdminPage({ searchParams }: PageProps<"/ad
     <div className="max-w-5xl mx-auto space-y-6">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h1 className="text-lg font-semibold">Encuesta a familias</h1>
+          <h1 className="text-lg font-semibold">Encuesta de satisfacción</h1>
           <p className="text-sm panel-label">
             Respuestas de{" "}
             <Link href="/encuesta-satisfaccion" className="underline" target="_blank">
@@ -153,7 +157,7 @@ export default async function EncuestaAdminPage({ searchParams }: PageProps<"/ad
         </div>
       )}
 
-      <form method="get" className="panel-card rounded-xl p-4 grid gap-3 sm:grid-cols-4 items-end">
+      <form method="get" className="panel-card rounded-xl p-4 grid gap-3 sm:grid-cols-5 items-end">
         <label className="text-sm">
           <span className="block panel-label mb-1">Encuentro</span>
           <select name="evento" defaultValue={filters.evento ?? ""} className="w-full rounded-md panel-input px-2 py-2 text-sm">
@@ -179,6 +183,15 @@ export default async function EncuestaAdminPage({ searchParams }: PageProps<"/ad
             <option value="">Todas</option>
             {localities.map((l) => (
               <option key={l} value={l}>{l}</option>
+            ))}
+          </select>
+        </label>
+        <label className="text-sm">
+          <span className="block panel-label mb-1">Quién responde</span>
+          <select name="quien" defaultValue={filters.quien ?? ""} className="w-full rounded-md panel-input px-2 py-2 text-sm">
+            <option value="">Todos</option>
+            {QUIEN_OPTIONS.map(([v, label]) => (
+              <option key={v} value={v}>{label}</option>
             ))}
           </select>
         </label>
@@ -256,8 +269,8 @@ export default async function EncuestaAdminPage({ searchParams }: PageProps<"/ad
               {title} <span className="panel-label font-normal">({s.choices[k].answered})</span>
             </h2>
             <Bars counts={s.choices[k].counts} total={s.choices[k].answered} />
-            {k === "quien_responde" && s.choices[k].counts.some((c) => c.value === QUIEN_OPTIONS[1][0] && c.n > 0) && (
-              <p className="text-xs panel-label">Las respuestas de docentes por ahora usan el formulario de familias.</p>
+            {k === "quien_responde" && (
+              <p className="text-xs panel-label">Cada uno ve preguntas adaptadas; usá el filtro “Quién responde” para verlos por separado.</p>
             )}
           </section>
         ))}

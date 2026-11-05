@@ -8,9 +8,9 @@ export const dynamic = "force-dynamic";
 
 const COLUMNS = [
   "created_at", "updated_at", "event_name", "discipline_name", "category_name", "locality", "team_name",
-  "quien_responde", "experiencia", "que_conto", "primera_vez", "nps",
-  "como_se_entero", "conocia_anide", "sede_cercana",
-  "info_previa", "puntaje_comodidad", "puntaje_seguridad", "puntaje_esperas", "horas_total", "momento_malo",
+  "quien_responde", "experiencia", "experiencia_equipo", "que_conto", "primera_vez", "nps",
+  "como_se_entero", "como_se_entero_otro", "conocia_anide", "sede_cercana",
+  "info_previa", "acompanamiento_referente", "puntaje_comodidad", "puntaje_organizacion", "puntaje_seguridad", "puntaje_esperas", "horas_total", "momento_malo",
   "volveria_2027", "interes_propuestas", "acepta_contacto", "email_contacto", "cambiaria",
   "chico_mas_gusto", "chico_menos_gusto", "user_agent_tipo",
 ] as const;

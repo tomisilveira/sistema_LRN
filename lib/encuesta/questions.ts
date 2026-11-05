@@ -1,5 +1,5 @@
 // Preguntas, valores permitidos y reacciones del robot de la encuesta de
-// satisfacción a familias. Fuente: docs/encuesta-satisfaccion/diseño/
+// satisfacción (familias, participantes y docentes). Fuente: docs/encuesta-satisfaccion/diseño/
 // Flow.dc.html (`Q`, `DEF`, `react`) — los textos van LITERALES.
 // Lo usan la página (cliente), la validación del server y la vista admin,
 // así que no importa nada de servidor ni de React.
@@ -15,10 +15,10 @@ export const QUIEN_OPTIONS = [
 export type Option = readonly [string, string];
 
 export type Question =
-  | { key: "experiencia"; type: "faces"; title: string }
+  | { key: "experiencia" | "experiencia_equipo"; type: "faces"; title: string }
   | { key: string; type: "text"; title: string; hint?: string; ph: string }
   | { key: string; type: "radio" | "check"; title: string; hint?: string; options: readonly Option[]; contact?: boolean }
-  | { key: string; type: "scale"; title: string; from: number; to: number; cols: number; ends: readonly [string, string] }
+  | { key: string; type: "scale"; title: string; hint: string; from: number; to: number; cols: number }
   | { type: "ratings"; title: string; hint: string; items: readonly (readonly [string, string, string])[] }
   | { type: "kids" };
 
@@ -40,12 +40,22 @@ export const QUESTIONS: Record<1 | 2 | 3 | 4, Question[]> = {
       key: "primera_vez", type: "radio", title: "¿Era la primera vez que participaban?",
       options: [["primera", "Sí, fue la primera vez"], ["regional", "Ya habíamos ido a un regional"], ["2025", "Participamos también en 2025"]],
     },
-    { key: "nps", type: "scale", title: "¿Qué tan probable es que recomiendes la Liga a otra familia?", from: 0, to: 10, cols: 6, ends: ["Nada probable", "Muy probable"] },
+    // La aclaración de la escala va arriba, como en los puntajes 1 a 5
+    // (devolución del equipo: "Nada probable / Muy probable" abajo no se
+    // entendía).
+    {
+      key: "nps", type: "scale", title: "¿Qué tan probable es que recomiendes la Liga a otra familia?",
+      hint: "0 = poco probable · 10 = muy probable", from: 0, to: 10, cols: 6,
+    },
   ],
   2: [
     {
       key: "como_se_entero", type: "check", title: "¿Cómo te enteraste de la Liga?", hint: "Podés marcar más de una.",
-      options: [["escuela", "Por la escuela"], ["sede", "Por la sede de robótica"], ["redes", "Por redes sociales"], ["familia", "Me contó otra familia"], ["medios", "Por la tele o la radio"]],
+      options: [
+        ["escuela", "Por la escuela"], ["sede", "Por la sede de robótica"], ["redes", "Por redes sociales"],
+        ["familia", "Me contó otra familia"], ["boca_a_boca", "Por amigos/as o conocidos/as"],
+        ["medios", "Por la tele o la radio"], ["otro", "Otro"],
+      ],
     },
     {
       key: "conocia_anide", type: "radio", title: "Antes de la Liga, ¿conocías a ANIDE?",
@@ -62,10 +72,18 @@ export const QUESTIONS: Record<1 | 2 | 3 | 4, Question[]> = {
       options: [["si", "Sí, todo claro"], ["mas_o_menos", "Más o menos"], ["no", "No, me faltó información"]],
     },
     {
+      key: "acompanamiento_referente", type: "radio",
+      title: "¿Tu hijo/a se sintió acompañado/a por su docente o referente durante la jornada?",
+      options: [["si", "Sí, mucho"], ["mas_o_menos", "Más o menos"], ["no", "No"]],
+    },
+    // Sin "comida": la comida para el público fue de food trucks, no de la
+    // organización (la organización solo dio el desayuno a competidores).
+    {
       type: "ratings", title: "Puntuá del 1 al 5", hint: "1 = muy mal · 5 = excelente",
       items: [
-        ["puntaje_comodidad", "Comodidad para acompañar", "Lugar para ver, baños, comida, asientos"],
-        ["puntaje_seguridad", "Seguridad y cuidado de los chicos", ""],
+        ["puntaje_comodidad", "Comodidad para acompañar", "Lugar para ver, baños, asientos"],
+        ["puntaje_organizacion", "Disponibilidad y atención de la organización", "Si necesitaste algo, ¿hubo alguien para ayudarte?"],
+        ["puntaje_seguridad", "Seguridad y cuidado de chicos y chicas", ""],
         ["puntaje_esperas", "Tiempos de espera entre competencias", ""],
       ],
     },
@@ -90,7 +108,7 @@ export const QUESTIONS: Record<1 | 2 | 3 | 4, Question[]> = {
 };
 
 export const KIDS_COPY = {
-  title: "Para los chicos",
+  title: "Para chicos y chicas",
   sub: "Opcional · Pasale el celu a tu hijo/a",
   robot: "¡Hola, competidor/a! Ahora te toca a vos.",
   mas: "¿Qué fue lo que más te gustó?",
@@ -110,7 +128,7 @@ export const DEF: [Mood, string][] = [
   ["curioso", "Arranquemos por lo más importante: ¿cómo la pasaron?"],
   ["pensando", "Ahora, unas preguntas sobre cómo conociste la Liga."],
   ["atento", "El día del evento. Sé sincero/a: nos sirve más que un aplauso."],
-  ["saludo", "¡Última parada! Y al final, un ratito para los chicos."],
+  ["saludo", "¡Última parada! Y al final, un ratito para chicos y chicas."],
   ["festejo", "¡Bip bup! Tus respuestas ya están en camino."],
 ];
 
@@ -152,8 +170,9 @@ const GENERIC: [Mood, string][] = [
 
 /** Reacción del robot a una respuesta. `bump` es el contador de toques
  * (rota las frases genéricas). */
-export function react(key: string, val: unknown, bump: number): [Mood, string] {
-  const byKey = R[key];
+export function react(key: string, val: unknown, bump: number, quien?: string): [Mood, string] {
+  if (quien === "mayor" && key === "experiencia" && val === 5) return ["festejo", "¡Bip bup! ¡Nos encanta que la hayas pasado así!"];
+  const byKey = R[key === "experiencia_equipo" ? "experiencia" : key];
   if (byKey && (typeof val === "string" || typeof val === "number") && byKey[String(val)]) return byKey[String(val)];
   if (key === "nps" && typeof val === "number") {
     return val >= 9
@@ -167,6 +186,108 @@ export function react(key: string, val: unknown, bump: number): [Mood, string] {
 }
 
 // ---------------------------------------------------------------------------
+// Variantes según quién responde. El diseño original habla siempre a la
+// familia ("tu hijo/a", "tu familia", bloque para chicos y chicas). Por la
+// devolución del equipo (nov 2026) hay dos variantes más, con las MISMAS
+// claves y valores (solo cambia cómo se pregunta) y sin el bloque de chicos
+// y chicas:
+//   · participante mayor de 18 que fue solo/a: todo en primera persona;
+//   · docente o referente de sede: preguntas propias (cómo vivió la Liga el
+//     equipo que acompañó, primera vez como docente/referente/competidor,
+//     recomendar a otro/a profe) y sin "¿te sentiste acompañado/a por tu
+//     referente?" (es el referente).
+
+type QuestionPatch = { title?: string; ph?: string; options?: readonly Option[]; items?: readonly (readonly [string, string, string])[] };
+type Variant = { patch: Record<string, QuestionPatch>; omit: string[]; after?: Record<string, Question> };
+
+const RATINGS_LUGAR: readonly (readonly [string, string, string])[] = [
+  ["puntaje_comodidad", "Comodidad del lugar", "Lugar para ver, baños, asientos"],
+  ["puntaje_organizacion", "Disponibilidad y atención de la organización", "Si necesitaste algo, ¿hubo alguien para ayudarte?"],
+];
+
+const VARIANTS: Record<string, Variant> = {
+  mayor: {
+    omit: ["kids"],
+    patch: {
+      experiencia: { title: "¿Cómo viviste la experiencia Liga Robótica Neuquina?" },
+      que_conto: { title: "¿Qué te llevás de la competencia?", ph: "Lo que más te gustó, lo que te costó, alguna anécdota…" },
+      primera_vez: {
+        title: "¿Era la primera vez que participabas?",
+        options: [["primera", "Sí, fue la primera vez"], ["regional", "Ya había ido a un regional"], ["2025", "Participé también en 2025"]],
+      },
+      nps: { title: "¿Qué tan probable es que recomiendes la Liga a otra persona?" },
+      acompanamiento_referente: { title: "¿Te sentiste acompañado/a por tu docente o referente durante la jornada?" },
+      ratings: {
+        items: [
+          ...RATINGS_LUGAR,
+          ["puntaje_seguridad", "Seguridad y cuidado de los participantes", ""],
+          ["puntaje_esperas", "Tiempos de espera entre competencias", ""],
+        ],
+      },
+      horas_total: { title: "¿Cuántas horas estuviste en total?" },
+      volveria_2027: { title: "¿Querés volver en la 3ª edición, en 2027?" },
+    },
+  },
+  docente: {
+    omit: ["kids", "acompanamiento_referente"],
+    patch: {
+      experiencia: { title: "¿Cómo viviste la experiencia Liga Robótica Neuquina?" },
+      que_conto: { title: "¿Qué te comentó tu equipo después de la Liga?", ph: "Lo que más les gustó, lo que les costó, alguna anécdota…" },
+      primera_vez: {
+        title: "¿Es la primera vez que participás como docente, referente y/o competidor/a?",
+        options: [["primera", "Sí, es la primera vez"], ["regional", "Ya participé en un regional"], ["2025", "Participé también en 2025"]],
+      },
+      nps: { title: "¿Qué tan probable es que recomiendes la Liga a otro/a profe o referente?" },
+      ratings: {
+        items: [
+          ...RATINGS_LUGAR,
+          ["puntaje_seguridad", "Seguridad y cuidado de chicos y chicas", ""],
+          ["puntaje_esperas", "Tiempos de espera entre competencias", ""],
+        ],
+      },
+      horas_total: { title: "¿Cuántas horas estuviste en total?" },
+      volveria_2027: { title: "¿Te gustaría volver con tu equipo en la 3ª edición, en 2027?" },
+    },
+    after: {
+      experiencia: { key: "experiencia_equipo", type: "faces", title: "¿Y cómo vivió la Liga el equipo que acompañaste?" },
+    },
+  },
+};
+
+const qid = (q: Question) => ("key" in q ? q.key : q.type);
+
+/** Preguntas del paso según quién responde. */
+export function questionsFor(step: 1 | 2 | 3 | 4, quien?: string): Question[] {
+  const v = quien ? VARIANTS[quien] : undefined;
+  if (!v) return QUESTIONS[step];
+  const out: Question[] = [];
+  for (const q of QUESTIONS[step]) {
+    const id = qid(q);
+    if (v.omit.includes(id)) continue;
+    const patch = v.patch[id];
+    out.push(patch ? ({ ...q, ...patch } as Question) : q);
+    if (v.after?.[id]) out.push(v.after[id]);
+  }
+  return out;
+}
+
+/** Mensaje inicial del robot en el paso, según quién responde. */
+export function defFor(step: number, quien?: string): [Mood, string] {
+  if (quien === "mayor" && step === 1) return ["curioso", "Arranquemos por lo más importante: ¿cómo la pasaste?"];
+  if (quien === "docente" && step === 1) return ["curioso", "Arranquemos por lo más importante: ¿cómo la pasaron vos y tu equipo?"];
+  if ((quien === "mayor" || quien === "docente") && step === 4) return ["saludo", "¡Última parada! Ya casi terminamos."];
+  return DEF[step];
+}
+
+/** Bajada del encabezado ("Encuesta a … · Final Ruca Che 2026"). */
+export function audienceLabel(quien?: string): string {
+  if (quien === "padres") return "Encuesta a familias";
+  if (quien === "mayor") return "Encuesta a participantes";
+  if (quien === "docente") return "Encuesta a docentes y referentes";
+  return "Encuesta a familias, participantes y docentes";
+}
+
+// ---------------------------------------------------------------------------
 // Valores permitidos (los usa la validación del server y la vista admin).
 
 export const CHOICE_FIELDS = {
@@ -175,38 +296,45 @@ export const CHOICE_FIELDS = {
   conocia_anide: ["si", "suena", "no"],
   sede_cercana: ["si", "no", "quiero_info"],
   info_previa: ["si", "mas_o_menos", "no"],
+  acompanamiento_referente: ["si", "mas_o_menos", "no"],
   horas_total: ["<3", "3-6", ">6"],
   volveria_2027: ["si", "tal_vez", "no"],
 } as const;
 
 export const MULTI_FIELDS = {
-  como_se_entero: ["escuela", "sede", "redes", "familia", "medios"],
+  como_se_entero: ["escuela", "sede", "redes", "familia", "boca_a_boca", "medios", "otro"],
   interes_propuestas: ["robotica", "programacion", "ia"],
 } as const;
 
 export const INT_FIELDS = {
   experiencia: [1, 5],
+  experiencia_equipo: [1, 5],
   nps: [0, 10],
   puntaje_comodidad: [1, 5],
+  puntaje_organizacion: [1, 5],
   puntaje_seguridad: [1, 5],
   puntaje_esperas: [1, 5],
 } as const;
 
-export const TEXT_FIELDS = ["que_conto", "momento_malo", "cambiaria", "chico_mas_gusto", "chico_menos_gusto"] as const;
+export const TEXT_FIELDS = ["que_conto", "como_se_entero_otro", "momento_malo", "cambiaria", "chico_mas_gusto", "chico_menos_gusto"] as const;
 
 export const MAX_TEXT = 2000;
 
 export type Answers = {
   quien_responde?: string;
   experiencia?: number;
+  experiencia_equipo?: number;
   que_conto?: string;
   primera_vez?: string;
   nps?: number;
   como_se_entero?: string[];
+  como_se_entero_otro?: string;
   conocia_anide?: string;
   sede_cercana?: string;
   info_previa?: string;
+  acompanamiento_referente?: string;
   puntaje_comodidad?: number;
+  puntaje_organizacion?: number;
   puntaje_seguridad?: number;
   puntaje_esperas?: number;
   horas_total?: string;

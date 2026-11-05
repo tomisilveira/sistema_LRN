@@ -13,6 +13,8 @@ export type SaveEncuestaResult = { ok: true } | { ok: false; error: string };
 const RATE_LIMIT = 20;
 const RATE_WINDOW_MS = 10 * 60 * 1000;
 
+const COLUMNS_0025 = ["como_se_entero_otro", "experiencia_equipo", "acompanamiento_referente", "puntaje_organizacion"];
+
 // Server Action pública (sin sesión): guarda o actualiza la respuesta del
 // navegador `respondent_id`. Escribe con service_role (anon no tiene grants
 // sobre la tabla), así que TODO se valida acá: valores permitidos, rangos,
@@ -48,15 +50,17 @@ export async function saveEncuesta(payload: unknown): Promise<SaveEncuestaResult
     }
 
     const ua = (await headers()).get("user-agent");
-    const { error } = await supabase.from("encuesta_satisfaccion_familias").upsert(
-      {
-        ...v.row,
-        token,
-        inscripcion_id: inscripcionId,
-        user_agent_tipo: userAgentTipo(ua),
-      },
-      { onConflict: "respondent_id" }
-    );
+    const row = { ...v.row, token, inscripcion_id: inscripcionId, user_agent_tipo: userAgentTipo(ua) };
+    const save = (r: Record<string, unknown>) =>
+      supabase.from("encuesta_satisfaccion_familias").upsert(r, { onConflict: "respondent_id" });
+    let { error } = await save(row);
+    // Base sin la migración 0025 (columnas nuevas de la devolución del
+    // equipo): se guarda igual, sin esos datos, para no perder la respuesta.
+    if (error && COLUMNS_0025.some((c) => error!.message.includes(c))) {
+      const rest: Record<string, unknown> = { ...row };
+      for (const c of COLUMNS_0025) delete rest[c];
+      ({ error } = await save(rest));
+    }
     if (error) {
       console.error("encuesta: no se pudo guardar", error.message);
       return { ok: false, error: "No pudimos guardar tus respuestas. Probá de nuevo en un ratito." };

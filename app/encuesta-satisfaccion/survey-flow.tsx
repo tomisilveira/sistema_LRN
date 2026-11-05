@@ -6,8 +6,8 @@ import Robot from "./robot";
 import { useReducedMotion } from "./use-reduced-motion";
 import { saveEncuesta } from "./actions";
 import {
-  CONTACT_COPY, DEF, FACES, IDLE_REACTION, KIDS_COPY, QUESTIONS, QUIEN_OPTIONS, STEP_TITLES, TYPING_REACTION,
-  react, type Answers, type Mood, type Question,
+  CONTACT_COPY, FACES, IDLE_REACTION, KIDS_COPY, QUIEN_OPTIONS, STEP_TITLES, TYPING_REACTION,
+  audienceLabel, defFor, questionsFor, react, type Answers, type Mood, type Question,
 } from "@/lib/encuesta/questions";
 import { RUMBO, RUMBO_ACTUAL } from "@/lib/encuesta/rumbo";
 import { HONEYPOT_FIELD } from "@/lib/honeypot";
@@ -28,6 +28,7 @@ const RID_KEY = "lrn-encuesta-rid";
 const IDLE_MS = 9000;
 
 type Step = 0 | 1 | 2 | 3 | 4 | 5;
+type TextKey = "que_conto" | "como_se_entero_otro" | "momento_malo" | "cambiaria" | "chico_mas_gusto" | "chico_menos_gusto" | "email_contacto";
 type Rx = { step: number; mood: Mood; msg: string } | null;
 
 function newRespondentId(): string {
@@ -128,7 +129,7 @@ export default function SurveyFlow() {
 
   function setAnswer<K extends keyof Answers>(key: K, val: Answers[K]) {
     setAns((a) => ({ ...a, [key]: val }));
-    const r = react(key, val, bump);
+    const r = react(key, val, bump, key === "quien_responde" ? (val as string) : ans.quien_responde);
     touch();
     setBump((b) => b + 1);
     setRx({ step, mood: r[0], msg: r[1] });
@@ -139,7 +140,7 @@ export default function SurveyFlow() {
     setAnswer(key, cur.includes(val) ? cur.filter((x) => x !== val) : [...cur, val]);
   }
 
-  function onText(key: "que_conto" | "momento_malo" | "cambiaria" | "chico_mas_gusto" | "chico_menos_gusto" | "email_contacto") {
+  function onText(key: TextKey) {
     return (e: ChangeEvent<HTMLTextAreaElement | HTMLInputElement>) => {
       const value = e.target.value;
       const was = ans[key];
@@ -165,10 +166,10 @@ export default function SurveyFlow() {
 
   function nextStep() {
     if (step === 0 && !ans.quien_responde) return;
-    // TODO(docentes): el formulario para "Docente o referente de sede" está
-    // pendiente de diseño. Cuando exista, derivar acá a
-    // /encuesta-satisfaccion/docentes (conservando ?t=). Por ahora sigue el
-    // flujo de familias.
+    // "Docente o referente de sede" sigue en esta misma página con sus
+    // propias preguntas (questionsFor en lib/encuesta/questions.ts), armadas
+    // con la devolución del equipo. Si más adelante se diseña un formulario
+    // aparte, derivar acá a /encuesta-satisfaccion/docentes (conservando ?t=).
     goTo(Math.min(5, step + 1) as Step);
   }
 
@@ -198,7 +199,7 @@ export default function SurveyFlow() {
   }
 
   // Lo que dice el robot ahora.
-  let rb: [Mood, string] = DEF[step];
+  let rb: [Mood, string] = defFor(step, ans.quien_responde);
   if (rx && rx.step === step) rb = [rx.mood, rx.msg];
   if (idle && step >= 1 && step <= 4) rb = IDLE_REACTION;
 
@@ -213,7 +214,7 @@ export default function SurveyFlow() {
           <Image className={s.logo} src="/encuesta/logo-liga.png" alt="Liga Robótica Neuquina" width={480} height={211} priority />
           {inQ && <span className={`${s.steplbl} ${s.mobileOnly}`}>{counter}</span>}
         </div>
-        <span className={`${s.eyebrow} ${s.deskOnly}`}>Encuesta a familias · Final Ruca Che 2026</span>
+        <span className={`${s.eyebrow} ${s.deskOnly}`}>{audienceLabel(ans.quien_responde)} · Final Ruca Che 2026</span>
         <div className={`${s.deskRobot} ${s.deskOnly}`}>
           <Robot mood={rb[0]} message={rb[1]} size={170} layout="columna" minLines={3} bump={bump} />
         </div>
@@ -284,7 +285,7 @@ export default function SurveyFlow() {
                     <h1 className={s.st}>{STEP_TITLES[step]}</h1>
                   </div>
                   <div className={s.qlist}>
-                    {QUESTIONS[step as 1 | 2 | 3 | 4].map((q, i) => (
+                    {questionsFor(step as 1 | 2 | 3 | 4, ans.quien_responde).map((q, i) => (
                       <QuestionCard
                         key={"key" in q ? q.key : `${q.type}-${i}`}
                         q={q}
@@ -373,7 +374,7 @@ type QuestionCardProps = {
   ans: Answers;
   setAnswer: <K extends keyof Answers>(key: K, val: Answers[K]) => void;
   toggle: (key: "como_se_entero" | "interes_propuestas", val: string) => void;
-  onText: (key: "que_conto" | "momento_malo" | "cambiaria" | "chico_mas_gusto" | "chico_menos_gusto" | "email_contacto") => (e: ChangeEvent<HTMLTextAreaElement | HTMLInputElement>) => void;
+  onText: (key: TextKey) => (e: ChangeEvent<HTMLTextAreaElement | HTMLInputElement>) => void;
 };
 
 function Hint({ text }: { text?: string }) {
@@ -448,6 +449,13 @@ function QuestionCard({ q, ans, setAnswer, toggle, onText }: QuestionCardProps) 
             </label>
           ))}
         </div>
+        {q.key === "como_se_entero" && Array.isArray(cur) && cur.includes("otro") && (
+          <>
+            <label className={s.ratingL} htmlFor="f_como_se_entero_otro">¿Cuál?</label>
+            <input id="f_como_se_entero_otro" className={`${s.field} ${s.input}`} type="text" maxLength={200}
+              placeholder="Contanos cómo te enteraste" value={ans.como_se_entero_otro ?? ""} onChange={onText("como_se_entero_otro")} />
+          </>
+        )}
         {q.contact && (
           <>
             <label className={s.ratingL} htmlFor="f_email_contacto" style={{ marginTop: 6 }}>{CONTACT_COPY.label}</label>
@@ -464,15 +472,16 @@ function QuestionCard({ q, ans, setAnswer, toggle, onText }: QuestionCardProps) 
   }
 
   if (q.type === "faces") {
+    const fid = `q_${q.key}`;
     return (
-      <section className={s.card} aria-labelledby="q_experiencia">
-        <h2 className={s.qt} id="q_experiencia">{q.title}</h2>
-        <div className={s.faces} role="group" aria-labelledby="q_experiencia">
+      <section className={s.card} aria-labelledby={fid}>
+        <h2 className={s.qt} id={fid}>{q.title}</h2>
+        <div className={s.faces} role="group" aria-labelledby={fid}>
           {FACES.map(([label, mouth], i) => {
-            const on = ans.experiencia === i + 1;
+            const on = ans[q.key] === i + 1;
             const ink = on ? "#1F3A43" : "#33525C";
             return (
-              <button key={label} className={s.face} type="button" aria-pressed={on} onClick={() => setAnswer("experiencia", i + 1)}>
+              <button key={label} className={s.face} type="button" aria-pressed={on} onClick={() => setAnswer(q.key, i + 1)}>
                 <svg width="46" height="46" viewBox="0 0 44 44" aria-hidden="true">
                   <circle cx="22" cy="22" r="20" fill={on ? "#FFA200" : "#E3EFF2"} />
                   {i === 4 ? (
@@ -503,8 +512,8 @@ function QuestionCard({ q, ans, setAnswer, toggle, onText }: QuestionCardProps) 
     return (
       <section className={s.card} aria-labelledby={id}>
         <h2 className={s.qt} id={id}>{q.title}</h2>
+        <Hint text={q.hint} />
         <NumRow labelledBy={id} from={q.from} to={q.to} cols={q.cols} value={ans[key]} onPick={(n) => setAnswer(key, n)} />
-        <div className={s.ends}><span>{q.ends[0]}</span><span>{q.ends[1]}</span></div>
       </section>
     );
   }
@@ -515,7 +524,7 @@ function QuestionCard({ q, ans, setAnswer, toggle, onText }: QuestionCardProps) 
       <h2 className={s.qt} id="q_ratings">{q.title}</h2>
       <Hint text={q.hint} />
       {q.items.map(([key, label, sub]) => {
-        const k = key as "puntaje_comodidad" | "puntaje_seguridad" | "puntaje_esperas";
+        const k = key as "puntaje_comodidad" | "puntaje_organizacion" | "puntaje_seguridad" | "puntaje_esperas";
         return (
           <div key={key} className={s.rating}>
             <span className={s.ratingL} id={`q_${key}`}>{label}</span>

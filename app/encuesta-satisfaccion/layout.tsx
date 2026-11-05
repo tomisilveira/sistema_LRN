@@ -20,7 +20,7 @@ const nunito = localFont({
 });
 
 const TITLE = "¿Cómo viviste la Liga Robótica Neuquina?";
-const DESCRIPTION = "Encuesta a familias · 3 minutos · Respuestas confidenciales. Tu opinión es la primera pieza de la 3ª edición.";
+const DESCRIPTION = "Encuesta a familias y participantes · 3 minutos · Respuestas confidenciales. Tu opinión es la primera pieza de la 3ª edición.";
 
 // La imagen para compartir es opengraph-image.png / twitter-image.png de
 // esta carpeta (el logo), detectada por convención de archivo.
