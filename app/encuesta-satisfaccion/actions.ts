@@ -61,6 +61,11 @@ export async function saveEncuesta(payload: unknown): Promise<SaveEncuestaResult
       for (const c of COLUMNS_0025) delete rest[c];
       ({ error } = await save(rest));
     }
+    // Base sin la migración 0026 ("No sé" en volver en 2027): se guarda la
+    // respuesta sin ese dato en vez de perderla entera.
+    if (error && /volveria_2027/.test(error.message) && row.volveria_2027 === "no_se") {
+      ({ error } = await save({ ...row, volveria_2027: null }));
+    }
     if (error) {
       console.error("encuesta: no se pudo guardar", error.message);
       return { ok: false, error: "No pudimos guardar tus respuestas. Probá de nuevo en un ratito." };

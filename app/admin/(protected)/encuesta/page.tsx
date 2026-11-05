@@ -31,7 +31,7 @@ const MULTI_TITLES: Record<string, string> = {
 const SCORE_TITLES: Record<string, string> = {
   experiencia: "Experiencia (1 Mal – 5 ¡Genial!)",
   experiencia_equipo: "Cómo vivió la Liga el equipo (docentes)",
-  puntaje_comodidad: "Comodidad (para acompañar / del lugar)",
+  puntaje_comodidad: "Comodidad (¿estuvo cómodo/a?)",
   puntaje_organizacion: "Disponibilidad y atención de la organización",
   puntaje_seguridad: "Seguridad y cuidado de chicos y chicas",
   puntaje_esperas: "Tiempos de espera",

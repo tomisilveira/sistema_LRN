@@ -720,7 +720,7 @@ create table if not exists encuesta_satisfaccion_familias (
   horas_total text check (horas_total in ('<3', '3-6', '>6')),
   momento_malo text check (length(momento_malo) <= 2000),
 
-  volveria_2027 text check (volveria_2027 in ('si', 'tal_vez', 'no')),
+  volveria_2027 text check (volveria_2027 in ('si', 'no', 'tal_vez', 'no_se')),
   interes_propuestas jsonb not null default '[]'::jsonb check (jsonb_typeof(interes_propuestas) = 'array'),
   acepta_contacto boolean not null default false,
   email_contacto text check (length(email_contacto) <= 254),

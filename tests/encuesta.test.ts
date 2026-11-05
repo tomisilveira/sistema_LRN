@@ -158,3 +158,12 @@ test("encuesta: cada público guarda solo lo que se le preguntó", () => {
   const fam = validateEncuesta({ ...base, quien_responde: "padres" });
   assert.ok(fam.ok && fam.row.experiencia_equipo === null && fam.row.acompanamiento_referente === "si" && fam.row.chico_mas_gusto === "x");
 });
+
+test("encuesta: 'No sé' en volver en 2027 es una opción propia", () => {
+  const r = validateEncuesta({ respondent_id: RID, quien_responde: "padres", volveria_2027: "no_se" });
+  assert.ok(r.ok && r.row.volveria_2027 === "no_se");
+  const q = questionsFor(4, "padres").find((x) => "key" in x && x.key === "volveria_2027");
+  assert.ok(q && "options" in q);
+  if (q && "options" in q) assert.deepEqual(q.options.map((o) => o[0]), ["si", "no", "tal_vez", "no_se"]);
+  assert.equal(react("volveria_2027", "no_se", 0)[0], "curioso");
+});

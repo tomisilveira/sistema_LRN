@@ -7,7 +7,7 @@
 export type Mood = "saludo" | "curioso" | "feliz" | "festejo" | "pensando" | "sorpresa" | "triste" | "atento";
 
 export const QUIEN_OPTIONS = [
-  ["padres", "Mamá, papá o tutor/a"],
+  ["padres", "Mamá, papá, tutor/a o responsable a cargo"],
   ["docente", "Docente o referente de sede"],
   ["mayor", "Participante mayor de 18"],
 ] as const;
@@ -34,7 +34,7 @@ export const STEP_TITLES = ["Bienvenida", "La experiencia", "Conocer la Liga", "
 
 export const QUESTIONS: Record<1 | 2 | 3 | 4, Question[]> = {
   1: [
-    { key: "experiencia", type: "faces", title: "¿Cómo vivió tu familia la experiencia Liga Robótica Neuquina?" },
+    { key: "experiencia", type: "faces", title: "¿Cómo vivió tu familia la Liga Robótica Neuquina?" },
     { key: "que_conto", type: "text", title: "¿Qué te contó tu hijo/a a la vuelta?", ph: "Lo que más le gustó, lo que le costó, alguna anécdota…" },
     {
       key: "primera_vez", type: "radio", title: "¿Era la primera vez que participaban?",
@@ -81,7 +81,7 @@ export const QUESTIONS: Record<1 | 2 | 3 | 4, Question[]> = {
     {
       type: "ratings", title: "Puntuá del 1 al 5", hint: "1 = muy mal · 5 = excelente",
       items: [
-        ["puntaje_comodidad", "Comodidad para acompañar", "Lugar para ver, baños, asientos"],
+        ["puntaje_comodidad", "¿Estuviste cómodo/a mientras acompañabas?", "Lugar para mirar las competencias, baños, asientos"],
         ["puntaje_organizacion", "Disponibilidad y atención de la organización", "Si necesitaste algo, ¿hubo alguien para ayudarte?"],
         ["puntaje_seguridad", "Seguridad y cuidado de chicos y chicas", ""],
         ["puntaje_esperas", "Tiempos de espera entre competencias", ""],
@@ -96,7 +96,7 @@ export const QUESTIONS: Record<1 | 2 | 3 | 4, Question[]> = {
   4: [
     {
       key: "volveria_2027", type: "radio", title: "¿Tu hijo/a quiere volver en la 3ª edición, en 2027?",
-      options: [["si", "¡Sí!"], ["tal_vez", "Tal vez"], ["no", "No"]],
+      options: [["si", "¡Sí!"], ["no", "No"], ["tal_vez", "Tal vez"], ["no_se", "No sé"]],
     },
     {
       key: "interes_propuestas", type: "check", title: "¿Te gustaría recibir información de otras propuestas de ANIDE?", hint: "Podés marcar más de una.",
@@ -156,6 +156,7 @@ const R: Record<string, Record<string, [Mood, string]>> = {
   volveria_2027: {
     si: ["festejo", "¡Sííí! Te esperamos en la 3ª edición."],
     tal_vez: ["pensando", "Contanos qué cambiarías y te convencemos."],
+    no_se: ["curioso", "¡Está bien! Todavía hay tiempo para decidirlo."],
     no: ["triste", "Uh… nos sirve mucho saber por qué."],
   },
 };
@@ -201,7 +202,7 @@ type QuestionPatch = { title?: string; ph?: string; options?: readonly Option[];
 type Variant = { patch: Record<string, QuestionPatch>; omit: string[]; after?: Record<string, Question> };
 
 const RATINGS_LUGAR: readonly (readonly [string, string, string])[] = [
-  ["puntaje_comodidad", "Comodidad del lugar", "Lugar para ver, baños, asientos"],
+  ["puntaje_comodidad", "¿Estuviste cómodo/a en el lugar?", "Lugar para mirar las competencias, baños, asientos"],
   ["puntaje_organizacion", "Disponibilidad y atención de la organización", "Si necesitaste algo, ¿hubo alguien para ayudarte?"],
 ];
 
@@ -209,7 +210,7 @@ const VARIANTS: Record<string, Variant> = {
   mayor: {
     omit: ["kids"],
     patch: {
-      experiencia: { title: "¿Cómo viviste la experiencia Liga Robótica Neuquina?" },
+      experiencia: { title: "¿Cómo viviste la Liga Robótica Neuquina?" },
       que_conto: { title: "¿Qué te llevás de la competencia?", ph: "Lo que más te gustó, lo que te costó, alguna anécdota…" },
       primera_vez: {
         title: "¿Era la primera vez que participabas?",
@@ -231,7 +232,7 @@ const VARIANTS: Record<string, Variant> = {
   docente: {
     omit: ["kids", "acompanamiento_referente"],
     patch: {
-      experiencia: { title: "¿Cómo viviste la experiencia Liga Robótica Neuquina?" },
+      experiencia: { title: "¿Cómo viviste la Liga Robótica Neuquina?" },
       que_conto: { title: "¿Qué te comentó tu equipo después de la Liga?", ph: "Lo que más les gustó, lo que les costó, alguna anécdota…" },
       primera_vez: {
         title: "¿Es la primera vez que participás como docente, referente y/o competidor/a?",
@@ -298,7 +299,7 @@ export const CHOICE_FIELDS = {
   info_previa: ["si", "mas_o_menos", "no"],
   acompanamiento_referente: ["si", "mas_o_menos", "no"],
   horas_total: ["<3", "3-6", ">6"],
-  volveria_2027: ["si", "tal_vez", "no"],
+  volveria_2027: ["si", "no", "tal_vez", "no_se"],
 } as const;
 
 export const MULTI_FIELDS = {
