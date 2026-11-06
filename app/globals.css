@@ -525,3 +525,172 @@ button.panel-segment:hover {
     animation: none !important;
   }
 }
+
+/* ==========================================================================
+   Vidriera de la temporada (portada sin torneo en vivo, ver
+   app/components/season-showcase.tsx). Movimiento constante pero suave:
+   fondo con manchas de color que derivan + grilla tipo circuito que se
+   desplaza, cinta de números, y marcas de gráfico que crecen cada vez que
+   entra su diapositiva. Solo transform/opacity/clip en elementos hoja
+   (nunca un ancestro de modales, ver el bug de `position: fixed` arriba).
+   ========================================================================== */
+.showcase-hero {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  color: white;
+  background: radial-gradient(120% 120% at 0% 0%, #0f5f6b 0%, #0b2f3a 45%, #120a2a 100%);
+}
+.showcase-blob {
+  position: absolute;
+  z-index: -1;
+  border-radius: 9999px;
+  filter: blur(48px);
+  opacity: 0.55;
+}
+.showcase-grid {
+  position: absolute;
+  inset: -40px;
+  z-index: -1;
+  background-image:
+    linear-gradient(to right, rgb(255 255 255 / 0.07) 1px, transparent 1px),
+    linear-gradient(to bottom, rgb(255 255 255 / 0.07) 1px, transparent 1px);
+  background-size: 40px 40px;
+  mask-image: radial-gradient(ellipse 80% 70% at 50% 40%, black 30%, transparent 75%);
+}
+.showcase-marquee {
+  mask-image: linear-gradient(to right, transparent, black 8%, black 92%, transparent);
+}
+.showcase-marquee-track {
+  display: flex;
+  width: max-content;
+}
+.showcase-bar-y {
+  transform-origin: bottom;
+  transform-box: fill-box;
+}
+.showcase-bar-x {
+  transform-origin: left;
+}
+.showcase-progress {
+  transform-origin: left;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  @keyframes showcase-drift-a {
+    0%,
+    100% {
+      transform: translate(0, 0) scale(1);
+    }
+    50% {
+      transform: translate(60px, 30px) scale(1.15);
+    }
+  }
+  @keyframes showcase-drift-b {
+    0%,
+    100% {
+      transform: translate(0, 0) scale(1.1);
+    }
+    50% {
+      transform: translate(-70px, -20px) scale(0.9);
+    }
+  }
+  @keyframes showcase-grid-pan {
+    to {
+      transform: translate(40px, 40px);
+    }
+  }
+  @keyframes showcase-marquee {
+    to {
+      transform: translateX(-50%);
+    }
+  }
+  @keyframes showcase-grow-y {
+    from {
+      transform: scaleY(0);
+    }
+  }
+  @keyframes showcase-grow-x {
+    from {
+      transform: scaleX(0);
+    }
+  }
+  @keyframes showcase-pop {
+    from {
+      opacity: 0;
+      transform: translateY(10px) scale(0.96);
+    }
+  }
+  @keyframes showcase-flip {
+    from {
+      opacity: 0;
+      transform: translateY(40%) rotateX(-60deg);
+    }
+  }
+  @keyframes showcase-progress {
+    from {
+      transform: scaleX(0);
+    }
+    to {
+      transform: scaleX(1);
+    }
+  }
+  @keyframes showcase-glow {
+    0%,
+    100% {
+      box-shadow: 0 0 0 0 transparent;
+    }
+    50% {
+      box-shadow: 0 12px 32px -10px color-mix(in srgb, var(--color-brand-teal) 55%, transparent);
+    }
+  }
+  .showcase-blob-a {
+    animation: showcase-drift-a 14s ease-in-out infinite;
+  }
+  .showcase-blob-b {
+    animation: showcase-drift-b 18s ease-in-out infinite;
+  }
+  .showcase-blob-c {
+    animation: showcase-drift-a 22s ease-in-out infinite reverse;
+  }
+  .showcase-grid {
+    animation: showcase-grid-pan 6s linear infinite;
+  }
+  .showcase-marquee-track {
+    animation: showcase-marquee 40s linear infinite;
+  }
+  .showcase-marquee:hover .showcase-marquee-track {
+    animation-play-state: paused;
+  }
+  .showcase-bar-y {
+    animation: showcase-grow-y 0.9s cubic-bezier(0.16, 1, 0.3, 1) both;
+  }
+  .showcase-bar-x {
+    animation: showcase-grow-x 0.9s cubic-bezier(0.16, 1, 0.3, 1) both;
+  }
+  .showcase-reveal {
+    transform-box: fill-box;
+    transform-origin: left;
+    animation: showcase-grow-x 1.6s cubic-bezier(0.65, 0, 0.35, 1) both;
+  }
+  .showcase-pop {
+    animation: showcase-pop 0.6s cubic-bezier(0.16, 1, 0.3, 1) both;
+  }
+  .showcase-flip {
+    animation: showcase-flip 0.7s cubic-bezier(0.16, 1, 0.3, 1) both;
+  }
+  .showcase-progress {
+    animation: showcase-progress linear both;
+  }
+  @keyframes showcase-seg {
+    from {
+      stroke-dasharray: 0 100;
+    }
+  }
+  .showcase-seg {
+    animation: showcase-seg 1s cubic-bezier(0.65, 0, 0.35, 1) both;
+  }
+  .showcase-spotlight {
+    animation: showcase-glow 2.4s ease-in-out;
+  }
+}
