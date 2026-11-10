@@ -45,7 +45,7 @@ el plan Pro.
 | `/inscripcion/[eventId]` | no | Auto-registro público: un link por jornada, el equipo elige disciplina y categoría (solo las de inscripción abierta) |
 | `/acreditacion/[eventToken]` | no | Mesa de acreditación: marcar acreditado/homologado, contar presentes, corregir/mover/agregar equipos |
 | `/juez/[courtToken]` | no | Panel del juez de cancha: abrir partido, cronómetro pausable, marcador en vivo, tarjetas, cierre |
-| `/admin/login` | — | Ingreso del panel |
+| `/login` | — | Ingreso del panel (misma pantalla que `/admin/login`; el sitio público ya no tiene botón) |
 | `/admin` · `/admin/eventos/[eventId]` · `/admin/competencias/[competitionId]` | sí | Panel: eventos (Resumen, Canchas, Torneos, Inscripción, Administradores) y torneos |
 | `/admin/usuarios` · `/admin/categorias` · `/admin/disciplinas` | sí, superusuario | Alta de usuarios y catálogos globales |
 | `/api/health` | no | Chequeo de salud para Docker/balanceador (`?deep=1` verifica Supabase) |
@@ -187,7 +187,7 @@ npm install
 npm run dev
 ```
 
-Abrí `http://localhost:3000` → `/admin/login`.
+Abrí `http://localhost:3000/login`.
 
 Antes de subir un cambio: `npm run lint`, `npm run typecheck`, `npm test`
 (lógica pura de cuadros, fixture, reparto de canchas y podio, en `tests/`)

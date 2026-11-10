@@ -18,7 +18,7 @@ export default async function ProtectedAdminLayout({ children }: { children: Rea
   const claims = claimsData?.claims;
 
   if (!claims?.sub) {
-    redirect("/admin/login");
+    redirect("/login");
   }
 
   const userEmail = typeof claims.email === "string" ? claims.email : "";

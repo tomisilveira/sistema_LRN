@@ -6,8 +6,7 @@ import { PublicShell } from "@/app/components/public-shell";
 import { PublicEventBody } from "@/app/components/public-event-body";
 import { BrandLockup } from "@/app/components/brand-mark";
 import { SeasonShowcase } from "@/app/components/season-showcase";
-import { getSeasonStats, type SeasonStats } from "@/lib/season-stats";
-import { MANUAL_SEASONS } from "@/lib/season-history";
+import { getEdiciones } from "@/lib/ediciones";
 
 // Página pública guardada y rearmada como mucho cada 5 s para TODOS los
 // visitantes (ISR) — no una vez por celular. Por eso usa
@@ -57,19 +56,9 @@ export default async function Home() {
   const competitions: CompetitionWithNames[] = activeRow?.competitions ?? [];
   const switcherEvents = (switcherEventsRaw ?? []) as EventRow[];
 
-  // Sin torneo en vivo: vidriera con los números de la última temporada
-  // jugada (la de este año, o la anterior si este todavía no cerró ningún
-  // encuentro). Si la consulta falla, queda la lista de próximas fechas.
-  let season: SeasonStats | null = null;
-  if (!activeEvent) {
-    const year = new Date().getFullYear();
-    try {
-      season = (await getSeasonStats(year)) ?? (await getSeasonStats(year - 1));
-    } catch (err) {
-      console.error("[home] season stats:", err);
-    }
-  }
-  const previousSeason = season ? MANUAL_SEASONS.find((s) => s.year === season.year - 1) ?? null : null;
+  // Sin torneo en vivo: vidriera con los números de cada edición, que se
+  // editan a mano en data/ediciones.json (no consulta la base).
+  const ediciones = activeEvent ? null : getEdiciones();
 
   return (
     <PublicShell>
@@ -81,10 +70,9 @@ export default async function Home() {
           switcherEvents={switcherEvents}
           eyebrow="Jornada de hoy"
         />
-      ) : season ? (
+      ) : ediciones ? (
         <SeasonShowcase
-          season={season}
-          previous={previousSeason}
+          data={ediciones}
           upcoming={switcherEvents.map(({ id, name, event_date }) => ({ id, name, event_date }))}
         />
       ) : (

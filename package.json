@@ -19,11 +19,14 @@
     "@supabase/ssr": "^0.12.4",
     "@supabase/supabase-js": "^2.112.2",
     "exceljs": "^4.4.0",
+    "motion": "^14.12.0",
     "next": "16.3.8",
     "pdf-lib": "^1.17.1",
     "qrcode": "^1.5.4",
     "react": "19.2.8",
+    "react-countup": "^6.5.3",
     "react-dom": "19.2.8",
+    "recharts": "^3.10.1",
     "server-only": "^0.0.1"
   },
   "devDependencies": {

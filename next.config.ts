@@ -39,6 +39,11 @@ const nextConfig: NextConfig = {
   // durante un deploy gradual. Opcional (ver docs/DEPLOY.md).
   ...(process.env.DEPLOYMENT_ID ? { deploymentId: process.env.DEPLOYMENT_ID } : {}),
   ...(allowedOrigins.length > 0 ? { experimental: { serverActions: { allowedOrigins } } } : {}),
+  // El panel se entra por /login (ya no hay botón en el sitio público):
+  // misma pantalla que /admin/login, con la URL corta.
+  async rewrites() {
+    return [{ source: "/login", destination: "/admin/login" }];
+  },
   async headers() {
     return [{ source: "/:path*", headers: securityHeaders }];
   },

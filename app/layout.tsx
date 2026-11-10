@@ -31,6 +31,24 @@ const rajdhani = localFont({
   variable: "--font-rajdhani",
 });
 
+// Tipografía de marca (misma que la encuesta, SPEC §7): Exo 2 para títulos
+// y cifras —geométrica, de pantalla técnica, va con robótica— y Nunito para
+// el texto —redondeada y muy legible, pensada para chicos y familias—. Se
+// usan en el sitio público (PublicShell); el panel queda en Geist.
+const exo2 = localFont({
+  src: "./fonts/Exo2-Variable.woff2",
+  variable: "--font-exo2",
+  weight: "700 800",
+  display: "swap",
+});
+
+const nunito = localFont({
+  src: "./fonts/Nunito-Variable.woff2",
+  variable: "--font-nunito",
+  weight: "400 700",
+  display: "swap",
+});
+
 const SITE_NAME = "Liga Robótica Neuquina";
 const SITE_DESCRIPTION = "Sistema de administración y visualización de jornada — Liga Robótica Neuquina";
 // `app/icon.png`, `app/apple-icon.png` y `app/opengraph-image.png` (+
@@ -66,7 +84,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html
       lang="es"
-      className={`${geistSans.variable} ${geistMono.variable} ${rajdhani.variable} h-full antialiased`}
+      className={`${geistSans.variable} ${geistMono.variable} ${rajdhani.variable} ${exo2.variable} ${nunito.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col">
         {/* `beforeInteractive` solo puede ir en el root layout (ver

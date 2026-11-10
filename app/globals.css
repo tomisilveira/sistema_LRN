@@ -36,6 +36,8 @@
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
   --font-display: var(--font-rajdhani);
+  --font-heading: var(--font-exo2), var(--font-geist-sans), system-ui, sans-serif;
+  --font-body: var(--font-nunito), var(--font-geist-sans), system-ui, sans-serif;
 }
 
 /* Antes había acá un @media (prefers-color-scheme: dark) que oscurecía
@@ -48,7 +50,9 @@
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  /* Antes Arial a mano (Geist estaba cargada pero nunca se aplicaba). El
+     sitio público pisa esto con Nunito/Exo 2, ver PublicShell. */
+  font-family: var(--font-sans), system-ui, sans-serif;
 }
 
 /* ==========================================================================
@@ -72,7 +76,11 @@ body {
     radial-gradient(ellipse 60% 45% at 50% 115%, color-mix(in srgb, var(--color-brand-orange) 5%, transparent), transparent 70%);
   background-attachment: fixed;
 }
-:where(.dark) .panel-page {
+/* `.panel-page:where(.dark)`: el root público (#public-theme-root) lleva
+   las dos clases a la vez, y sin esto el fondo quedaba claro en modo
+   oscuro con el texto ya en claro (títulos casi invisibles). */
+:where(.dark) .panel-page,
+.panel-page:where(.dark) {
   background-color: #0a0a0a;
   background-image:
     radial-gradient(ellipse 70% 45% at 12% -8%, color-mix(in srgb, var(--color-brand-teal) 14%, transparent), transparent 70%),
@@ -528,11 +536,11 @@ button.panel-segment:hover {
 
 /* ==========================================================================
    Vidriera de la temporada (portada sin torneo en vivo, ver
-   app/components/season-showcase.tsx). Movimiento constante pero suave:
-   fondo con manchas de color que derivan + grilla tipo circuito que se
-   desplaza, cinta de números, y marcas de gráfico que crecen cada vez que
-   entra su diapositiva. Solo transform/opacity/clip en elementos hoja
-   (nunca un ancestro de modales, ver el bug de `position: fixed` arriba).
+   app/components/season-showcase.tsx). Movimiento ambiente en el hero
+   (manchas de color que derivan + grilla tipo circuito) y cinta de números;
+   las entradas al hacer scroll y los gráficos los anima Motion/Recharts.
+   Solo transform/opacity en elementos hoja (nunca un ancestro de modales,
+   ver el bug de `position: fixed` más arriba).
    ========================================================================== */
 .showcase-hero {
   position: relative;
@@ -565,15 +573,57 @@ button.panel-segment:hover {
   display: flex;
   width: max-content;
 }
-.showcase-bar-y {
-  transform-origin: bottom;
-  transform-box: fill-box;
-}
-.showcase-bar-x {
-  transform-origin: left;
-}
 .showcase-progress {
   transform-origin: left;
+}
+
+/* Gráficos de Recharts con la tinta del tema (claro/oscuro por .dark del
+   sitio público, no por el SO): la clase CSS le gana al atributo `fill`
+   que pone Recharts. */
+.season-chart {
+  --chart-ink: #4a6670;
+  --chart-ink-strong: #1f3a43;
+  --chart-grid: #dce9ec;
+  --chart-cursor: rgb(9 174 181 / 0.08);
+  --chart-surface: #ffffff;
+}
+:where(.dark) .season-chart {
+  --chart-ink: #9fb6bd;
+  --chart-ink-strong: #f1f7f8;
+  --chart-grid: rgb(255 255 255 / 0.08);
+  --chart-cursor: rgb(255 255 255 / 0.05);
+  --chart-surface: #0f1d22;
+}
+.season-chart .recharts-cartesian-axis-tick-value,
+.season-chart .recharts-cartesian-axis-tick text,
+.season-chart .season-chart-tick {
+  fill: var(--chart-ink);
+  font-family: var(--font-body);
+}
+.season-chart .recharts-cartesian-grid line {
+  stroke: var(--chart-grid);
+}
+.season-chart .season-chart-cursor {
+  fill: var(--chart-cursor);
+}
+.season-chart .season-chart-label {
+  fill: var(--chart-ink);
+  font-family: var(--font-heading);
+  font-size: 13px;
+  font-weight: 700;
+}
+.season-chart .season-chart-label-strong {
+  fill: var(--chart-ink-strong);
+  font-size: 15px;
+  font-weight: 800;
+}
+.season-chart .season-chart-dot {
+  fill: var(--chart-surface);
+}
+.season-chart .recharts-surface:focus,
+.season-chart .recharts-wrapper:focus,
+.season-chart .recharts-sector:focus {
+  outline: none;
 }
 
 @media (prefers-reduced-motion: no-preference) {
@@ -605,43 +655,12 @@ button.panel-segment:hover {
       transform: translateX(-50%);
     }
   }
-  @keyframes showcase-grow-y {
-    from {
-      transform: scaleY(0);
-    }
-  }
-  @keyframes showcase-grow-x {
-    from {
-      transform: scaleX(0);
-    }
-  }
-  @keyframes showcase-pop {
-    from {
-      opacity: 0;
-      transform: translateY(10px) scale(0.96);
-    }
-  }
-  @keyframes showcase-flip {
-    from {
-      opacity: 0;
-      transform: translateY(40%) rotateX(-60deg);
-    }
-  }
   @keyframes showcase-progress {
     from {
       transform: scaleX(0);
     }
     to {
       transform: scaleX(1);
-    }
-  }
-  @keyframes showcase-glow {
-    0%,
-    100% {
-      box-shadow: 0 0 0 0 transparent;
-    }
-    50% {
-      box-shadow: 0 12px 32px -10px color-mix(in srgb, var(--color-brand-teal) 55%, transparent);
     }
   }
   .showcase-blob-a {
@@ -662,35 +681,7 @@ button.panel-segment:hover {
   .showcase-marquee:hover .showcase-marquee-track {
     animation-play-state: paused;
   }
-  .showcase-bar-y {
-    animation: showcase-grow-y 0.9s cubic-bezier(0.16, 1, 0.3, 1) both;
-  }
-  .showcase-bar-x {
-    animation: showcase-grow-x 0.9s cubic-bezier(0.16, 1, 0.3, 1) both;
-  }
-  .showcase-reveal {
-    transform-box: fill-box;
-    transform-origin: left;
-    animation: showcase-grow-x 1.6s cubic-bezier(0.65, 0, 0.35, 1) both;
-  }
-  .showcase-pop {
-    animation: showcase-pop 0.6s cubic-bezier(0.16, 1, 0.3, 1) both;
-  }
-  .showcase-flip {
-    animation: showcase-flip 0.7s cubic-bezier(0.16, 1, 0.3, 1) both;
-  }
   .showcase-progress {
     animation: showcase-progress linear both;
-  }
-  @keyframes showcase-seg {
-    from {
-      stroke-dasharray: 0 100;
-    }
-  }
-  .showcase-seg {
-    animation: showcase-seg 1s cubic-bezier(0.65, 0, 0.35, 1) both;
-  }
-  .showcase-spotlight {
-    animation: showcase-glow 2.4s ease-in-out;
   }
 }

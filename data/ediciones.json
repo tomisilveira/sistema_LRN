@@ -1,0 +1,62 @@
+{
+  "_comoEditar": "Números de cada edición para la portada (se ve cuando no hay ningún torneo en vivo). Se editan acá, sin tocar componentes. Un dato que no se tiene va en null y esa comparación no se muestra. 'actual' es la edición que se destaca; la anterior en la lista es contra la que se compara. Cada edición lleva 'instancias' (regionales y final por separado) para el gráfico de comparación: usá los mismos nombres de instancia en todas las ediciones.",
+  "actual": 2026,
+  "ediciones": [
+    {
+      "anio": 2025,
+      "fuente": "Informe Ejecutivo Liga Robótica Neuquina 2025 (ANIDE)",
+      "encuentros": 3,
+      "equipos": null,
+      "participantes": 380,
+      "robots": 220,
+      "instituciones": null,
+      "localidades": null,
+      "partidos": null,
+      "goles": null,
+      "instancias": [
+        { "nombre": "Regionales", "detalle": "Neuquén capital y San Martín de los Andes", "participantes": 110, "robots": 70 },
+        { "nombre": "Final", "detalle": "Estadio Ruca Che, 8 de noviembre", "participantes": 270, "robots": 150 }
+      ],
+      "sedes": [],
+      "disciplinas": [],
+      "localidadesTop": []
+    },
+    {
+      "anio": 2026,
+      "fuente": "Sistema de la Liga (encuentros terminados), foto del 10/11/2026",
+      "encuentros": 4,
+      "equipos": 236,
+      "participantes": 441,
+      "robots": 322,
+      "instituciones": 55,
+      "localidades": 16,
+      "partidos": 288,
+      "goles": 180,
+      "instancias": [
+        { "nombre": "Regionales", "detalle": "Alto del Neuquén, Los Lagos del Sur y Comarca Petrolera", "participantes": 165, "robots": 98 },
+        { "nombre": "Final", "detalle": "Estadio Ruca Che, 31 de octubre", "participantes": 276, "robots": 224 }
+      ],
+      "sedes": [
+        { "nombre": "Alto del Neuquén", "fecha": "2026-08-29", "equipos": 12, "participantes": 35, "robots": 14 },
+        { "nombre": "Los Lagos del Sur", "fecha": "2026-09-19", "equipos": 22, "participantes": 34, "robots": 25 },
+        { "nombre": "Comarca Petrolera", "fecha": "2026-10-17", "equipos": 39, "participantes": 96, "robots": 59 },
+        { "nombre": "Final · Ruca Che", "fecha": "2026-10-31", "equipos": 163, "participantes": 276, "robots": 224 }
+      ],
+      "disciplinas": [
+        { "nombre": "Fútbol Robótico", "equipos": 77 },
+        { "nombre": "Sumo Autónomo", "equipos": 41 },
+        { "nombre": "Sumo Radio-controlado", "equipos": 23 },
+        { "nombre": "Mini Sumo Autónomo", "equipos": 71 },
+        { "nombre": "Mini Sumo Radio-controlado", "equipos": 24 }
+      ],
+      "localidadesTop": [
+        { "nombre": "Neuquén", "participantes": 119 },
+        { "nombre": "Plaza Huincul", "participantes": 104 },
+        { "nombre": "Plottier", "participantes": 18 },
+        { "nombre": "Cipolletti", "participantes": 18 },
+        { "nombre": "Chos Malal", "participantes": 18 },
+        { "nombre": "Villa La Angostura", "participantes": 15 }
+      ]
+    }
+  ]
+}

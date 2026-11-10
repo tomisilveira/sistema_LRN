@@ -13,12 +13,12 @@ import { BrandIcon } from "./brand-mark";
  * invertido que admin, ver app/admin/layout.tsx). */
 export function PublicShell({ children }: { children: React.ReactNode }) {
   return (
-    <div id="public-theme-root" className="panel-page min-h-screen" suppressHydrationWarning>
+    <div id="public-theme-root" className="panel-page font-body min-h-screen" suppressHydrationWarning>
       <header className="panel-nav panel-page border-b shadow-sm sticky top-0 z-20">
         <div className="max-w-4xl mx-auto flex flex-wrap items-center justify-between gap-3 px-4 sm:px-6 py-3">
           <Link href="/" className="flex items-center gap-2">
             <BrandIcon className="h-7 w-7" priority />
-            <span className="font-semibold">Liga Robótica Neuquina</span>
+            <span className="font-heading font-bold tracking-tight">Liga Robótica Neuquina</span>
           </Link>
           <nav className="flex flex-wrap items-center gap-2">
             <Link
@@ -28,12 +28,6 @@ export function PublicShell({ children }: { children: React.ReactNode }) {
               Todos los eventos
             </Link>
             <PublicThemeToggle />
-            <Link
-              href="/admin/login"
-              className="text-xs rounded-full panel-button-primary px-3 py-1.5 whitespace-nowrap transition"
-            >
-              Ingresar como administrador
-            </Link>
           </nav>
         </div>
         <div className="panel-brand-stripe" />
