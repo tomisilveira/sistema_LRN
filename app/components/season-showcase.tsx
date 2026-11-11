@@ -6,6 +6,7 @@ import { KpiCounters, type KpiItem } from "./season/kpi-counters";
 import { EditionCompareChart, type CompareRow } from "./season/edition-compare-chart";
 import { SeasonStage } from "./season/season-stage";
 import { Reveal } from "./season/reveal";
+import { HomeVideo } from "./season/home-video";
 
 /** Portada cuando no hay ningún torneo en vivo (el resto del año, hasta la
  * próxima temporada): los números de la edición actual comparados con la
@@ -69,6 +70,9 @@ export function SeasonShowcase({ data, upcoming }: { data: EdicionesData; upcomi
 
   return (
     <div className="space-y-10 sm:space-y-14">
+      {/* Video de la temporada: arranca solo, en silencio (ver HomeVideo). */}
+      <HomeVideo title={`Video de la Liga Robótica Neuquina ${actual.anio}`} />
+
       {/* Hero */}
       <section className="showcase-hero rounded-3xl px-6 py-10 sm:px-10 sm:py-14 shadow-xl">
         <div className="showcase-grid" aria-hidden="true" />
