@@ -50,7 +50,7 @@ export async function registerTeam(competitionId: string, formData: FormData): P
 
     const acceptedTerms = formData.get("accepted_terms") === "on";
     if (!acceptedTerms) {
-      return { ok: false, error: "Tenés que leer y aceptar las bases y condiciones para inscribirte." };
+      return { ok: false, error: "Tenés que leer y aceptar las bases y condiciones y la política de privacidad para inscribirte." };
     }
 
     // Mismo parseo del responsable adulto que usan la mesa de acreditación y
@@ -79,7 +79,10 @@ export async function registerTeam(competitionId: string, formData: FormData): P
       notes: input.notes,
     });
     if (error) {
-      console.error("registerTeam: insert falló", error);
+      // Solo código y mensaje: el `details` de Postgres puede traer la fila
+      // entera ("Failing row contains (...)") con el celular y el mail del
+      // mentor y los nombres de los chicos — no van a los logs.
+      console.error("registerTeam: insert falló", error.code, error.message);
       return { ok: false, error: "No se pudo guardar la inscripción. Probá de nuevo en un momento." };
     }
     return { ok: true };

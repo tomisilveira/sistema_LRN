@@ -116,6 +116,9 @@ export interface Team {
   // una por línea o separadas por coma (ver 0008_team_member_names.sql).
   // Se muestran en todo el sistema como "Robot (Fulano, Mengano)".
   member_names: string | null;
+  // member_names sin el "(edad)" de cada línea — columna generada (0027),
+  // la única versión que puede leer el rol anon.
+  member_names_public: string | null;
   // Nombres de los robots del equipo — solo se pide en fútbol robótico
   // (2 titulares + 1 suplente opcional), mismo criterio de texto libre que
   // member_names (ver 0010_team_robots_and_terms.sql).

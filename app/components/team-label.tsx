@@ -1,4 +1,4 @@
-import { parseMemberNames } from "@/lib/team-display";
+import { parseMemberNames, stripMemberAge } from "@/lib/team-display";
 
 /** Nombre de equipo/robot + nombres de las personas inscriptas debajo, en su
  * propia línea (sin paréntesis, separados por " · "), en un tamaño relativo
@@ -23,7 +23,8 @@ export function TeamLabel({
   className?: string;
   namesClassName?: string;
 }) {
-  const members = parseMemberNames(memberNames);
+  // Nunca la edad en pantalla (nov 2026, privacidad): solo el nombre.
+  const members = parseMemberNames(memberNames).map(stripMemberAge).filter(Boolean);
   return (
     <span className={className}>
       {name}

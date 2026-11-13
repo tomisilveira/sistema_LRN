@@ -55,7 +55,7 @@ async function buildOne(
   competition: CompetitionWithNames
 ): Promise<PantallaCompetitionBoard | null> {
   const [{ data: teams }, { data: groups }, { data: bracketMatches }] = await Promise.all([
-    supabase.from("teams").select("id, name, member_names").eq("competition_id", competition.id),
+    supabase.from("teams").select("id, name, member_names:member_names_public").eq("competition_id", competition.id),
     supabase.from("groups").select("*").eq("competition_id", competition.id).order("sort_order"),
     supabase
       .from("matches")

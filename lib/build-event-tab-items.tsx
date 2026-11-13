@@ -52,7 +52,7 @@ async function buildTabItem(
       // Solo las columnas que se muestran acá (nombre + integrantes). Evita
       // arrastrar mentor_contact/notes al render público — y, con el grant
       // por columna de 0011, un `select("*")` anónimo tampoco las traería.
-      supabase.from("teams").select("id, name, member_names").eq("competition_id", competition.id),
+      supabase.from("teams").select("id, name, member_names:member_names_public").eq("competition_id", competition.id),
       supabase.from("groups").select("*").eq("competition_id", competition.id).order("sort_order"),
       supabase
         .from("matches")

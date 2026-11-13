@@ -72,7 +72,7 @@ export async function buildCourtBoards(
   const groupIds = [...new Set(matchList.map((m) => m.group_id).filter((x): x is string => !!x))];
   const [{ data: teams }, { data: cardsData }, { data: groupsData }] = await Promise.all([
     teamIds.length
-      ? supabase.from("teams").select("id, name, member_names").in("id", teamIds)
+      ? supabase.from("teams").select("id, name, member_names:member_names_public").in("id", teamIds)
       : Promise.resolve({ data: [] as Pick<Team, "id" | "name" | "member_names">[] }),
     matchIds.length
       ? supabase.from("match_cards").select("*").in("match_id", matchIds)

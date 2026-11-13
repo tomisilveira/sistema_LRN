@@ -51,7 +51,7 @@ export function MemberListInput({
   name = "member_names",
   initialValue,
   label = "Integrantes del equipo",
-  helpText = "Se van a mostrar públicamente (en /publico, el modo pantalla y la cancha del juez), debajo del nombre del robot. Cargá solo lo que la organización pueda mostrar.",
+  helpText = "Se van a mostrar públicamente (en /publico, el modo pantalla y la cancha del juez), debajo del nombre del robot (la edad no se muestra). Cargá solo lo que la organización pueda mostrar.",
   required = false,
   max,
 }: {

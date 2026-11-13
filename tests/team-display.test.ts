@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { parseMentorContact } from "../lib/team-display";
+import { parseMemberNames, parseMentorContact, stripMemberAge } from "../lib/team-display";
 
 test("formato actual: celular · email", () => {
   const c = parseMentorContact("299 155-1234 · profe@escuela.edu.ar");
@@ -14,4 +14,14 @@ test("formatos viejos: otros separadores, + internacional, un solo dato", () => 
   assert.deepEqual(parseMentorContact("solo@mail.com").emails, ["solo@mail.com"]);
   assert.deepEqual(parseMentorContact("ver con la escuela").other, ["ver con la escuela"]);
   assert.deepEqual(parseMentorContact(null), { phones: [], emails: [], other: [] });
+});
+
+test("stripMemberAge: nunca muestra la edad entre paréntesis", () => {
+  assert.equal(stripMemberAge("Juana Pérez (12)"), "Juana Pérez");
+  assert.equal(stripMemberAge("Juana Pérez(9) "), "Juana Pérez");
+  // Paréntesis que no son una edad quedan como están.
+  assert.equal(stripMemberAge("Juan (h)"), "Juan (h)");
+  assert.equal(stripMemberAge("Ana"), "Ana");
+  // Lo que llega de un form (CRLF entre integrantes).
+  assert.deepEqual(parseMemberNames("Ana (10)\r\nLuis (11)").map(stripMemberAge), ["Ana", "Luis"]);
 });

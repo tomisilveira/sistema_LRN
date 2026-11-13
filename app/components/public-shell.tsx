@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { PublicThemeToggle } from "./public-theme-toggle";
 import { BrandIcon } from "./brand-mark";
+import { TERMS_URL } from "@/lib/privacy";
 
 /** Shell compartido entre el inicio (app/page.tsx) y toda la sección
  * /publico — mismo header (logo, "Todos los eventos", toggle de tema,
@@ -34,6 +35,21 @@ export function PublicShell({ children }: { children: React.ReactNode }) {
       </header>
 
       <main className="max-w-4xl mx-auto p-4 sm:p-6 panel-enter">{children}</main>
+
+      <footer className="max-w-4xl mx-auto px-4 sm:px-6 pt-2 pb-8">
+        <nav
+          aria-label="Legal"
+          className="flex flex-wrap items-center justify-center gap-x-4 gap-y-1 text-xs panel-label"
+        >
+          <span>© {new Date().getFullYear()} Liga Robótica Neuquina</span>
+          <Link href="/privacidad" className="underline underline-offset-2 hover:opacity-80">
+            Política de privacidad
+          </Link>
+          <a href={TERMS_URL} target="_blank" rel="noopener noreferrer" className="underline underline-offset-2 hover:opacity-80">
+            Bases y condiciones
+          </a>
+        </nav>
+      </footer>
     </div>
   );
 }

@@ -8,11 +8,11 @@ import { LocationFields } from "@/app/components/location-fields";
 import { parseMemberNames } from "@/lib/team-display";
 import { MAX_TEAM_MEMBERS } from "@/lib/team-limits";
 import type { DisciplineColorSet } from "@/lib/discipline-colors";
+import { TERMS_URL } from "@/lib/privacy";
 
-// Bases y condiciones de la Liga — el checkbox de abajo es obligatorio y
-// linkea acá. Si la organización cambia el documento, alcanza con actualizar
-// esta constante.
-const TERMS_URL = "https://drive.google.com/file/d/130w9o1tIuDkZAf9w7E5QomN3kYU8_yVc/view?usp=sharing";
+// Bases y condiciones (TERMS_URL) y política de privacidad: el checkbox de
+// abajo es obligatorio y linkea a las dos. El link a las bases vive en
+// lib/privacy.ts.
 
 const svgProps = {
   fill: "none",
@@ -109,7 +109,7 @@ export function RegistrationForm({
     const members = parseMemberNames(String(formData.get("member_names") ?? ""));
     if (members.length < 1) problems.push("Cargá al menos un integrante del equipo.");
     if (members.length > MAX_TEAM_MEMBERS) problems.push(`Máximo ${MAX_TEAM_MEMBERS} integrantes por equipo.`);
-    if (formData.get("accepted_terms") !== "on") problems.push("Tenés que aceptar las bases y condiciones.");
+    if (formData.get("accepted_terms") !== "on") problems.push("Tenés que aceptar las bases y condiciones y la política de privacidad.");
 
     if (problems.length > 0) {
       setFieldErrors(problems);
@@ -370,7 +370,7 @@ export function RegistrationForm({
               label="Personas del equipo"
               required
               max={MAX_TEAM_MEMBERS}
-              helpText={`Quiénes forman parte del equipo (hasta ${MAX_TEAM_MEMBERS}), con nombre y edad. Los nombres se usan para la premiación, así que tienen que coincidir con quienes se presentan.`}
+              helpText={`Quiénes forman parte del equipo (hasta ${MAX_TEAM_MEMBERS}), con nombre y edad. Los nombres se usan para la premiación, así que tienen que coincidir con quienes se presentan. La edad es solo para la organización: no se publica.`}
             />
           </div>
         </section>
@@ -409,7 +409,17 @@ export function RegistrationForm({
                 >
                   bases y condiciones
                 </a>{" "}
-                de la Liga Robótica Neuquina. <span className="text-brand-orange">*</span>
+                y la{" "}
+                <a
+                  href="/privacidad"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-brand-teal-dark dark:text-brand-teal underline hover:opacity-80 font-medium"
+                >
+                  política de privacidad
+                </a>{" "}
+                de la Liga Robótica Neuquina, y declaro que soy mayor de edad y cuento con la autorización de las
+                familias para inscribir a los integrantes. <span className="text-brand-orange">*</span>
               </span>
             </label>
 

@@ -160,6 +160,12 @@ create table teams (
   -- por línea o separados por coma, solo para mostrar (no una tabla aparte).
   -- `robot_names` se pide únicamente en fútbol robótico.
   member_names text,
+  -- member_names sin el "(edad)" final de cada línea (0027): es lo único
+  -- de los integrantes que puede leer anon. Se mantiene sola.
+  member_names_public text generated always as (
+    regexp_replace(member_names, '[ \t]*\(\d{1,2}\)[ \t]*(\r?)$', '\1', 'gn')
+?)$', '', 'gn')
+  ) stored,
   robot_names text,
   notes text,
   -- Cuándo se tildó "Leí y acepto las bases y condiciones" en la inscripción
@@ -370,7 +376,7 @@ begin
   select
     t.id,
     t.name,
-    t.member_names,
+    t.member_names_public,
     count(tm.match_id)::int as played,
     coalesce(sum(tm.is_win), 0)::int as won,
     coalesce(sum(tm.is_draw) filter (where tm.match_id is not null), 0)::int as drawn,
@@ -386,7 +392,7 @@ begin
   from teams t
   join group_teams gt2 on gt2.team_id = t.id and gt2.group_id = p_group_id
   left join team_matches tm on tm.tm_team_id = t.id
-  group by t.id, t.name, t.member_names, t.withdrawn_at, gt2.manual_rank_override
+  group by t.id, t.name, t.member_names_public, t.withdrawn_at, gt2.manual_rank_override
   order by
     case when gt2.manual_rank_override is not null then 0 else 1 end,
     gt2.manual_rank_override asc nulls last,
@@ -596,7 +602,7 @@ grant select (id, name, event_date, status, created_at, is_public) on events to 
 
 -- teams: anon solo lo que muestran la sección pública / los kioscos
 revoke select on teams from anon;
-grant select (id, competition_id, name, institution, member_names, robot_names, seed_order, created_at, withdrawn_at)
+grant select (id, competition_id, name, institution, member_names_public, robot_names, seed_order, created_at, withdrawn_at)
   on teams to anon;
 
 -- courts: anon solo columnas seguras (nunca access_token); usa courts_public

@@ -3,7 +3,7 @@
 // app/admin/(protected)/competencias/[competitionId]/podium-panel.tsx para
 // el render.
 
-import { parseMemberNames } from "./team-display";
+import { parseMemberNames, stripMemberAge } from "./team-display";
 import { buildTimeTrialRanking, formatRunTime } from "./time-trial";
 import type { Competition, Group, GroupStandingRow, Match, Team, TimeTrialRun } from "./database.types";
 
@@ -34,14 +34,8 @@ export interface BuildPodiumInput {
   timeTrialRuns?: TimeTrialRun[];
 }
 
-function cleanName(raw: string): string {
-  // "Fulano (12)" → "Fulano" — la edad se guarda entre paréntesis al final
-  // (ver MemberListInput). Cualquier otra cosa entra tal cual.
-  return raw.replace(/\s*\(\d{1,2}\)\s*$/, "").trim();
-}
-
 function toEntry(position: 1 | 2 | 3, team: Team): PodiumEntry {
-  const participantNames = parseMemberNames(team.member_names).map(cleanName).filter(Boolean);
+  const participantNames = parseMemberNames(team.member_names).map(stripMemberAge).filter(Boolean);
   const participantCount = team.participants_present ?? team.member_count ?? participantNames.length;
   return { position, team, participantNames, participantCount };
 }

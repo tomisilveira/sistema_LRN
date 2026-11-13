@@ -15,6 +15,14 @@ export function parseMemberNames(raw: string | null | undefined): string[] {
     .filter(Boolean);
 }
 
+/** "Fulano (12)" → "Fulano". La edad se guarda entre paréntesis al final de
+ * cada integrante (ver MemberListInput) pero es un dato para la
+ * organización, no para mostrar: las pantallas solo muestran el nombre.
+ * Mismo criterio que la columna teams.member_names_public (0027). */
+export function stripMemberAge(raw: string): string {
+  return raw.replace(/\s*\(\d{1,2}\)\s*$/, "").trim();
+}
+
 /** "Robot (Fulano, Mengano)" o solo "Robot" si no hay nombres cargados —
  * para contextos de texto plano (alt, title, exports) donde no alcanza un
  * componente React. */

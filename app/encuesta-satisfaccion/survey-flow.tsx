@@ -463,7 +463,12 @@ function QuestionCard({ q, ans, setAnswer, toggle, onText }: QuestionCardProps) 
               placeholder={CONTACT_COPY.ph} maxLength={254} value={ans.email_contacto ?? ""} onChange={onText("email_contacto")} />
             <label className={s.consent}>
               <input type="checkbox" checked={!!ans.acepta_contacto} onChange={() => setAnswer("acepta_contacto", !ans.acepta_contacto)} />
-              {CONTACT_COPY.consent}
+              <span>
+                {CONTACT_COPY.consent}{" "}
+                <a href="/privacidad" target="_blank" rel="noopener noreferrer" style={{ textDecoration: "underline" }}>
+                  Política de privacidad
+                </a>
+              </span>
             </label>
           </>
         )}
