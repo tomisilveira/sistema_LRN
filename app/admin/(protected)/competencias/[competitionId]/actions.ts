@@ -3,6 +3,8 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
+import { canManageCompetition } from "@/lib/admin-auth";
 import { MAX_ROUND_ROBIN_LEGS, interleaveRounds, missingRoundRobinMatches, roundRobinLegRounds, roundRobinLegsOf } from "@/lib/round-robin";
 import { advanceWinner } from "@/lib/bracket-actions";
 import { computeMatchOutcome } from "@/lib/match-logic";
@@ -233,6 +235,43 @@ export async function updateTeam(competitionId: string, teamId: string, formData
     .eq("id", teamId)
     .eq("competition_id", competitionId);
   if (error) throw new Error(error.message);
+
+  revalidateCompetition(competitionId);
+}
+
+/**
+ * Anonimizar un equipo (pedido de baja de datos, Ley 25.326 — ver
+ * /privacidad): borra los datos personales y deja el equipo, sus partidos
+ * y resultados, para que las tablas y los cuadros sigan cerrando. Se
+ * borran el mentor (nombre y contacto), los integrantes (nombres y
+ * edades) y las notas; quedan el nombre del equipo y de los robots, la
+ * institución, la ubicación y la cantidad de integrantes (estadísticas).
+ * También se borra el mail que haya dejado la familia en la encuesta.
+ * No se puede deshacer.
+ */
+export async function anonymizeTeam(competitionId: string, teamId: string) {
+  const supabase = await createServerSupabaseClient();
+  if (!(await canManageCompetition(supabase, competitionId))) {
+    throw new Error("No tenés permiso para administrar este torneo.");
+  }
+
+  const { data: updated, error } = await supabase
+    .from("teams")
+    .update({ mentor_name: null, mentor_contact: null, member_names: null, notes: null })
+    .eq("id", teamId)
+    .eq("competition_id", competitionId)
+    .select("id");
+  if (error) throw new Error(error.message);
+  if (!updated?.length) throw new Error("No se encontró el equipo en este torneo.");
+
+  // La encuesta no tiene permiso de escritura para los admins (solo
+  // lectura vía RLS): se hace con la service key, ya validado el permiso
+  // sobre el torneo arriba.
+  const { error: surveyError } = await createAdminClient()
+    .from("encuesta_satisfaccion_familias")
+    .update({ email_contacto: null, acepta_contacto: false })
+    .eq("inscripcion_id", teamId);
+  if (surveyError) throw new Error(surveyError.message);
 
   revalidateCompetition(competitionId);
 }

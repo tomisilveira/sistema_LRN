@@ -39,3 +39,11 @@ export function takeRateLimit(key: string, limit: number, windowMs: number): boo
   hits.set(key, recent);
   return true;
 }
+
+/** true si `key` ya llegó al tope en la ventana — sin contar este pedido.
+ * Para límites que cuentan solo los intentos fallidos (ver judge-auth.ts):
+ * se consulta con esto y se suma con takeRateLimit cuando falla. */
+export function isRateLimited(key: string, limit: number, windowMs: number): boolean {
+  const now = Date.now();
+  return (hits.get(key) ?? []).filter((t) => now - t < windowMs).length >= limit;
+}

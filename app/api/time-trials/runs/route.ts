@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import type { Competition, TimeTrialRun } from "@/lib/database.types";
+import { JudgeAuthError, judgeRateLimit, recordBadJudgeToken } from "@/lib/judge-auth";
 
 // Contrarreloj (seguidor de línea) desde la pantalla del juez. Igual que los
 // endpoints de partidos, la única credencial es el access_token de la
@@ -11,6 +12,14 @@ import type { Competition, TimeTrialRun } from "@/lib/database.types";
 //          toque equivocado), solo si es el último del torneo.
 
 async function loadContext(courtToken: unknown, competitionId: unknown) {
+  // Mismos límites por IP que los endpoints de partidos (ver lib/judge-auth.ts).
+  let ip: string;
+  try {
+    ip = await judgeRateLimit();
+  } catch (e) {
+    if (e instanceof JudgeAuthError) return { error: e.message, status: e.status } as const;
+    throw e;
+  }
   if (typeof courtToken !== "string" || !courtToken) return { error: "Falta el token de cancha.", status: 401 } as const;
   if (typeof competitionId !== "string" || !competitionId) return { error: "Falta el torneo.", status: 400 } as const;
   const supabase = createAdminClient();
@@ -18,7 +27,10 @@ async function loadContext(courtToken: unknown, competitionId: unknown) {
     supabase.from("courts").select("id, event_id").eq("access_token", courtToken).maybeSingle(),
     supabase.from("competitions").select("*").eq("id", competitionId).maybeSingle<Competition>(),
   ]);
-  if (!court) return { error: "Link de cancha inválido.", status: 401 } as const;
+  if (!court) {
+    recordBadJudgeToken(ip);
+    return { error: "Link de cancha inválido.", status: 401 } as const;
+  }
   if (!competition || competition.event_id !== court.event_id) {
     return { error: "Este torneo no es de tu evento.", status: 403 } as const;
   }

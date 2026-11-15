@@ -11,7 +11,7 @@ import { TeamAccreditationControls } from "./team-accreditation-controls";
 import { GroupAssignSelect } from "./group-assign-select";
 import { MoveTeamSelect } from "./move-team-select";
 import { TeamSeedInput } from "./team-seed-input";
-import { updateTeam, removeTeam } from "./actions";
+import { updateTeam, removeTeam, anonymizeTeam } from "./actions";
 import { WithdrawTeamControl } from "./withdraw-team-control";
 
 /** Una ficha de equipo en la pestaña Equipos — rediseñada 2026-08-27, con
@@ -166,6 +166,16 @@ export function TeamCard({
               }}
             />
           </ModalFormButton>
+          {(team.mentor_name || team.mentor_contact || team.member_names || team.notes) && (
+            <form action={anonymizeTeam.bind(null, competitionId, team.id)}>
+              <ConfirmSubmitButton
+                confirmMessage={`¿Anonimizar a ${team.name}? Se borran para siempre los datos del responsable (nombre, celular, mail), los nombres y edades de los integrantes, las notas y el mail que hayan dejado en la encuesta. El equipo y sus resultados quedan. Usalo cuando la familia o el mentor piden la baja de sus datos.`}
+                className="panel-action panel-action-sm"
+              >
+                Anonimizar
+              </ConfirmSubmitButton>
+            </form>
+          )}
           <form action={removeTeam.bind(null, competitionId, team.id)}>
             <ConfirmSubmitButton
               confirmMessage={`¿Quitar a ${team.name} del torneo? Si ya tiene partidos asignados, se pierden.`}

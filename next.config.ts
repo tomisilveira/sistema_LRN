@@ -2,9 +2,45 @@ import type { NextConfig } from "next";
 
 // Headers de seguridad aplicados a todas las respuestas. Conjunto
 // conservador (no rompe nada del runtime actual: Supabase Realtime por
-// WebSocket, estilos inline de Tailwind, next/font, etc.). Una CSP completa
-// queda pendiente — necesita audita de todos los orígenes y probablemente
-// modo report-only primero.
+// WebSocket, estilos inline de Tailwind, next/font, etc.).
+
+// Content Security Policy, por ahora en modo SOLO REPORTE (nov 2026): el
+// navegador no bloquea nada, solo avisa (consola + POST a /api/csp-report,
+// que lo deja en los logs del server). Cuando pase un evento entero sin
+// reportes raros, cambiar la key a "Content-Security-Policy" para que
+// bloquee de verdad.
+//
+// Sin nonces a propósito: un nonce obliga a renderizar cada página en cada
+// pedido, y las páginas públicas dependen del ISR para aguantar al público
+// (ver app/page.tsx). Por eso 'unsafe-inline' en scripts (los scripts
+// inline de Next y el del tema claro/oscuro en app/layout.tsx). Patrón
+// "Without Nonces" de node_modules/next/dist/docs/01-app/02-guides/content-security-policy.md.
+const isDev = process.env.NODE_ENV === "development";
+// Supabase (REST + Realtime por WebSocket). Se lee en BUILD, igual que el
+// resto de NEXT_PUBLIC_*; sirve también para un Supabase self-hosted.
+const supabaseOrigin = (() => {
+  try {
+    return new URL(process.env.NEXT_PUBLIC_SUPABASE_URL ?? "").origin;
+  } catch {
+    return "";
+  }
+})();
+const supabaseConnect = supabaseOrigin ? `${supabaseOrigin} ${supabaseOrigin.replace(/^http/, "ws")}` : "";
+const cspReportOnly = [
+  "default-src 'self'",
+  `script-src 'self' 'unsafe-inline'${isDev ? " 'unsafe-eval'" : ""}`,
+  "style-src 'self' 'unsafe-inline'",
+  "img-src 'self' blob: data:",
+  "media-src 'self'",
+  "font-src 'self'",
+  `connect-src 'self' ${supabaseConnect}`.trim(),
+  "object-src 'none'",
+  "base-uri 'self'",
+  "form-action 'self'",
+  "frame-ancestors 'self'",
+  "report-uri /api/csp-report",
+].join("; ");
+
 const securityHeaders = [
   // Fuerza HTTPS en visitas futuras (los browsers lo ignoran en localhost).
   { key: "Strict-Transport-Security", value: "max-age=63072000; includeSubDomains; preload" },
@@ -16,6 +52,7 @@ const securityHeaders = [
   // APIs del browser que la app no usa.
   { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=(), interest-cohort=()" },
   { key: "X-DNS-Prefetch-Control", value: "on" },
+  { key: "Content-Security-Policy-Report-Only", value: cspReportOnly },
 ];
 
 // Orígenes extra desde los que se aceptan Server Actions (los botones del
