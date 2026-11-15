@@ -11,6 +11,11 @@ export const PRIVACY_CONTROLLER = "Joaquín Perren";
  * organización") hasta que se cargue uno real. */
 export const PRIVACY_CONTACT_EMAIL: string | null = "anide@neuquen.gov.ar";
 
+/** Mail general de contacto y sugerencias (link del pie de página público).
+ * Hoy es el mismo que el de privacidad; separarlo si la organización
+ * prefiere otra casilla para consultas generales. */
+export const CONTACT_EMAIL = PRIVACY_CONTACT_EMAIL ?? "anide@neuquen.gov.ar";
+
 /** Fecha de la última actualización de la política (mostrar en la página). */
 export const PRIVACY_UPDATED_AT = "13 de noviembre de 2026";
 

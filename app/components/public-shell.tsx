@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { PublicThemeToggle } from "./public-theme-toggle";
 import { BrandIcon } from "./brand-mark";
-import { TERMS_URL } from "@/lib/privacy";
+import { CONTACT_EMAIL, TERMS_URL } from "@/lib/privacy";
 
 /** Shell compartido entre el inicio (app/page.tsx) y toda la sección
  * /publico — mismo header (logo, "Todos los eventos", toggle de tema,
@@ -47,6 +47,12 @@ export function PublicShell({ children }: { children: React.ReactNode }) {
           </Link>
           <a href={TERMS_URL} target="_blank" rel="noopener noreferrer" className="underline underline-offset-2 hover:opacity-80">
             Bases y condiciones
+          </a>
+          <a
+            href={`mailto:${CONTACT_EMAIL}?subject=${encodeURIComponent("Consulta sobre la Liga Robótica Neuquina")}`}
+            className="underline underline-offset-2 hover:opacity-80"
+          >
+            Contacto y sugerencias
           </a>
         </nav>
       </footer>

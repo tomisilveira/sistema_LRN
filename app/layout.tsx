@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import localFont from "next/font/local";
 import Script from "next/script";
 import "./globals.css";
+import { SITE_URL } from "@/lib/site-url";
 
 // Fuentes servidas desde el propio repo (app/fonts/, licencia SIL OFL) y
 // no desde Google Fonts: `next/font/google` las descarga DURANTE el build,
@@ -56,14 +57,10 @@ const SITE_DESCRIPTION = "Sistema de administración y visualización de jornada
 // hace falta declararlos acá (ver node_modules/next/dist/docs/.../app-icons.md
 // y .../opengraph-image.md). metadataBase sí hace falta: sin él, Next no
 // puede armar la URL absoluta de esas imágenes para los crawlers y tira un
-// warning en build. SITE_URL es la URL pública del sistema (ej.
-// https://liga.neuquen.gob.ar) — en Docker/nube propia hay que setearla;
-// VERCEL_URL queda de respaldo para deploys en Vercel.
-const siteUrl =
-  process.env.SITE_URL ?? (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "http://localhost:3000");
+// warning en build. La URL sale de SITE_URL (ver lib/site-url.ts).
 
 export const metadata: Metadata = {
-  metadataBase: new URL(siteUrl),
+  metadataBase: new URL(SITE_URL),
   title: SITE_NAME,
   description: SITE_DESCRIPTION,
   openGraph: {
