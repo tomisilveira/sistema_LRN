@@ -14,11 +14,17 @@ import { useEffect, useRef, useState } from "react";
  * con el botón de reproducir. Botones de pausa y de sonido siempre a mano
  * (contenido en movimiento de más de 5 s tiene que poder pausarse). */
 
+// Al cambiar un video, ponerle un nombre nuevo (v2, v3...): el navegador
+// guarda /videos una semana (ver next.config.ts) y con el mismo nombre
+// seguiría mostrando el viejo. Se comprimen a 720p ~1,5 Mbps (~12 MB):
+// ffmpeg -vf scale=1280:720 -c:v libx264 -preset slow -crf 26
+// -maxrate 1700k -bufsize 3400k -c:a aac -b:a 96k -movflags +faststart
+// (y 720:1280 para el vertical); la foto es el primer cuadro.
 const SRC = {
-  vertical: "/videos/liga-2026-vertical.mp4",
-  horizontal: "/videos/liga-2026-horizontal.mp4",
-  posterVertical: "/videos/liga-2026-vertical-poster.jpg",
-  posterHorizontal: "/videos/liga-2026-horizontal-poster.jpg",
+  vertical: "/videos/liga-2026-v2-vertical.mp4",
+  horizontal: "/videos/liga-2026-v2-horizontal.mp4",
+  posterVertical: "/videos/liga-2026-v2-vertical-poster.jpg",
+  posterHorizontal: "/videos/liga-2026-v2-horizontal-poster.jpg",
 };
 const PORTRAIT = "(orientation: portrait)";
 
