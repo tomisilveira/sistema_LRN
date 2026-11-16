@@ -1,0 +1,25 @@
+# Actualizaciones automáticas de dependencias (solo en el espejo de GitHub;
+# GitLab no lee este archivo). Dependabot abre un PR por semana con las
+# versiones nuevas agrupadas, y PRs aparte, enseguida, cuando sale un
+# parche de seguridad.
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      timezone: America/Argentina/Buenos_Aires
+    open-pull-requests-limit: 5
+    groups:
+      # Menores y parches juntos en un solo PR; las versiones mayores
+      # (pueden romper cosas) llegan cada una por separado.
+      menores-y-parches:
+        update-types: [minor, patch]
+    labels: [dependencias]
+
+  - package-ecosystem: docker
+    directory: /
+    schedule:
+      interval: monthly
+    labels: [dependencias]

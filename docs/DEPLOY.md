@@ -242,6 +242,36 @@ spec:
   `supabase/migrations/`), **aplicar la migración antes** de desplegar la
   imagen (ver sección 8).
 
+### Volver a una versión anterior (rollback)
+
+El CI publica cada imagen con dos etiquetas: la de la rama (`:main`,
+`:dev`), que se pisa en cada build, y la del commit (`:a1b2c3d`, los
+primeros 8 caracteres del hash), que **no se pisa nunca**. Si un deploy
+sale mal:
+
+1. Buscar el commit de la última versión que andaba bien: en GitLab,
+   *Deploy → Container Registry* (las etiquetas por commit), o
+   `git log --oneline` en el repo.
+2. Cambiar la imagen del contenedor a esa etiqueta y reiniciarlo. En
+   Portainer: editar el stack/contenedor, poner
+   `registry.ejemplo/…/sistema-liga-robotica-neuquina:a1b2c3d` en lugar de
+   `:main` y *Update*. Con Docker suelto:
+   ```bash
+   docker pull REGISTRY/IMAGEN:a1b2c3d
+   docker stop sistema-lrn && docker rm sistema-lrn
+   docker run -d --name sistema-lrn -p 3000:3000 --env-file .env REGISTRY/IMAGEN:a1b2c3d
+   ```
+3. Verificar con `/api/health` y el inicio (sección 10).
+4. Cuando el arreglo esté listo, volver a `:main`.
+
+**Ojo con la base:** volver la imagen atrás **no** deshace las migraciones.
+Casi todas suman columnas o tablas, y la versión vieja sigue andando con
+ellas. Las que **sacan permisos o columnas** (por ejemplo la 0028, que le
+saca `member_names` al rol público) rompen a la versión anterior: antes
+de volver atrás, revisar si se aplicó alguna así después de esa versión y,
+si hace falta, deshacerla a mano (para la 0028:
+`grant select (member_names) on teams to anon;`).
+
 ---
 
 ## 7. Base de datos: opciones

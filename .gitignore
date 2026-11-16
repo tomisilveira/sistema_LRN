@@ -13,6 +13,9 @@
 # testing
 /coverage
 
+# cache de npm del job "check" de GitLab CI
+/.npm/
+
 # next.js
 /.next/
 /out/

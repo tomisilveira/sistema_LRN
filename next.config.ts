@@ -82,7 +82,17 @@ const nextConfig: NextConfig = {
     return [{ source: "/login", destination: "/admin/login" }];
   },
   async headers() {
-    return [{ source: "/:path*", headers: securityHeaders }];
+    return [
+      { source: "/:path*", headers: securityHeaders },
+      // Videos de la portada (~11 MB cada uno): que el navegador los guarde
+      // una semana en vez de volver a pedirlos en cada visita. El nombre del
+      // archivo no cambia solo: si se reemplaza un video, ponerle otro
+      // nombre (ej. liga-2027-...) para que nadie vea el viejo.
+      {
+        source: "/videos/:path*",
+        headers: [{ key: "Cache-Control", value: "public, max-age=604800, stale-while-revalidate=86400" }],
+      },
+    ];
   },
 };
 

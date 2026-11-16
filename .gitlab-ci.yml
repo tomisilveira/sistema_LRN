@@ -3,11 +3,52 @@ image: docker:latest
 variables:
   TAG_NAME: $CI_COMMIT_REF_NAME
   IMAGE_NAME: $CI_REGISTRY_IMAGE:$TAG_NAME
+  # Misma imagen con una etiqueta fija por commit (no se pisa en el próximo
+  # build): es lo que permite volver a una versión anterior. Ver
+  # docs/DEPLOY.md, sección "Volver a una versión anterior".
+  IMAGE_SHA: $CI_REGISTRY_IMAGE:$CI_COMMIT_SHORT_SHA
 
 stages:
+  - check
   - build
   - push
   - notify
+
+# STAGE 0: Controles de calidad antes de construir la imagen. Si algo falla,
+# no se construye ni se publica nada.
+#   - typecheck: TypeScript (incluye `next typegen`, ver package.json)
+#   - lint: ESLint
+#   - test: tests unitarios (node --test)
+#   - audit: dependencias de producción con vulnerabilidades altas o
+#     críticas conocidas (npm audit)
+# Si el runner no tiene salida a internet, definir NPM_CONFIG_REGISTRY en
+# las variables de CI/CD (mismo registry interno que usa el Dockerfile).
+check:
+  stage: check
+  image: node:24-alpine
+  tags:
+    - build
+
+  cache:
+    key:
+      files:
+        - package-lock.json
+    paths:
+      - .npm/
+
+  script:
+    - echo "STAGE - CHECK"
+    - npm ci --cache .npm --prefer-offline --no-fund
+    - npm run typecheck
+    - npm run lint
+    - npm test
+    - npm audit --omit=dev --audit-level=high
+
+  only:
+    - main
+    - dev
+    - merge_requests
+
 
 # STAGE 1: Docker image build
 build_image:
@@ -35,7 +76,8 @@ build_image:
         --build-arg NEXT_PUBLIC_SUPABASE_URL="$NEXT_PUBLIC_SUPABASE_URL" \
         --build-arg NEXT_PUBLIC_SUPABASE_ANON_KEY="$NEXT_PUBLIC_SUPABASE_ANON_KEY" \
         --build-arg SITE_URL="$SITE_URL" \
-        -t "$IMAGE_NAME" .
+        -t "$IMAGE_NAME" \
+        -t "$IMAGE_SHA" .
 
   only:
     - main
@@ -56,6 +98,8 @@ push_image:
 
     - echo "Subiendo la imagen Docker al registro..."
     - docker push "$IMAGE_NAME"
+    - docker push "$IMAGE_SHA"
+    - echo "Publicada también como $IMAGE_SHA (para volver a esta versión)"
 
   when: manual
 
